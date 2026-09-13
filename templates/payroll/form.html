@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - Coal Mine{% endblock %}
+{% block page_title %}{{ title|upper }}{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+    <div class="panel-title"><i class="bi bi-cash-coin"></i> {{ title }}</div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Employee *</label>
+                {{ form.employee }}
+                {{ form.employee.errors }}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Month *</label>
+                {{ form.month }}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Year *</label>
+                {{ form.year }}
+                {{ form.year.errors }}
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Basic Salary *</label>
+                {{ form.basic_salary }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Present Days</label>
+                {{ form.present_days }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Absent Days</label>
+                {{ form.absent_days }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Leave Days</label>
+                {{ form.leave_days }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Half Days</label>
+                {{ form.half_days }}
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Overtime Hours</label>
+                {{ form.overtime_hours }}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Overtime Amount</label>
+                {{ form.overtime_amount }}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Allowances</label>
+                {{ form.allowances }}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Deductions</label>
+                {{ form.deductions }}
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Status</label>
+                {{ form.status }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Payment Date</label>
+                {{ form.payment_date }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Notes</label>
+                {{ form.notes }}
+            </div>
+        </div>
+
+        <div class="alert" style="background:rgba(245,158,11,0.08); border:1px solid var(--coal-line); color:var(--text-dim); margin-top:20px;">
+            <i class="bi bi-calculator"></i>
+            Net salary is calculated automatically:
+            <strong>Basic + Overtime + Allowances − Deductions</strong>.
+        </div>
+
+        <hr style="border-color:var(--coal-line); margin:25px 0;">
+
+        <button type="submit" class="btn btn-amber">
+            <i class="bi bi-check-lg"></i> Save Payroll
+        </button>
+        <a href="{% url 'payroll_list' %}" class="btn btn-outline-amber">
+            <i class="bi bi-x-lg"></i> Cancel
+        </a>
+    </form>
+</div>
+
+{% endblock %}

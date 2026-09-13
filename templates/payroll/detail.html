@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+
+{% block title %}Payslip - Coal Mine{% endblock %}
+{% block page_title %}PAYSLIP{% endblock %}
+
+{% block content %}
+
+<div class="panel" style="max-width: 800px; margin: 0 auto;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 style="color:var(--amber-glow); margin:0;">COALMINE CONTROL SYSTEM</h4>
+            <small style="color:var(--text-dim); letter-spacing:2px;">EMPLOYEE PAYSLIP</small>
+        </div>
+        <div style="text-align:right;">
+                        {% if payroll.status == 'Paid' %}
+                <span class="badge-status badge-active">PAID</span>
+            {% elif payroll.status == 'Approved' %}
+                <span class="badge-status badge-active">APPROVED</span>
+            {% elif payroll.status == 'Paid Pending' %}
+                <span class="badge-status badge-leave">PAID PENDING</span>
+            {% else %}
+                <span class="badge-status badge-inactive">PENDING</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <hr style="border-color:var(--coal-line);">
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <label class="form-label">Employee</label>
+            <p style="font-size:16px; color:#fff;">{{ payroll.employee.first_name }} {{ payroll.employee.last_name }}</p>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Code</label>
+            <p style="color:var(--amber-glow);">{{ payroll.employee.employee_code }}</p>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Designation</label>
+            <p>{{ payroll.employee.designation }}</p>
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Period</label>
+            <p>{{ payroll.get_month_display }} {{ payroll.year }}</p>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Department</label>
+            <p>{{ payroll.employee.department }}</p>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Shift</label>
+            <p>{{ payroll.employee.shift }}</p>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Payment Date</label>
+            <p>{{ payroll.payment_date|default:"—" }}</p>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="panel" style="background:var(--coal-dark);">
+                <div class="panel-title"><i class="bi bi-plus-circle"></i> Earnings</div>
+                <table class="table" style="margin:0;">
+                    <tbody>
+                        <tr><td>Basic Salary</td><td style="text-align:right;">{{ payroll.basic_salary }}</td></tr>
+                        <tr><td>Overtime ({{ payroll.overtime_hours }} h)</td><td style="text-align:right;">{{ payroll.overtime_amount }}</td></tr>
+                        <tr><td>Allowances</td><td style="text-align:right;">{{ payroll.allowances }}</td></tr>
+                        <tr style="border-top:2px solid var(--amber);">
+                            <td><strong>Gross</strong></td>
+                            <td style="text-align:right;"><strong style="color:var(--amber-glow);">
+                                {{ payroll.basic_salary|add:payroll.overtime_amount|add:payroll.allowances }}
+                            </strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="panel" style="background:var(--coal-dark);">
+                <div class="panel-title"><i class="bi bi-dash-circle"></i> Attendance & Deductions</div>
+                <table class="table" style="margin:0;">
+                    <tbody>
+                        <tr><td>Present Days</td><td style="text-align:right;">{{ payroll.present_days }}</td></tr>
+                        <tr><td>Absent Days</td><td style="text-align:right;">{{ payroll.absent_days }}</td></tr>
+                        <tr><td>Leave Days</td><td style="text-align:right;">{{ payroll.leave_days }}</td></tr>
+                        <tr><td>Half Days</td><td style="text-align:right;">{{ payroll.half_days }}</td></tr>
+                        <tr><td>Deductions</td><td style="text-align:right;">{{ payroll.deductions }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel mt-3" style="background:linear-gradient(135deg, var(--coal-mid), var(--coal-dark)); border:2px solid var(--amber);">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <div class="panel-title" style="margin:0;">NET SALARY</div>
+                <small style="color:var(--text-dim);">Basic + Overtime + Allowances − Deductions</small>
+            </div>
+            <div style="font-size:32px; font-weight:700; color:var(--amber-glow);">
+                {{ payroll.net_salary }}
+            </div>
+        </div>
+    </div>
+
+    {% if payroll.notes %}
+    <div class="mt-3">
+        <label class="form-label">Notes</label>
+        <p style="color:var(--text-dim);">{{ payroll.notes }}</p>
+    </div>
+    {% endif %}
+
+    <hr style="border-color:var(--coal-line); margin:25px 0;">
+
+    <a href="{% url 'payroll_edit' payroll.pk %}" class="btn btn-amber">
+        <i class="bi bi-pencil"></i> Edit
+    </a>
+    <a href="{% url 'payroll_delete' payroll.pk %}" class="btn btn-outline-danger">
+        <i class="bi bi-trash"></i> Delete
+    </a>
+    <button onclick="window.print()" class="btn btn-outline-amber">
+        <i class="bi bi-printer"></i> Print
+    </button>
+    <a href="{% url 'payroll_list' %}" class="btn btn-outline-amber">
+        <i class="bi bi-arrow-left"></i> Back
+    </a>
+</div>
+
+{% endblock %}

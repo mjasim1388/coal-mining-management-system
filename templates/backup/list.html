@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block title %}Backup History - Coal Mine{% endblock %}
+{% block page_title %}BACKUP HISTORY{% endblock %}
+
+{% block content %}
+
+<!-- Stats Row -->
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="stat-card stat-green">
+            <i class="bi bi-shield-check icon"></i>
+            <h2>{{ count }}</h2>
+            <p>Total Backups</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card stat-amber">
+            <i class="bi bi-hdd icon"></i>
+            <h2>{{ total_size }}</h2>
+            <p>Total Size (MB)</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card stat-blue">
+            <i class="bi bi-clock-history icon"></i>
+            <h2>{% if backups %}{{ backups.0.modified|date:"H:i" }}{% else %}—{% endif %}</h2>
+            <p>Last Backup Time</p>
+        </div>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="panel-title mb-0">
+            <i class="bi bi-archive-fill"></i> All Backups ({{ count }})
+        </div>
+        <a href="{% url 'backup_now' %}" class="btn btn-amber">
+            <i class="bi bi-shield-check"></i> Backup Now
+        </a>
+    </div>
+
+    {% if backups %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Filename</th>
+                <th>Date &amp; Time</th>
+                <th>Size</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for b in backups %}
+            <tr>
+                <td style="color:var(--text-muted);">{{ forloop.counter }}</td>
+                <td>
+                    <i class="bi bi-file-earmark-zip" style="color:var(--accent); margin-right:6px;"></i>
+                    <span style="color:var(--text-primary); font-family:monospace; font-size:12.5px;">{{ b.filename }}</span>
+                </td>
+                <td>{{ b.modified|date:"d M Y, H:i" }}</td>
+                <td><span style="color:var(--accent); font-weight:600;">{{ b.size_mb }} MB</span></td>
+                <td>
+                    <a href="{% url 'backup_download' b.filename %}" class="btn btn-sm btn-outline-amber" title="Download">
+                        <i class="bi bi-download"></i>
+                    </a>
+                    {% if is_manager %}
+                    <a href="{% url 'backup_delete' b.filename %}" class="btn btn-sm btn-outline-danger" title="Delete"
+                       onclick="return confirm('Delete backup: {{ b.filename }}? This cannot be undone.');">
+                        <i class="bi bi-trash"></i>
+                    </a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--text-muted); text-align:center; padding:40px 0;">
+        <i class="bi bi-archive" style="font-size:48px; display:block; margin-bottom:12px; opacity:0.5;"></i>
+        No backups yet.<br>
+        <a href="{% url 'backup_now' %}" style="color:var(--accent); margin-top:8px; display:inline-block;">
+            Create your first backup
+        </a>
+    </p>
+    {% endif %}
+</div>
+
+{% endblock %}

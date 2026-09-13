@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Auto Generate Payroll - Coal Mine{% endblock %}
+{% block page_title %}AUTO GENERATE PAYROLL{% endblock %}
+
+{% block content %}
+
+<div class="panel" style="max-width: 650px;">
+    <div class="panel-title"><i class="bi bi-magic"></i> Generate Payroll</div>
+
+    <div class="alert" style="background:rgba(245,158,11,0.08); border:1px solid var(--coal-line); color:var(--text-dim); margin-bottom:20px;">
+        <i class="bi bi-info-circle"></i>
+        This will create payroll for <strong>all active employees</strong> for the selected month/year.
+        Present, absent, leave, half day, and overtime are <strong>calculated automatically from the Attendance module</strong>.
+        <br><br>
+        Overtime is paid at <strong>1.5× hourly rate</strong>. Daily rate = basic salary ÷ 30.
+        <br><br>
+        Employees who already have a payroll record for that month will be skipped.
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Month *</label>
+                <select name="month" class="form-select" required>
+                    {% for m, name in months %}
+                    <option value="{{ m }}">{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Year *</label>
+                <input type="number" name="year" value="2026" class="form-control" required>
+            </div>
+        </div>
+
+        <hr style="border-color:var(--coal-line); margin:25px 0;">
+
+        <button type="submit" class="btn btn-amber">
+            <i class="bi bi-magic"></i> Generate Now
+        </button>
+        <a href="{% url 'payroll_list' %}" class="btn btn-outline-amber">
+            <i class="bi bi-x-lg"></i> Cancel
+        </a>
+    </form>
+</div>
+
+{% endblock %}

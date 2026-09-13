@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}Stock Transactions - Coal Mine{% endblock %}
+{% block page_title %}STOCK TRANSACTIONS{% endblock %}
+
+{% block content %}
+
+<div class="panel mb-3">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-5">
+            <label class="form-label">Item</label>
+            <select name="item" class="form-select">
+                <option value="">All Items</option>
+                {% for i in items %}
+                <option value="{{ i.pk }}" {% if item_filter == i.pk|stringformat:"s" %}selected{% endif %}>{{ i.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Type</label>
+            <select name="type" class="form-select">
+                <option value="">All</option>
+                <option value="IN" {% if type_filter == 'IN' %}selected{% endif %}>Stock In</option>
+                <option value="OUT" {% if type_filter == 'OUT' %}selected{% endif %}>Stock Out</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-amber w-100">
+                <i class="bi bi-funnel"></i> Filter
+            </button>
+        </div>
+    </form>
+</div>
+
+<div class="panel">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="panel-title mb-0">
+            <i class="bi bi-arrow-left-right"></i> Transactions ({{ transactions|length }})
+        </div>
+        <div>
+            <a href="{% url 'inventory_list' %}" class="btn btn-outline-amber">
+                <i class="bi bi-box-seam"></i> Items
+            </a>
+            <a href="{% url 'stock_transaction_add' %}" class="btn btn-amber">
+                <i class="bi bi-plus-lg"></i> Add Transaction
+            </a>
+        </div>
+    </div>
+
+    {% if transactions %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Item</th>
+                <th>Type</th>
+                <th>Quantity</th>
+                <th>Reason</th>
+                <th>Handled By</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in transactions %}
+            <tr>
+                <td><span style="color:var(--amber-glow);">{{ t.date }}</span></td>
+                <td>{{ t.item.name }}</td>
+                <td>
+                    {% if t.transaction_type == 'IN' %}
+                        <span class="badge-status badge-active">STOCK IN</span>
+                    {% else %}
+                        <span class="badge-status badge-inactive">STOCK OUT</span>
+                    {% endif %}
+                </td>
+                <td>{{ t.quantity }} {{ t.item.unit }}</td>
+                <td>{{ t.reason|default:"—" }}</td>
+                <td>{{ t.handled_by|default:"—" }}</td>
+                <td>
+                    <a href="{% url 'stock_transaction_delete' t.pk %}" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-trash"></i>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--text-dim); text-align:center; padding:30px;">
+        <i class="bi bi-arrow-left-right" style="font-size:40px; display:block; margin-bottom:10px;"></i>
+        No transactions yet. <a href="{% url 'stock_transaction_add' %}" style="color:var(--amber);">Add the first one</a>.
+    </p>
+    {% endif %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Sale - Coal Mine{% endblock %}
+{% block page_title %}CONFIRM DELETION{% endblock %}
+
+{% block content %}
+
+<div class="panel" style="max-width: 600px;">
+    <div class="panel-title" style="color:#f87171;">
+        <i class="bi bi-exclamation-triangle-fill"></i> Delete Sale
+    </div>
+
+    <p style="font-size:16px;">
+        Delete invoice <strong style="color:var(--amber-glow);">{{ sale.invoice_no }}</strong>
+        for <strong>{{ sale.customer.name }}</strong> ({{ sale.total_amount }})?
+    </p>
+    <p style="color:var(--text-dim);">This action cannot be undone.</p>
+
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">
+            <i class="bi bi-trash"></i> Yes, Delete
+        </button>
+        <a href="{% url 'sale_list' %}" class="btn btn-outline-amber">
+            <i class="bi bi-x-lg"></i> Cancel
+        </a>
+    </form>
+</div>
+
+{% endblock %}

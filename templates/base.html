@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Coal Mining System{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-app: #0f172a;
+            --bg-panel: #1e293b;
+            --bg-sidebar: #0a0e16;
+            --bg-sidebar-hover: #1e293b;
+            --bg-sidebar-active: #000000;
+            --bg-hover-row: #263449;
+            --border-light: #293548;
+            --border-medium: #3d4c63;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #64748b;
+            --text-sidebar: #94a3b8;
+            --accent: #f59e0b;
+            --accent-hover: #fbbf24;
+            --accent-soft: rgba(245, 158, 11, 0.15);
+            --success: #10b981;
+            --success-soft: rgba(16, 185, 129, 0.18);
+            --danger: #ef4444;
+            --danger-soft: rgba(239, 68, 68, 0.18);
+            --info: #3b82f6;
+            --info-soft: rgba(59, 130, 246, 0.18);
+            --warning-soft: rgba(245, 158, 11, 0.18);
+        }
+        * { box-sizing: border-box; }
+        html, body { height: 100%; }
+        body {
+            background: var(--bg-app);
+            color: var(--text-primary);
+            font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+            font-size: 14px;
+            margin: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ---------- LAYOUT ---------- */
+        .app-container { display: flex; min-height: 100vh; }
+
+        /* ---------- SIDEBAR ---------- */
+        .sidebar {
+            width: 240px;
+            background: var(--bg-sidebar);
+            padding: 20px 0;
+            position: fixed;
+            top: 0; left: 0; bottom: 0;
+            overflow-y: auto;
+            z-index: 100;
+            border-right: 1px solid var(--border-light);
+        }
+        .sidebar-brand {
+            padding: 4px 24px 24px;
+            border-bottom: 1px solid var(--border-light);
+            margin-bottom: 16px;
+        }
+        .sidebar-brand h5 {
+            margin: 0;
+            font-weight: 800;
+            font-size: 15px;
+            letter-spacing: 0.5px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sidebar-brand h5 i { color: var(--accent); font-size: 20px; }
+        .sidebar-brand small {
+            color: var(--text-muted);
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-left: 30px;
+            display: block;
+        }
+        .sidebar-section {
+            padding: 10px 24px 6px;
+            font-size: 10px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+        .sidebar a {
+            color: var(--text-sidebar);
+            padding: 10px 24px;
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            font-size: 13.5px;
+            font-weight: 500;
+            border-left: 3px solid transparent;
+            transition: all 0.15s ease;
+        }
+        .sidebar a:hover {
+            color: #fff;
+            background: var(--bg-sidebar-hover);
+        }
+        .sidebar a.active {
+            color: #fff;
+            background: var(--bg-sidebar-active);
+            border-left-color: var(--accent);
+        }
+        .sidebar a i {
+            margin-right: 12px;
+            font-size: 16px;
+            width: 18px;
+            text-align: center;
+                    .sidebar a[href*="backup"] {
+            color: #34d399 !important;
+            font-weight: 600;
+        }
+        .sidebar a[href*="backup"]:hover {
+            background: rgba(16, 185, 129, 0.15) !important;
+            color: #6ee7b7 !important;
+        }
+        .sidebar a[href*="backup"].active {
+            background: rgba(16, 185, 129, 0.2) !important;
+        }
+        }
+        .sidebar form button {
+            color: var(--text-sidebar);
+            background: none;
+            border: none;
+            padding: 10px 24px;
+            display: flex;
+            align-items: center;
+            width: 100%;
+            text-align: left;
+            font-size: 13.5px;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: inherit;
+            border-left: 3px solid transparent;
+            transition: all 0.15s ease;
+        }
+        .sidebar form button:hover {
+            color: #fff;
+            background: var(--bg-sidebar-hover);
+        }
+        .sidebar form button i {
+            margin-right: 12px;
+            font-size: 16px;
+            width: 18px;
+            text-align: center;
+        }
+
+        /* ---------- MAIN ---------- */
+        .main-area {
+            margin-left: 240px;
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .topbar {
+            background: var(--bg-panel);
+            padding: 16px 32px;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        .topbar .page-title {
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .topbar .page-title i { color: var(--accent); font-size: 16px; }
+        .topbar .user-chip {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-app);
+            padding: 6px 14px 6px 6px;
+            border-radius: 30px;
+            font-size: 13px;
+            border: 1px solid var(--border-light);
+            color: var(--text-secondary);
+        }
+        .topbar .user-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), #d97706);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 700;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        .content { padding: 28px 32px; flex: 1; }
+                /* ---------- FOOTER ---------- */
+        .app-footer {
+            background: var(--bg-panel);
+            border-top: 1px solid var(--border-light);
+            padding: 14px 32px;
+            font-size: 12.5px;
+            color: var(--text-muted);
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: 0.3px;
+        }
+        .app-footer strong {
+            color: var(--accent);
+            font-weight: 700;
+        }
+        .footer-sep {
+            opacity: 0.5;
+        }
+
+        /* Notification bell */
+        .notification-bell {
+            position: relative;
+            color: var(--text-secondary);
+            font-size: 20px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.15s;
+        }
+        .notification-bell:hover {
+            background: var(--accent-soft);
+            color: var(--accent-hover);
+        }
+        .notification-badge {
+            position: absolute;
+            top: 2px;
+            right: 4px;
+            background: var(--danger);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 10px;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        /* ---------- STAT CARDS ---------- */
+        .stat-card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 22px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: var(--accent);
+        }
+        .stat-card.stat-green::before { background: var(--success); }
+        .stat-card.stat-red::before { background: var(--danger); }
+        .stat-card.stat-blue::before { background: var(--info); }
+        .stat-card .icon {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 28px;
+            color: var(--text-muted);
+            opacity: 0.4;
+        }
+        .stat-card h2 {
+            font-size: 28px;
+            font-weight: 700;
+            margin: 0;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+        }
+        .stat-card p {
+            margin: 6px 0 0;
+            font-size: 11px;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        .stat-link { text-decoration: none; display: block; color: inherit; }
+        .stat-link:hover .stat-card {
+            transform: translateY(-3px);
+            border-color: var(--accent);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        /* ---------- PANELS ---------- */
+        .panel {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+        }
+        .panel-title {
+            font-size: 12px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 18px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .panel-title i { color: var(--accent); font-size: 14px; }
+
+        /* ---------- TABLES ---------- */
+        .table { color: var(--text-primary); margin: 0; --bs-table-bg: transparent; --bs-table-color: var(--text-primary); }
+        .table thead th {
+            background: var(--bg-app);
+            color: var(--text-muted);
+            font-size: 10.5px;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            border: none;
+            border-bottom: 1px solid var(--border-light);
+            padding: 14px 16px;
+            font-weight: 700;
+        }
+        .table tbody td {
+            border: none;
+            border-bottom: 1px solid var(--border-light);
+            padding: 14px 16px;
+            font-size: 13.5px;
+            vertical-align: middle;
+            color: var(--text-primary);
+            background: transparent;
+        }
+        .table tbody tr:last-child td { border-bottom: none; }
+        .table tbody tr { transition: background 0.15s; }
+        .table tbody tr:hover td { background: var(--bg-hover-row); }
+
+        /* ---------- FORMS ---------- */
+        .form-label {
+            font-size: 11px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        .form-control, .form-select {
+            background: var(--bg-app);
+            border: 1px solid var(--border-light);
+            color: var(--text-primary);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13.5px;
+            transition: all 0.15s;
+        }
+        .form-control::placeholder { color: var(--text-muted); }
+        .form-control:focus, .form-select:focus {
+            background: var(--bg-app);
+            color: var(--text-primary);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-soft);
+        }
+        .form-select option { background: var(--bg-panel); color: var(--text-primary); }
+
+        /* ---------- BUTTONS ---------- */
+        .btn {
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 9px 18px;
+            transition: all 0.15s;
+            letter-spacing: 0.2px;
+        }
+        .btn-amber {
+            background: var(--accent);
+            color: #1a1a1a;
+            border: none;
+        }
+        .btn-amber:hover { background: var(--accent-hover); color: #000; }
+        .btn-outline-amber {
+            background: transparent;
+            border: 1px solid var(--border-medium);
+            color: var(--text-secondary);
+        }
+        .btn-outline-amber:hover {
+            background: var(--accent-soft);
+            border-color: var(--accent);
+            color: var(--accent-hover);
+        }
+        .btn-outline-danger {
+            background: transparent;
+            border: 1px solid rgba(239,68,68,0.4);
+            color: #f87171;
+        }
+        .btn-outline-danger:hover {
+            background: var(--danger-soft);
+            border-color: var(--danger);
+            color: #fca5a5;
+        }
+        .btn-danger {
+            background: var(--danger);
+            border: none;
+            color: #fff;
+        }
+        .btn-danger:hover { background: #dc2626; color: #fff; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+        /* ---------- BADGES ---------- */
+        .badge-status {
+            font-size: 10.5px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            text-transform: uppercase;
+            display: inline-block;
+        }
+        .badge-active { background: var(--success-soft); color: #34d399; }
+        .badge-leave  { background: var(--warning-soft); color: #fbbf24; }
+        .badge-inactive { background: var(--danger-soft); color: #f87171; }
+
+        /* ---------- ALERTS ---------- */
+        .alert {
+            border-radius: 10px;
+            border: 1px solid;
+            padding: 14px 18px;
+            font-size: 13.5px;
+        }
+        .alert-success {
+            background: var(--success-soft);
+            border-color: rgba(16,185,129,0.35);
+            color: #6ee7b7;
+        }
+                .alert-error-custom {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            color: #fca5a5;
+            border-radius: 10px;
+            padding: 14px 18px;
+            font-size: 13.5px;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+        }
+        .alert-error-custom i {
+            color: #ef4444;
+            font-size: 16px;
+            margin-right: 6px;
+        }
+        .alert-error-custom strong {
+            color: #ef4444;
+        }
+        .alert-warning-custom {
+            background: rgba(245, 158, 11, 0.15);
+            border: 1px solid rgba(245, 158, 11, 0.5);
+            color: #fcd34d;
+            border-radius: 10px;
+            padding: 14px 18px;
+            font-size: 13.5px;
+        }
+        .alert-warning-custom i {
+            color: #f59e0b;
+            font-size: 16px;
+            margin-right: 6px;
+        }
+        .alert-info-custom {
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            color: #93c5fd;
+            border-radius: 10px;
+            padding: 14px 18px;
+            font-size: 13.5px;
+        }
+        .alert-info-custom i {
+            color: #3b82f6;
+            font-size: 16px;
+            margin-right: 6px;
+        }
+        .btn-close { filter: invert(1); opacity: 0.6; }
+
+        /* ---------- SCROLLBAR ---------- */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-medium);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+        /* ---------- PRINT ---------- */
+        @media print {
+            body { background: #fff !important; color: #000 !important; }
+            .sidebar, .topbar, .btn, .alert { display: none !important; }
+            .main-area { margin-left: 0 !important; }
+            .content { padding: 0 !important; }
+            .panel {
+                border: none !important;
+                background: #fff !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+            }
+            .panel-title, h4, h5, strong { color: #000 !important; }
+            .form-label { color: #555 !important; font-size: 10px !important; }
+            p, td, small { color: #000 !important; }
+            .table { color: #000 !important; }
+            .table thead th {
+                background: #eee !important;
+                color: #000 !important;
+                border-bottom: 1px solid #333 !important;
+            }
+            .table tbody td {
+                border-bottom: 1px solid #ccc !important;
+                color: #000 !important;
+            }
+            .badge-status {
+                border: 1px solid #333 !important;
+                color: #000 !important;
+                background: #eee !important;
+            }
+            a { color: #000 !important; text-decoration: none !important; }
+            hr { border-color: #333 !important; }
+            @page { size: A4; margin: 15mm; }
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h5><i class="bi bi-gem"></i> COALMINE</h5>
+            <small>Control System</small>
+        </div>
+
+        <div class="sidebar-section">Operations</div>
+        <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+            <i class="bi bi-grid-1x2-fill"></i> Dashboard
+        </a>
+
+        {% if is_manager or is_accountant %}
+        <a href="{% url 'employee_list' %}" class="{% if 'employee' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="bi bi-people-fill"></i> Employees
+        </a>
+        {% endif %}
+
+        {% if is_manager %}
+        <a href="{% url 'mine_list' %}" class="{% if 'mine' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="bi bi-geo-alt-fill"></i> Mines
+        </a>
+        {% endif %}
+
+        {% if is_manager or is_accountant %}
+        <a href="{% url 'production_list' %}" class="{% if 'production' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="bi bi-clipboard-data-fill"></i> Production
+        </a>
+
+        <div class="sidebar-section">Workforce</div>
+                <a href="{% url 'attendance_punch' %}" class="{% if request.resolver_match.url_name == 'attendance_punch' %}active{% endif %}">
+            <i class="bi bi-fingerprint"></i> Punch In / Out
+        </a>
+        <a href="{% url 'attendance_list' %}" class="{% if 'attendance' in request.resolver_match.url_name and request.resolver_match.url_name != 'attendance_punch' %}active{% endif %}">
+            <i class="bi bi-calendar-check-fill"></i> Attendance Records
+        </a>
+        <a href="{% url 'payroll_list' %}" class="{% if 'payroll' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="bi bi-cash-coin"></i> Payroll
+        </a>
+
+        <div class="sidebar-section">Resources</div>
+        <a href="{% url 'inventory_list' %}" class="{% if 'inventory' in request.resolver_match.url_name or 'stock' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="bi bi-box-seam-fill"></i> Inventory
+        </a>
+        <a href="{% url 'sale_list' %}" class="{% if 'sale' in request.resolver_match.url_name and 'customer' not in request.resolver_match.url_name %}active{% endif %}">
+            <i class="bi bi-receipt"></i> Sales
+        </a>
+        <a href="{% url 'customer_list' %}" class="{% if 'customer' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="bi bi-person-vcard"></i> Customers
+        </a>
+        {% endif %}
+
+        {% if is_manager %}
+        <div class="sidebar-section">Approvals</div>
+        <a href="{% url 'approval_list' %}" class="{% if 'approval' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="bi bi-shield-check"></i> Pending Approvals
+        </a>
+        {% endif %}
+
+                <div class="sidebar-section">System</div>
+                {% if is_manager or is_accountant %}
+        <a href="{% url 'backup_now' %}" class="{% if request.resolver_match.url_name == 'backup_now' %}active{% endif %}" style="color:#34d399;">
+            <i class="bi bi-shield-check"></i> Backup Now
+        </a>
+        <a href="{% url 'backup_list' %}" class="{% if 'backup_list' in request.resolver_match.url_name or 'backup_download' in request.resolver_match.url_name or 'backup_delete' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="bi bi-archive"></i> Backup History
+        </a>
+        {% endif %}
+        {% if user.is_superuser %}
+        <a href="/admin/"><i class="bi bi-sliders"></i> Admin Panel</a>
+        {% endif %}
+        <form method="post" action="{% url 'logout' %}" style="margin:0;">
+            {% csrf_token %}
+            <button type="submit">
+                <i class="bi bi-box-arrow-right"></i> Logout
+            </button>
+        </form>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main-area">
+        <div class="topbar">
+            <span class="page-title">
+                <i class="bi bi-hammer"></i>
+                {% block page_title %}MINE MANAGEMENT{% endblock %}
+            </span>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <a href="{% url 'notification_list' %}" class="notification-bell" title="Notifications">
+                    <i class="bi bi-bell-fill"></i>
+                    {% if unread_notifications_count > 0 %}
+                    <span class="notification-badge">{{ unread_notifications_count }}</span>
+                    {% endif %}
+                </a>
+                <div class="user-chip">
+                    <div class="user-avatar">{{ request.user.username|first|upper }}</div>
+                    <span>{{ request.user.username|upper }}</span>
+                </div>
+            </div>
+        </div>
+
+                <div class="content">
+                        {% if messages %}
+                {% for message in messages %}
+                    {% if message.tags == 'error' %}
+                        <div class="alert alert-error-custom alert-dismissible fade show">
+                            <i class="bi bi-exclamation-triangle-fill"></i> <strong>Error:</strong> {{ message }}
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% elif message.tags == 'warning' %}
+                        <div class="alert alert-warning-custom alert-dismissible fade show">
+                            <i class="bi bi-exclamation-circle-fill"></i> {{ message }}
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% elif message.tags == 'info' %}
+                        <div class="alert alert-info-custom alert-dismissible fade show">
+                            <i class="bi bi-info-circle-fill"></i> {{ message }}
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-success alert-dismissible fade show">
+                            <i class="bi bi-check-circle-fill"></i> {{ message }}
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+            {% block content %}{% endblock %}
+        </div>
+
+        <!-- FOOTER -->
+        <footer class="app-footer">
+            <span>© 2026 Coal Mine Management System</span>
+            <span class="footer-sep">·</span>
+            <span>Developed by <strong>Muhammad Jasim</strong></span>
+        </footer>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

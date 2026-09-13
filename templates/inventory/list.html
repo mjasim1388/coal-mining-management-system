@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block title %}Inventory - Coal Mine{% endblock %}
+{% block page_title %}INVENTORY MANAGEMENT{% endblock %}
+
+{% block content %}
+
+<div class="panel mb-3">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-6">
+            <label class="form-label">Filter by Category</label>
+            <select name="category" class="form-select">
+                <option value="">All Categories</option>
+                <option value="Spare Part" {% if category_filter == 'Spare Part' %}selected{% endif %}>Spare Part</option>
+                <option value="Fuel" {% if category_filter == 'Fuel' %}selected{% endif %}>Fuel</option>
+                <option value="Explosive" {% if category_filter == 'Explosive' %}selected{% endif %}>Explosive</option>
+                <option value="Safety Gear" {% if category_filter == 'Safety Gear' %}selected{% endif %}>Safety Gear</option>
+                <option value="Consumable" {% if category_filter == 'Consumable' %}selected{% endif %}>Consumable</option>
+                <option value="Other" {% if category_filter == 'Other' %}selected{% endif %}>Other</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-amber w-100">
+                <i class="bi bi-funnel"></i> Filter
+            </button>
+        </div>
+        <div class="col-md-3">
+            <a href="{% url 'stock_transaction_list' %}" class="btn btn-outline-amber w-100">
+                <i class="bi bi-arrow-left-right"></i> Transactions
+            </a>
+        </div>
+    </form>
+</div>
+
+{% if low_stock_count > 0 %}
+<div class="panel mb-3" style="border-left: 4px solid #ef4444;">
+    <div style="color:#f87171;">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <strong>{{ low_stock_count }}</strong> item(s) below reorder level. Please restock soon.
+    </div>
+</div>
+{% endif %}
+
+<div class="panel">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="panel-title mb-0">
+            <i class="bi bi-box-seam"></i> Items ({{ items|length }})
+        </div>
+        <div>
+            <a href="{% url 'export_inventory' %}" class="btn btn-outline-amber">
+                <i class="bi bi-file-earmark-excel"></i> Export
+            </a>
+            <a href="{% url 'inventory_add' %}" class="btn btn-amber">
+                <i class="bi bi-plus-lg"></i> Add Item
+            </a>
+        </div>
+    </div>
+
+    {% if items %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Quantity</th>
+                <th>Unit</th>
+                <th>Reorder Level</th>
+                <th>Unit Price</th>
+                <th>Location</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>
+                    <span style="color:var(--accent-bright);">{{ item.name }}</span>
+                    {% if item.approval_status == 'Pending' %}
+                        <span class="badge-status badge-leave" style="margin-left:6px;">PENDING</span>
+                    {% elif item.approval_status == 'Rejected' %}
+                        <span class="badge-status badge-inactive" style="margin-left:6px;">REJECTED</span>
+                    {% endif %}
+                    {% if item.is_low_stock %}
+                        <span class="badge-status badge-inactive" style="margin-left:6px;">LOW</span>
+                    {% endif %}
+                </td>
+                <td>{{ item.category }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.unit }}</td>
+                <td>{{ item.reorder_level }}</td>
+                <td>{{ item.unit_price }}</td>
+                <td>{{ item.location|default:"—" }}</td>
+                <td>
+                    <a href="{% url 'inventory_edit' item.pk %}" class="btn btn-sm btn-outline-amber">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                    <a href="{% url 'inventory_delete' item.pk %}" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-trash"></i>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--text-muted); text-align:center; padding:30px;">
+        <i class="bi bi-box" style="font-size:40px; display:block; margin-bottom:10px;"></i>
+        No inventory items. <a href="{% url 'inventory_add' %}" style="color:var(--accent);">Add the first one</a>.
+    </p>
+    {% endif %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,234 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - Coal Mine{% endblock %}
+{% block page_title %}{{ title|upper }}{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+    <div class="panel-title"><i class="bi bi-person-vcard"></i> {{ title }}</div>
+
+    <form method="post" enctype="multipart/form-data" id="employeeForm">
+        {% csrf_token %}
+
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Employee Code *</label>
+                {{ form.employee_code }}
+                {{ form.employee_code.errors }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">First Name *</label>
+                {{ form.first_name }}
+                {{ form.first_name.errors }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Last Name *</label>
+                {{ form.last_name }}
+                {{ form.last_name.errors }}
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Father Name</label>
+                {{ form.father_name }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">CNIC *</label>
+                {{ form.cnic }}
+                {{ form.cnic.errors }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Date of Birth</label>
+                {{ form.date_of_birth }}
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Phone</label>
+                {{ form.phone }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Designation *</label>
+                {{ form.designation }}
+                {{ form.designation.errors }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Department *</label>
+                {{ form.department }}
+                {{ form.department.errors }}
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Shift</label>
+                {{ form.shift }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Date of Joining *</label>
+                {{ form.date_of_joining }}
+                {{ form.date_of_joining.errors }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Salary</label>
+                {{ form.salary }}
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Status</label>
+                {{ form.status }}
+            </div>
+
+            <!-- PHOTO SECTION WITH CAMERA -->
+            <div class="col-md-8">
+                <label class="form-label">Photo</label>
+                <div class="d-flex align-items-start gap-3">
+                    <div id="photoPreviewBox" style="width:120px; height:120px; border:2px dashed var(--border-strong); border-radius:10px; display:flex; align-items:center; justify-content:center; overflow:hidden; background:var(--bg-elevated);">
+                        {% if form.instance.photo %}
+                            <img id="photoPreview" src="{{ form.instance.photo.url }}" style="width:100%; height:100%; object-fit:cover;">
+                        {% else %}
+                            <i class="bi bi-person-fill" id="photoPlaceholder" style="font-size:50px; color:var(--border-strong);"></i>
+                            <img id="photoPreview" style="width:100%; height:100%; object-fit:cover; display:none;">
+                        {% endif %}
+                    </div>
+                    <div class="flex-grow-1">
+                        <div style="display:none;">{{ form.photo }}</div>
+                        <button type="button" class="btn btn-outline-amber mb-2" onclick="document.getElementById('id_photo').click();">
+                            <i class="bi bi-upload"></i> Upload File
+                        </button>
+                        <button type="button" class="btn btn-amber mb-2" onclick="openCamera();">
+                            <i class="bi bi-camera-fill"></i> Take Photo
+                        </button>
+                        <small style="color:var(--text-muted); display:block; margin-top:4px;">
+                            JPG or PNG. Or use your webcam.
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <label class="form-label">Address</label>
+                {{ form.address }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Notes</label>
+                {{ form.notes }}
+            </div>
+        </div>
+
+        <hr style="border-color:var(--border-subtle); margin:25px 0;">
+
+        <button type="submit" class="btn btn-amber">
+            <i class="bi bi-check-lg"></i> Save Employee
+        </button>
+        <a href="{% url 'employee_list' %}" class="btn btn-outline-amber">
+            <i class="bi bi-x-lg"></i> Cancel
+        </a>
+    </form>
+</div>
+
+<!-- CAMERA MODAL -->
+<div class="modal fade" id="cameraModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--bg-panel); border:1px solid var(--border-subtle); color:var(--text-primary);">
+            <div class="modal-header" style="border-bottom:1px solid var(--border-subtle);">
+                <h5 class="modal-title"><i class="bi bi-camera-video-fill" style="color:var(--accent);"></i> Take Photo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="stopCamera();"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div style="position:relative; background:#000; border-radius:10px; overflow:hidden;">
+                    <video id="cameraVideo" autoplay playsinline style="width:100%; max-height:380px; display:block;"></video>
+                </div>
+                <canvas id="cameraCanvas" style="display:none;"></canvas>
+                <div id="cameraError" style="color:#f87171; display:none; margin-top:12px;"></div>
+            </div>
+            <div class="modal-footer" style="border-top:1px solid var(--border-subtle);">
+                <button type="button" class="btn btn-outline-amber" data-bs-dismiss="modal" onclick="stopCamera();">
+                    <i class="bi bi-x-lg"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-amber" onclick="capturePhoto();">
+                    <i class="bi bi-camera-fill"></i> Capture
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let cameraStream = null;
+    let cameraModal = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const modalEl = document.getElementById('cameraModal');
+        cameraModal = new bootstrap.Modal(modalEl);
+
+        // Show preview when user selects a file manually
+        const fileInput = document.getElementById('id_photo');
+        if (fileInput) {
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const preview = document.getElementById('photoPreview');
+                    const placeholder = document.getElementById('photoPlaceholder');
+                    preview.src = URL.createObjectURL(file);
+                    preview.style.display = 'block';
+                    if (placeholder) placeholder.style.display = 'none';
+                }
+            });
+        }
+    });
+
+    async function openCamera() {
+        if (!cameraModal) {
+            cameraModal = new bootstrap.Modal(document.getElementById('cameraModal'));
+        }
+        document.getElementById('cameraError').style.display = 'none';
+        cameraModal.show();
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: { width: 640, height: 480, facingMode: 'user' },
+                audio: false
+            });
+            document.getElementById('cameraVideo').srcObject = cameraStream;
+        } catch (err) {
+            const errBox = document.getElementById('cameraError');
+            errBox.style.display = 'block';
+            errBox.textContent = 'Cannot access camera: ' + err.message + '. Please allow camera access in your browser.';
+        }
+    }
+
+    function stopCamera() {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(t => t.stop());
+            cameraStream = null;
+        }
+    }
+
+    function capturePhoto() {
+        const video = document.getElementById('cameraVideo');
+        const canvas = document.getElementById('cameraCanvas');
+        if (!video.videoWidth) return;
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        canvas.toBlob(function(blob) {
+            const file = new File([blob], 'camera_photo.jpg', { type: 'image/jpeg' });
+
+            const fileInput = document.getElementById('id_photo');
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            fileInput.files = dataTransfer.files;
+
+            const preview = document.getElementById('photoPreview');
+            const placeholder = document.getElementById('photoPlaceholder');
+            preview.src = URL.createObjectURL(blob);
+            preview.style.display = 'block';
+            if (placeholder) placeholder.style.display = 'none';
+
+            stopCamera();
+            cameraModal.hide();
+        }, 'image/jpeg', 0.92);
+    }
+</script>
+
+{% endblock %}

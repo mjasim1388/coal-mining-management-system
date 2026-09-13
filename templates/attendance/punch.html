@@ -1,0 +1,225 @@
+{% extends 'base.html' %}
+
+{% block title %}Punch In / Out - Coal Mine{% endblock %}
+{% block page_title %}ATTENDANCE PUNCH{% endblock %}
+
+{% block content %}
+
+<div class="panel mb-3">
+    <div class="panel-title"><i class="bi bi-fingerprint"></i> Quick Attendance</div>
+    <p style="color:var(--text-secondary); margin:0;">
+        Type the employee's name, select them, and take a photo. The system will automatically record check-in or check-out.
+    </p>
+</div>
+
+<div class="panel mb-3">
+    <label class="form-label">Search Employee</label>
+    <input type="text" id="searchBox" class="form-control" placeholder="Type name or employee code..." autofocus autocomplete="off">
+</div>
+
+<div class="panel">
+    <div class="panel-title"><i class="bi bi-people-fill"></i> Select Employee</div>
+    <div id="employeeGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:12px; max-height:520px; overflow-y:auto;">
+        {% for emp in employees %}
+        <div class="employee-card"
+             data-search="{{ emp.first_name|lower }} {{ emp.last_name|lower }} {{ emp.employee_code|lower }}"
+             data-pk="{{ emp.pk }}"
+             data-name="{{ emp.first_name }} {{ emp.last_name }}"
+             onclick="startPunchFromCard(this)"
+             style="background:var(--bg-app); border:1px solid var(--border-light); border-radius:10px; padding:14px; cursor:pointer; transition:all 0.15s;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                {% if emp.photo %}
+                    <img src="{{ emp.photo.url }}" style="width:44px; height:44px; border-radius:50%; object-fit:cover; border:2px solid var(--border-medium);">
+                {% else %}
+                    <div style="width:44px; height:44px; border-radius:50%; background:var(--border-medium); color:var(--text-primary); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px;">
+                        {{ emp.first_name|first|upper }}
+                    </div>
+                {% endif %}
+                <div style="min-width:0;">
+                    <div style="color:var(--text-primary); font-weight:600; font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        {{ emp.first_name }} {{ emp.last_name }}
+                    </div>
+                    <small style="color:var(--text-muted); font-size:11px;">{{ emp.employee_code }}</small>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        <div id="noResults" style="display:none; grid-column: 1 / -1; text-align:center; color:var(--text-muted); padding:30px;">
+            No matching employees.
+        </div>
+    </div>
+</div>
+
+<!-- CAMERA MODAL -->
+<div class="modal fade" id="punchCameraModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--bg-panel); border:1px solid var(--border-light); color:var(--text-primary);">
+            <div class="modal-header" style="border-bottom:1px solid var(--border-light);">
+                <h5 class="modal-title">
+                    <i class="bi bi-camera-video-fill" style="color:var(--accent);"></i>
+                    <span id="punchEmpName">Employee</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="stopCamera();"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div style="position:relative; background:#000; border-radius:10px; overflow:hidden;">
+                    <video id="punchVideo" autoplay playsinline style="width:100%; max-height:380px; display:block;"></video>
+                </div>
+                <canvas id="punchCanvas" style="display:none;"></canvas>
+                <div id="punchError" style="color:#f87171; display:none; margin-top:12px;"></div>
+                <div id="punchStatus" style="margin-top:12px; color:var(--text-secondary); font-size:13px;"></div>
+            </div>
+            <div class="modal-footer" style="border-top:1px solid var(--border-light);">
+                <button type="button" class="btn btn-outline-amber" data-bs-dismiss="modal" onclick="stopCamera();">
+                    <i class="bi bi-x-lg"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-amber" id="captureBtn" onclick="captureAndSave();">
+                    <i class="bi bi-camera-fill"></i> Capture & Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- RESULT MODAL -->
+<div class="modal fade" id="resultModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--bg-panel); border:1px solid var(--border-light); color:var(--text-primary); text-align:center;">
+            <div class="modal-body" style="padding:40px;">
+                <div id="resultIcon" style="font-size:60px; margin-bottom:16px;">
+                    <i class="bi bi-check-circle-fill" style="color:#10b981;"></i>
+                </div>
+                <h4 id="resultMessage" style="color:var(--text-primary); margin-bottom:24px;"></h4>
+                <button type="button" class="btn btn-amber" data-bs-dismiss="modal" onclick="resetPunch();">
+                    <i class="bi bi-check-lg"></i> OK
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let cameraStream = null;
+    let cameraModal = null;
+    let resultModal = null;
+    let currentEmpPk = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        cameraModal = new bootstrap.Modal(document.getElementById('punchCameraModal'));
+        resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+
+        // Live search
+        const searchBox = document.getElementById('searchBox');
+        const cards = document.querySelectorAll('.employee-card');
+        const noResults = document.getElementById('noResults');
+
+        searchBox.addEventListener('input', function() {
+            const q = this.value.trim().toLowerCase();
+            let visible = 0;
+            cards.forEach(function(card) {
+                const match = card.dataset.search.includes(q);
+                card.style.display = match ? '' : 'none';
+                if (match) visible++;
+            });
+            noResults.style.display = visible === 0 ? 'block' : 'none';
+        });
+    });
+    function startPunchFromCard(el) {
+        startPunch(el.dataset.pk, el.dataset.name);
+    }
+    async function startPunch(pk, name) {
+        currentEmpPk = pk;
+        document.getElementById('punchEmpName').textContent = name;
+        document.getElementById('punchError').style.display = 'none';
+        document.getElementById('punchStatus').textContent = '';
+        cameraModal.show();
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: { width: 640, height: 480, facingMode: 'user' },
+                audio: false
+            });
+            document.getElementById('punchVideo').srcObject = cameraStream;
+        } catch (err) {
+            const errBox = document.getElementById('punchError');
+            errBox.style.display = 'block';
+            errBox.textContent = 'Cannot access camera: ' + err.message;
+        }
+    }
+
+    function stopCamera() {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(t => t.stop());
+            cameraStream = null;
+        }
+    }
+
+    function captureAndSave() {
+        const video = document.getElementById('punchVideo');
+        const canvas = document.getElementById('punchCanvas');
+        if (!video.videoWidth || !currentEmpPk) return;
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        document.getElementById('punchStatus').textContent = 'Saving...';
+        document.getElementById('captureBtn').disabled = true;
+
+        canvas.toBlob(function(blob) {
+            const formData = new FormData();
+            formData.append('photo', blob, 'punch.jpg');
+            formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+            fetch('/attendance/punch/' + currentEmpPk + '/save/', {
+                method: 'POST',
+                body: formData,
+            })
+            .then(r => r.json())
+            .then(data => {
+                stopCamera();
+                cameraModal.hide();
+                document.getElementById('captureBtn').disabled = false;
+                showResult(data);
+            })
+            .catch(err => {
+                document.getElementById('punchStatus').textContent = 'Error: ' + err.message;
+                document.getElementById('captureBtn').disabled = false;
+            });
+        }, 'image/jpeg', 0.92);
+    }
+
+    function showResult(data) {
+        const iconEl = document.getElementById('resultIcon');
+        const msgEl = document.getElementById('resultMessage');
+
+        if (data.status === 'in') {
+            iconEl.innerHTML = '<i class="bi bi-box-arrow-in-right" style="color:#10b981;"></i>';
+            msgEl.textContent = data.message;
+        } else if (data.status === 'out') {
+            iconEl.innerHTML = '<i class="bi bi-box-arrow-right" style="color:#f59e0b;"></i>';
+            msgEl.textContent = data.message;
+        } else {
+            iconEl.innerHTML = '<i class="bi bi-info-circle-fill" style="color:#3b82f6;"></i>';
+            msgEl.textContent = data.message;
+        }
+
+        resultModal.show();
+    }
+
+    function resetPunch() {
+        currentEmpPk = null;
+        document.getElementById('searchBox').value = '';
+        document.getElementById('searchBox').focus();
+        document.querySelectorAll('.employee-card').forEach(c => c.style.display = '');
+    }
+</script>
+
+<style>
+    .employee-card:hover {
+        border-color: var(--accent) !important;
+        background: var(--accent-soft) !important;
+        transform: translateY(-2px);
+    }
+</style>
+
+{% endblock %}

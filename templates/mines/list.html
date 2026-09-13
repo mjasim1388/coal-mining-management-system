@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}Mines - Coal Mine{% endblock %}
+{% block page_title %}MINES & SITES{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="panel-title mb-0">
+            <i class="bi bi-geo-alt-fill"></i> All Mines ({{ mines|length }})
+                <div>
+            <a href="{% url 'export_mines' %}" class="btn btn-outline-amber">
+                <i class="bi bi-file-earmark-excel"></i> Export
+            </a>
+            <a href="{% url 'mine_add' %}" class="btn btn-amber">
+                <i class="bi bi-plus-lg"></i> Add Mine
+            </a>
+        </div>
+
+    {% if mines %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Location</th>
+                <th>Manager</th>
+                <th>Reserves (tons)</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for mine in mines %}
+            <tr>
+                <td><span style="color:var(--amber-glow);">{{ mine.name }}</span></td>
+                <td>{{ mine.location }}</td>
+                <td>{{ mine.manager_name|default:"—" }}</td>
+                <td>{{ mine.reserves_tons }}</td>
+                <td>
+                    {% if mine.status == 'Active' %}
+                        <span class="badge-status badge-active">ACTIVE</span>
+                    {% elif mine.status == 'Suspended' %}
+                        <span class="badge-status badge-leave">SUSPENDED</span>
+                    {% else %}
+                        <span class="badge-status badge-inactive">CLOSED</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'mine_edit' mine.pk %}" class="btn btn-sm btn-outline-amber">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                    <a href="{% url 'mine_delete' mine.pk %}" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-trash"></i>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--text-dim); text-align:center; padding:30px;">
+        <i class="bi bi-geo" style="font-size:40px; display:block; margin-bottom:10px;"></i>
+        No mines added yet. <a href="{% url 'mine_add' %}" style="color:var(--amber);">Add the first mine</a>.
+    </p>
+    {% endif %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - Coal Mine{% endblock %}
+{% block page_title %}{{ title|upper }}{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+    <div class="panel-title"><i class="bi bi-clipboard-data"></i> {{ title }}</div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Mine *</label>
+                {{ form.mine }}
+                {{ form.mine.errors }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Date *</label>
+                {{ form.date }}
+                {{ form.date.errors }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Shift</label>
+                {{ form.shift }}
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Coal Type</label>
+                {{ form.coal_type }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Quantity (tons) *</label>
+                {{ form.quantity_tons }}
+                {{ form.quantity_tons.errors }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Overburden Removed (tons)</label>
+                {{ form.overburden_removed }}
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Supervisor</label>
+                {{ form.supervisor }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Workers Count</label>
+                {{ form.workers_count }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Notes</label>
+                {{ form.notes }}
+            </div>
+        </div>
+
+        <hr style="border-color:var(--coal-line); margin:25px 0;">
+
+        <button type="submit" class="btn btn-amber">
+            <i class="bi bi-check-lg"></i> Save Record
+        </button>
+        <a href="{% url 'production_list' %}" class="btn btn-outline-amber">
+            <i class="bi bi-x-lg"></i> Cancel
+        </a>
+    </form>
+</div>
+
+{% endblock %}

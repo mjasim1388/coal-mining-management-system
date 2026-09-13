@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+
+{% block title %}Production - Coal Mine{% endblock %}
+{% block page_title %}PRODUCTION RECORDS{% endblock %}
+
+{% block content %}
+
+<div class="panel mb-3">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-6">
+            <label class="form-label">Filter by Mine</label>
+            <select name="mine" class="form-select">
+                <option value="">All Mines</option>
+                {% for m in mines %}
+                <option value="{{ m.pk }}" {% if mine_filter == m.pk|stringformat:"s" %}selected{% endif %}>{{ m.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-amber w-100">
+                <i class="bi bi-funnel"></i> Filter
+            </button>
+        </div>
+    </form>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="stat-card stat-amber">
+            <i class="bi bi-truck icon"></i>
+            <h2>{{ total }}</h2>
+            <p>Total Tons Produced</p>
+        </div>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="panel-title mb-0">
+            <i class="bi bi-clipboard-data"></i> Records ({{ records|length }})
+        </div>
+                <div>
+            <a href="{% url 'export_production' %}" class="btn btn-outline-amber">
+                <i class="bi bi-file-earmark-excel"></i> Export
+            </a>
+            <a href="{% url 'production_add' %}" class="btn btn-amber">
+                <i class="bi bi-plus-lg"></i> Add Record
+            </a>
+        </div>
+    </div>
+
+    {% if records %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Shift</th>
+                <th>Mine</th>
+                <th>Coal Type</th>
+                <th>Qty (tons)</th>
+                <th>Overburden</th>
+                <th>Supervisor</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in records %}
+            <tr>
+                <td><span style="color:var(--amber-glow);">{{ r.date }}</span></td>
+                <td>{{ r.shift }}</td>
+                <td>{{ r.mine.name }}</td>
+                <td>{{ r.coal_type }}</td>
+                <td>{{ r.quantity_tons }}</td>
+                <td>{{ r.overburden_removed }}</td>
+                <td>{{ r.supervisor|default:"—" }}</td>
+                <td>
+                    <a href="{% url 'production_edit' r.pk %}" class="btn btn-sm btn-outline-amber">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                    <a href="{% url 'production_delete' r.pk %}" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-trash"></i>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--text-dim); text-align:center; padding:30px;">
+        <i class="bi bi-inbox" style="font-size:40px; display:block; margin-bottom:10px;"></i>
+        No production records yet. <a href="{% url 'production_add' %}" style="color:var(--amber);">Add the first one</a>.
+    </p>
+    {% endif %}
+</div>
+
+{% endblock %}

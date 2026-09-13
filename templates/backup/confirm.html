@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}Backup Database - Coal Mine{% endblock %}
+{% block page_title %}DATABASE BACKUP{% endblock %}
+
+{% block content %}
+
+<div class="panel" style="max-width: 600px; margin: 0 auto;">
+    <div class="panel-title"><i class="bi bi-shield-check"></i> Create Backup</div>
+
+    <div style="padding: 20px; background: var(--bg-app); border-radius: 10px; border: 1px solid var(--border-light); margin-bottom: 24px;">
+        <p style="margin: 0 0 12px; color: var(--text-primary); font-size: 15px;">
+            This will create a complete snapshot of the entire database — every employee, attendance record, payroll, sale, and inventory item.
+        </p>
+        <p style="margin: 0; color: var(--text-muted); font-size: 13px;">
+            <i class="bi bi-info-circle"></i> The backup file will be saved to:
+            <br>
+            <code style="color: var(--accent); background: var(--bg-panel); padding: 4px 8px; border-radius: 4px; margin-top: 6px; display: inline-block;">E:\CoalMiningProject\backups\</code>
+        </p>
+    </div>
+
+    <div style="padding: 16px 20px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; margin-bottom: 24px;">
+        <p style="margin: 0; color: #fbbf24; font-size: 13.5px;">
+            <i class="bi bi-lightbulb-fill"></i>
+            <strong>Tip:</strong> Do this before leaving the office every day. It takes only 5–10 seconds and guarantees your data is safe.
+        </p>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-amber" style="padding: 12px 26px;">
+            <i class="bi bi-download"></i> Yes, Backup Now
+        </button>
+        <a href="{% url 'dashboard' %}" class="btn btn-outline-amber" style="padding: 12px 26px;">
+            <i class="bi bi-x-lg"></i> Cancel
+        </a>
+    </form>
+</div>
+
+{% endblock %}

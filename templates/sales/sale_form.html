@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - Coal Mine{% endblock %}
+{% block page_title %}{{ title|upper }}{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+    <div class="panel-title"><i class="bi bi-receipt"></i> {{ title }}</div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Invoice No *</label>
+                {{ form.invoice_no }}
+                {{ form.invoice_no.errors }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Customer *</label>
+                {{ form.customer }}
+                {{ form.customer.errors }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Mine</label>
+                {{ form.mine }}
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Date *</label>
+                {{ form.date }}
+                {{ form.date.errors }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Coal Type</label>
+                {{ form.coal_type }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Dispatch Date</label>
+                {{ form.dispatch_date }}
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Quantity (tons) *</label>
+                {{ form.quantity_tons }}
+                {{ form.quantity_tons.errors }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Price per Ton *</label>
+                {{ form.price_per_ton }}
+                {{ form.price_per_ton.errors }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Truck No</label>
+                {{ form.truck_no }}
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Driver Name</label>
+                {{ form.driver_name }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Driver Phone</label>
+                {{ form.driver_phone }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Payment Status</label>
+                {{ form.payment_status }}
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Amount Paid</label>
+                {{ form.amount_paid }}
+            </div>
+            <div class="col-md-8">
+                <label class="form-label">Notes</label>
+                {{ form.notes }}
+            </div>
+        </div>
+
+        <div class="alert" style="background:rgba(245,158,11,0.08); border:1px solid var(--coal-line); color:var(--text-dim); margin-top:20px;">
+            <i class="bi bi-calculator"></i>
+            Total amount is auto-calculated: <strong>Quantity × Price per Ton</strong>.
+        </div>
+
+        <hr style="border-color:var(--coal-line); margin:25px 0;">
+
+        <button type="submit" class="btn btn-amber">
+            <i class="bi bi-check-lg"></i> Save Sale
+        </button>
+        <a href="{% url 'sale_list' %}" class="btn btn-outline-amber">
+            <i class="bi bi-x-lg"></i> Cancel
+        </a>
+    </form>
+</div>
+
+{% endblock %}

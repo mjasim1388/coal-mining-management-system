@@ -1,0 +1,224 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - Coal Mine{% endblock %}
+{% block page_title %}{{ title|upper }}{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+    <div class="panel-title"><i class="bi bi-calendar-check"></i> {{ title }}</div>
+
+    <form method="post" enctype="multipart/form-data" id="attendanceForm">
+        {% csrf_token %}
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Employee *</label>
+                {{ form.employee }}
+                {{ form.employee.errors }}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Date *</label>
+                {{ form.date }}
+                {{ form.date.errors }}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Shift</label>
+                {{ form.shift }}
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Status</label>
+                {{ form.status }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Check In</label>
+                {{ form.check_in }}
+                <small style="color:var(--text-muted); font-size:11px;">Leave empty to auto-fill with current time (Present/Half Day).</small>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Check Out</label>
+                {{ form.check_out }}
+                <small style="color:var(--text-muted); font-size:11px;">Optional.</small>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Overtime (hours)</label>
+                {{ form.overtime_hours }}
+            </div>
+
+            <div class="col-md-8" id="leaveReasonBox" style="display:none;">
+                <label class="form-label">Leave Reason *</label>
+                {{ form.leave_reason }}
+                <small style="color:var(--text-muted); font-size:11px;">Required when status is Leave.</small>
+            </div>
+
+            <!-- PHOTO SECTION -->
+            <div class="col-md-12">
+                <label class="form-label">Real-Time Photo (Check-In)</label>
+                <div class="d-flex align-items-start gap-3">
+                    <div id="photoPreviewBox" style="width:140px; height:140px; border:2px dashed var(--border-medium); border-radius:10px; display:flex; align-items:center; justify-content:center; overflow:hidden; background:var(--bg-app);">
+                        {% if form.instance.photo %}
+                            <img id="photoPreview" src="{{ form.instance.photo.url }}" style="width:100%; height:100%; object-fit:cover;">
+                        {% else %}
+                            <i class="bi bi-camera" id="photoPlaceholder" style="font-size:50px; color:var(--border-medium);"></i>
+                            <img id="photoPreview" style="width:100%; height:100%; object-fit:cover; display:none;">
+                        {% endif %}
+                    </div>
+                    <div class="flex-grow-1">
+                        <div style="display:none;">{{ form.photo }}</div>
+                        <button type="button" class="btn btn-amber mb-2" onclick="openCamera();">
+                            <i class="bi bi-camera-fill"></i> Take Photo
+                        </button>
+                        <button type="button" class="btn btn-outline-amber mb-2" onclick="document.getElementById('id_photo').click();">
+                            <i class="bi bi-upload"></i> Upload File
+                        </button>
+                        <small style="color:var(--text-muted); display:block; margin-top:4px;">
+                            Photo is saved with the attendance record for verification.
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-12">
+                <label class="form-label">Notes</label>
+                {{ form.notes }}
+            </div>
+        </div>
+
+        <hr style="border-color:var(--border-light); margin:25px 0;">
+
+        <button type="submit" class="btn btn-amber">
+            <i class="bi bi-check-lg"></i> Save Attendance
+        </button>
+        <a href="{% url 'attendance_list' %}" class="btn btn-outline-amber">
+            <i class="bi bi-x-lg"></i> Cancel
+        </a>
+    </form>
+</div>
+
+<!-- CAMERA MODAL -->
+<div class="modal fade" id="cameraModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--bg-panel); border:1px solid var(--border-light); color:var(--text-primary);">
+            <div class="modal-header" style="border-bottom:1px solid var(--border-light);">
+                <h5 class="modal-title"><i class="bi bi-camera-video-fill" style="color:var(--accent);"></i> Take Real-Time Photo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="stopCamera();"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div style="position:relative; background:#000; border-radius:10px; overflow:hidden;">
+                    <video id="cameraVideo" autoplay playsinline style="width:100%; max-height:380px; display:block;"></video>
+                </div>
+                <canvas id="cameraCanvas" style="display:none;"></canvas>
+                <div id="cameraError" style="color:#f87171; display:none; margin-top:12px;"></div>
+            </div>
+            <div class="modal-footer" style="border-top:1px solid var(--border-light);">
+                <button type="button" class="btn btn-outline-amber" data-bs-dismiss="modal" onclick="stopCamera();">
+                    <i class="bi bi-x-lg"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-amber" onclick="capturePhoto();">
+                    <i class="bi bi-camera-fill"></i> Capture
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let cameraStream = null;
+    let cameraModal = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Leave reason toggle
+        const statusField = document.getElementById('id_status');
+        const leaveBox = document.getElementById('leaveReasonBox');
+        const leaveReason = document.getElementById('id_leave_reason');
+
+        function toggleLeaveReason() {
+            if (statusField.value === 'Leave') {
+                leaveBox.style.display = 'block';
+                leaveReason.required = true;
+            } else {
+                leaveBox.style.display = 'none';
+                leaveReason.required = false;
+            }
+        }
+        statusField.addEventListener('change', toggleLeaveReason);
+        toggleLeaveReason();
+
+        // Camera modal
+        const modalEl = document.getElementById('cameraModal');
+        cameraModal = new bootstrap.Modal(modalEl);
+
+        // File input preview
+        const fileInput = document.getElementById('id_photo');
+        if (fileInput) {
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const preview = document.getElementById('photoPreview');
+                    const placeholder = document.getElementById('photoPlaceholder');
+                    preview.src = URL.createObjectURL(file);
+                    preview.style.display = 'block';
+                    if (placeholder) placeholder.style.display = 'none';
+                }
+            });
+        }
+    });
+
+    async function openCamera() {
+        if (!cameraModal) {
+            cameraModal = new bootstrap.Modal(document.getElementById('cameraModal'));
+        }
+        document.getElementById('cameraError').style.display = 'none';
+        cameraModal.show();
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: { width: 640, height: 480, facingMode: 'user' },
+                audio: false
+            });
+            document.getElementById('cameraVideo').srcObject = cameraStream;
+        } catch (err) {
+            const errBox = document.getElementById('cameraError');
+            errBox.style.display = 'block';
+            errBox.textContent = 'Cannot access camera: ' + err.message + '. Please allow camera access in your browser.';
+        }
+    }
+
+    function stopCamera() {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(t => t.stop());
+            cameraStream = null;
+        }
+    }
+
+    function capturePhoto() {
+        const video = document.getElementById('cameraVideo');
+        const canvas = document.getElementById('cameraCanvas');
+        if (!video.videoWidth) return;
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        canvas.toBlob(function(blob) {
+            const file = new File([blob], 'attendance_photo.jpg', { type: 'image/jpeg' });
+
+            const fileInput = document.getElementById('id_photo');
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            fileInput.files = dataTransfer.files;
+
+            const preview = document.getElementById('photoPreview');
+            const placeholder = document.getElementById('photoPlaceholder');
+            preview.src = URL.createObjectURL(blob);
+            preview.style.display = 'block';
+            if (placeholder) placeholder.style.display = 'none';
+
+            stopCamera();
+            cameraModal.hide();
+        }, 'image/jpeg', 0.92);
+    }
+</script>
+
+{% endblock %}

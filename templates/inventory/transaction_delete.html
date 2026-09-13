@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Transaction - Coal Mine{% endblock %}
+{% block page_title %}CONFIRM DELETION{% endblock %}
+
+{% block content %}
+
+<div class="panel" style="max-width: 600px;">
+    <div class="panel-title" style="color:#f87171;">
+        <i class="bi bi-exclamation-triangle-fill"></i> Delete Stock Transaction
+    </div>
+
+    <p style="font-size:16px;">
+        Delete <strong style="color:var(--amber-glow);">{{ trans.transaction_type }}</strong>
+        of <strong>{{ trans.quantity }} {{ trans.item.unit }}</strong>
+        for <strong>{{ trans.item.name }}</strong> on {{ trans.date }}?
+    </p>
+    <p style="color:var(--text-dim);">
+        The item's stock quantity will be adjusted back automatically. This action cannot be undone.
+    </p>
+
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">
+            <i class="bi bi-trash"></i> Yes, Delete
+        </button>
+        <a href="{% url 'stock_transaction_list' %}" class="btn btn-outline-amber">
+            <i class="bi bi-x-lg"></i> Cancel
+        </a>
+    </form>
+</div>
+
+{% endblock %}

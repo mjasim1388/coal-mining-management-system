@@ -1,0 +1,251 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Coal Mine{% endblock %}
+{% block page_title %}OPERATIONS DASHBOARD{% endblock %}
+
+{% block content %}
+
+<!-- Top stat cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <a href="{% url 'employee_list' %}" class="stat-link">
+            <div class="stat-card stat-amber">
+                <i class="bi bi-people-fill icon"></i>
+                <h2>{{ total }}</h2>
+                <p>Total Employees</p>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="{% url 'employee_list' %}?status=Active" class="stat-link">
+            <div class="stat-card stat-green">
+                <i class="bi bi-person-check-fill icon"></i>
+                <h2>{{ active }}</h2>
+                <p>Active Employees</p>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="{% url 'mine_list' %}" class="stat-link">
+            <div class="stat-card stat-blue">
+                <i class="bi bi-geo-alt-fill icon"></i>
+                <h2>{{ mine_count }}</h2>
+                <p>Mines</p>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="{% url 'inventory_list' %}?low=1" class="stat-link">
+            <div class="stat-card stat-red">
+                <i class="bi bi-exclamation-triangle-fill icon"></i>
+                <h2>{{ low_stock_items|length }}</h2>
+                <p>Low Stock Items</p>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Money cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <a href="{% url 'production_list' %}" class="stat-link">
+            <div class="stat-card stat-amber">
+                <i class="bi bi-truck icon"></i>
+                <h2>{{ total_production }}</h2>
+                <p>Tons Produced</p>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="{% url 'sale_list' %}" class="stat-link">
+            <div class="stat-card stat-green">
+                <i class="bi bi-cash-stack icon"></i>
+                <h2>{{ total_sales }}</h2>
+                <p>Total Sales</p>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="{% url 'sale_list' %}?status=Paid" class="stat-link">
+            <div class="stat-card stat-blue">
+                <i class="bi bi-check-circle-fill icon"></i>
+                <h2>{{ total_received }}</h2>
+                <p>Amount Received</p>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="{% url 'sale_list' %}?status=Unpaid" class="stat-link">
+            <div class="stat-card stat-red">
+                <i class="bi bi-hourglass-split icon"></i>
+                <h2>{{ total_outstanding }}</h2>
+                <p>Outstanding</p>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="row g-3 mb-4">
+    <div class="col-md-8">
+        <div class="panel">
+            <div class="panel-title"><i class="bi bi-graph-up"></i> Production Trend (Last 7 Days)</div>
+            <canvas id="trendChart" height="90"></canvas>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="panel">
+            <div class="panel-title"><i class="bi bi-pie-chart"></i> Production by Mine</div>
+            <canvas id="mineChart" height="180"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom widgets -->
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="panel">
+            <div class="panel-title"><i class="bi bi-exclamation-triangle-fill" style="color:#f87171;"></i> Low Stock Alerts</div>
+            {% if low_stock_items %}
+                {% for item in low_stock_items|slice:":5" %}
+                <div style="padding:10px 0; border-bottom:1px solid var(--coal-line);">
+                    <div class="d-flex justify-content-between">
+                        <strong style="color:var(--amber-glow);">{{ item.name }}</strong>
+                        <span class="badge-status badge-inactive">LOW</span>
+                    </div>
+                    <small style="color:var(--text-dim);">
+                        {{ item.quantity }} {{ item.unit }} left · reorder at {{ item.reorder_level }}
+                    </small>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="color:var(--text-dim); margin:0;">All stock levels are OK.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="panel">
+            <div class="panel-title"><i class="bi bi-receipt"></i> Unpaid Invoices</div>
+            {% if unpaid_sales %}
+                {% for s in unpaid_sales %}
+                <div style="padding:10px 0; border-bottom:1px solid var(--coal-line);">
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'sale_detail' s.pk %}" style="color:var(--amber-glow); text-decoration:none;">
+                            {{ s.invoice_no }}
+                        </a>
+                        <strong>{{ s.balance }}</strong>
+                    </div>
+                    <small style="color:var(--text-dim);">{{ s.customer.name }} · {{ s.date }}</small>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="color:var(--text-dim); margin:0;">No outstanding invoices. </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="panel">
+            <div class="panel-title"><i class="bi bi-clock-history"></i> Recently Added Employees</div>
+            {% if recent %}
+                {% for emp in recent %}
+                <div style="padding:10px 0; border-bottom:1px solid var(--coal-line);">
+                    <div class="d-flex justify-content-between">
+    <a href="{% url 'employee_detail' emp.pk %}" style="color:var(--text-main); text-decoration:none;">
+        {{ emp.first_name }} {{ emp.last_name }}
+    </a>
+    <a href="{% url 'employee_detail' emp.pk %}" style="color:var(--amber-glow); text-decoration:none;">
+        <small>{{ emp.employee_code }}</small>
+    </a>
+</div>
+                    <small style="color:var(--text-dim);">{{ emp.designation }}</small>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="color:var(--text-dim); margin:0;">No employees yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Chart data (safe JSON) -->
+{{ trend_labels|json_script:"trend_labels" }}
+{{ trend_data|json_script:"trend_data" }}
+{{ mine_labels|json_script:"mine_labels" }}
+{{ mine_data|json_script:"mine_data" }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    const trendLabels = JSON.parse(document.getElementById('trend_labels').textContent);
+    const trendData   = JSON.parse(document.getElementById('trend_data').textContent);
+    const mineLabels  = JSON.parse(document.getElementById('mine_labels').textContent);
+    const mineData    = JSON.parse(document.getElementById('mine_data').textContent);
+
+    const amber = '#f59e0b';
+    const amberGlow = '#fbbf24';
+    const textDim = '#9ca3af';
+    const lineColor = '#2a2f3a';
+
+    // Trend chart
+    const trendCtx = document.getElementById('trendChart').getContext('2d');
+    const trendGradient = trendCtx.createLinearGradient(0, 0, 0, 300);
+    trendGradient.addColorStop(0, 'rgba(245, 158, 11, 0.55)');
+    trendGradient.addColorStop(1, 'rgba(245, 158, 11, 0.02)');
+
+    new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: trendLabels,
+            datasets: [{
+                label: 'Tons Produced',
+                data: trendData,
+                borderColor: amberGlow,
+                backgroundColor: trendGradient,
+                borderWidth: 2,
+                fill: true,
+                tension: 0.35,
+                pointBackgroundColor: amber,
+                pointBorderColor: '#fff',
+                pointRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { labels: { color: textDim } },
+            },
+            scales: {
+                x: { ticks: { color: textDim }, grid: { color: lineColor } },
+                y: { ticks: { color: textDim }, grid: { color: lineColor }, beginAtZero: true },
+            }
+        }
+    });
+
+    // Mine chart
+    if (mineLabels.length > 0) {
+        new Chart(document.getElementById('mineChart'), {
+            type: 'doughnut',
+            data: {
+                labels: mineLabels,
+                datasets: [{
+                    data: mineData,
+                    backgroundColor: ['#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#8b5cf6'],
+                    borderColor: '#15181d',
+                    borderWidth: 3,
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: textDim, padding: 12 } },
+                }
+            }
+        });
+    } else {
+        document.getElementById('mineChart').outerHTML =
+            '<p style="color:var(--text-dim); text-align:center; padding:40px 0;">No production data yet.</p>';
+    }
+</script>
+
+{% endblock %}

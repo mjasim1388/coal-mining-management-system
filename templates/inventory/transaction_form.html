@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - Coal Mine{% endblock %}
+{% block page_title %}{{ title|upper }}{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+    <div class="panel-title"><i class="bi bi-arrow-left-right"></i> {{ title }}</div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Item *</label>
+                {{ form.item }}
+                {{ form.item.errors }}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Date *</label>
+                {{ form.date }}
+                {{ form.date.errors }}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Type *</label>
+                {{ form.transaction_type }}
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Quantity *</label>
+                {{ form.quantity }}
+                {{ form.quantity.errors }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Reason</label>
+                {{ form.reason }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Handled By</label>
+                {{ form.handled_by }}
+            </div>
+
+            <div class="col-md-12">
+                <label class="form-label">Notes</label>
+                {{ form.notes }}
+            </div>
+        </div>
+
+        <div class="alert" style="background:rgba(245,158,11,0.08); border:1px solid var(--coal-line); color:var(--text-dim); margin-top:20px;">
+            <i class="bi bi-info-circle"></i>
+            The item's stock quantity will be updated automatically:
+            <strong>Stock In</strong> increases it, <strong>Stock Out</strong> decreases it.
+        </div>
+
+        <hr style="border-color:var(--coal-line); margin:25px 0;">
+
+        <button type="submit" class="btn btn-amber">
+            <i class="bi bi-check-lg"></i> Save Transaction
+        </button>
+        <a href="{% url 'stock_transaction_list' %}" class="btn btn-outline-amber">
+            <i class="bi bi-x-lg"></i> Cancel
+        </a>
+    </form>
+</div>
+
+{% endblock %}
