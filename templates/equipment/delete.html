@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Equipment - Coal Mine{% endblock %}
+{% block page_title %}CONFIRM DELETION{% endblock %}
+
+{% block content %}
+
+<div class="panel" style="max-width: 600px;">
+    <div class="panel-title" style="color:#f87171;">
+        <i class="bi bi-exclamation-triangle-fill"></i> Delete Equipment
+    </div>
+
+    <p style="font-size:16px;">
+        Are you sure you want to delete
+        <strong style="color:var(--accent);">{{ equipment.name }}</strong>
+        ({{ equipment.equipment_code }})?
+    </p>
+    <p style="color:var(--text-secondary);">
+        All maintenance logs for this equipment will also be deleted. This action cannot be undone.
+    </p>
+
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">
+            <i class="bi bi-trash"></i> Yes, Delete
+        </button>
+        <a href="{% url 'equipment_detail' equipment.pk %}" class="btn btn-outline-amber">
+            <i class="bi bi-x-lg"></i> Cancel
+        </a>
+    </form>
+</div>
+
+{% endblock %}

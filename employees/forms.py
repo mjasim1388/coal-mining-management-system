@@ -1,7 +1,7 @@
 from django import forms
 from .models import (Employee, Mine, ProductionRecord, Attendance,
                      InventoryItem, StockTransaction, Payroll,
-                     Customer, Sale)
+                     Customer, Sale, Equipment, MaintenanceLog)
 
 class EmployeeForm(forms.ModelForm):
     class Meta:
@@ -183,5 +183,39 @@ class SaleForm(forms.ModelForm):
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
 
-         
+class EquipmentForm(forms.ModelForm):
+    class Meta:
+        model = Equipment
+        fields = ['equipment_code', 'name', 'equipment_type', 'model_number',
+                  'serial_number', 'mine', 'status', 'fuel_type',
+                  'purchase_date', 'purchase_cost', 'notes']
+        widgets = {
+            'equipment_code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Leave blank to auto-generate'}),
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Excavator 1'}),
+            'equipment_type': forms.Select(attrs={'class': 'form-control'}),
+            'model_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'serial_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'mine': forms.Select(attrs={'class': 'form-control'}),
+            'status': forms.Select(attrs={'class': 'form-control'}),
+            'fuel_type': forms.Select(attrs={'class': 'form-control'}),
+            'purchase_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'purchase_cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+class MaintenanceLogForm(forms.ModelForm):
+    class Meta:
+        model = MaintenanceLog
+        fields = ['equipment', 'date', 'maintenance_type', 'description',
+                  'cost', 'performed_by', 'status', 'notes']
+        widgets = {
+            'equipment': forms.Select(attrs={'class': 'form-control'}),
+            'date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'maintenance_type': forms.Select(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'performed_by': forms.TextInput(attrs={'class': 'form-control'}),
+            'status': forms.Select(attrs={'class': 'form-control'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
         

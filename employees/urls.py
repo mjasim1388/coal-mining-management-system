@@ -90,4 +90,18 @@ urlpatterns = [
     path('backup/list/', views.backup_list, name='backup_list'),
     path('backup/download/<str:filename>/', views.backup_download, name='backup_download'),
     path('backup/delete/<str:filename>/', views.backup_delete, name='backup_delete'),
+
+        # Equipment
+    path('equipment/', views.equipment_list, name='equipment_list'),
+    path('equipment/add/', views.equipment_add, name='equipment_add'),
+    path('equipment/<int:pk>/', views.equipment_detail, name='equipment_detail'),
+    path('equipment/<int:pk>/edit/', views.equipment_edit, name='equipment_edit'),
+    path('equipment/<int:pk>/delete/', views.equipment_delete, name='equipment_delete'),
+
+    # Maintenance
+    path('maintenance/', views.maintenance_list, name='maintenance_list'),
+    path('maintenance/add/', views.maintenance_add, name='maintenance_add'),
+    path('maintenance/<int:pk>/edit/', views.maintenance_edit, name='maintenance_edit'),
+    path('maintenance/<int:pk>/delete/', views.maintenance_delete, name='maintenance_delete'),
+
 ]

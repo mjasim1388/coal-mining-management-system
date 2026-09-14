@@ -43,7 +43,6 @@ class Employee(models.Model):
         return f"{self.employee_code} - {self.first_name} {self.last_name}"
 
 
-
 class Mine(models.Model):
     STATUS_CHOICES = [
         ('Active', 'Active'),
@@ -151,6 +150,7 @@ class Attendance(models.Model):
 
         super().save(*args, **kwargs)
 
+
 class InventoryItem(models.Model):
     CATEGORY_CHOICES = [
         ('Spare Part', 'Spare Part'),
@@ -206,7 +206,8 @@ class StockTransaction(models.Model):
         ordering = ['-date', '-created_at']
 
     def __str__(self):
-        return f"{self.item.name} - {self.transaction_type} {self.quantity}"    
+        return f"{self.item.name} - {self.transaction_type} {self.quantity}"
+
 
 class Payroll(models.Model):
     STATUS_CHOICES = [
@@ -264,7 +265,7 @@ class Payroll(models.Model):
             self.basic_salary + self.overtime_amount
             + self.allowances - self.deductions
         )
-        super().save(*args, **kwargs)  
+        super().save(*args, **kwargs)
 
 
 class Customer(models.Model):
@@ -330,6 +331,7 @@ class Sale(models.Model):
         self.total_amount = (self.quantity_tons or 0) * (self.price_per_ton or 0)
         super().save(*args, **kwargs)
 
+
 class Notification(models.Model):
     STATUS_CHOICES = [
         ('Info', 'Info'),
@@ -352,6 +354,7 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"{self.user.username}: {self.message[:40]}"
+
 
 class ApprovalLog(models.Model):
     OBJECT_TYPES = [
@@ -382,3 +385,106 @@ class ApprovalLog(models.Model):
 
     def __str__(self):
         return f"{self.object_type} #{self.object_id} - {self.status}"
+
+
+class Equipment(models.Model):
+    TYPE_CHOICES = [
+        ('Excavator', 'Excavator'),
+        ('Loader', 'Loader'),
+        ('Truck', 'Truck'),
+        ('Drill', 'Drill'),
+        ('Conveyor', 'Conveyor'),
+        ('Generator', 'Generator'),
+        ('Pump', 'Pump'),
+        ('Compressor', 'Compressor'),
+        ('Vehicle', 'Vehicle'),
+        ('Other', 'Other'),
+    ]
+
+    STATUS_CHOICES = [
+        ('Working', 'Working'),
+        ('Under Maintenance', 'Under Maintenance'),
+        ('Out of Service', 'Out of Service'),
+    ]
+
+    FUEL_CHOICES = [
+        ('Diesel', 'Diesel'),
+        ('Petrol', 'Petrol'),
+        ('Electric', 'Electric'),
+        ('None', 'None'),
+    ]
+
+    equipment_code = models.CharField(max_length=30, unique=True, blank=True,
+                                      help_text="Leave blank to auto-generate from name")
+    name = models.CharField(max_length=100)
+    equipment_type = models.CharField(max_length=30, choices=TYPE_CHOICES, default='Other')
+    model_number = models.CharField(max_length=100, blank=True)
+    serial_number = models.CharField(max_length=100, blank=True)
+    mine = models.ForeignKey(Mine, on_delete=models.SET_NULL, null=True, blank=True,
+                             related_name='equipment')
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='Working')
+    fuel_type = models.CharField(max_length=20, choices=FUEL_CHOICES, default='Diesel')
+    purchase_date = models.DateField(null=True, blank=True)
+    purchase_cost = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['equipment_code']
+        verbose_name_plural = 'Equipment'
+
+    def __str__(self):
+        return f"{self.equipment_code} - {self.name}"
+
+    @property
+    def total_maintenance_cost(self):
+        return sum(m.cost for m in self.maintenance_logs.all())
+
+    def save(self, *args, **kwargs):
+        if not self.equipment_code:
+            letters = ''.join(c for c in self.name.upper() if c.isalpha())
+            prefix = letters[:3] if len(letters) >= 3 else letters.ljust(3, 'X')
+            existing = Equipment.objects.filter(equipment_code__startswith=f'{prefix}-')
+            max_num = 0
+            for eq in existing:
+                try:
+                    num = int(eq.equipment_code.split('-')[-1])
+                    max_num = max(max_num, num)
+                except (ValueError, IndexError):
+                    pass
+            self.equipment_code = f'{prefix}-{max_num + 1:03d}'
+        super().save(*args, **kwargs)
+
+
+class MaintenanceLog(models.Model):
+    TYPE_CHOICES = [
+        ('Routine', 'Routine Service'),
+        ('Repair', 'Repair'),
+        ('Inspection', 'Inspection'),
+        ('Overhaul', 'Overhaul'),
+        ('Fuel Top-up', 'Fuel Top-up'),
+    ]
+
+    STATUS_CHOICES = [
+        ('Completed', 'Completed'),
+        ('In Progress', 'In Progress'),
+        ('Pending Parts', 'Pending Parts'),
+    ]
+
+    equipment = models.ForeignKey(Equipment, on_delete=models.CASCADE, related_name='maintenance_logs')
+    date = models.DateField()
+    maintenance_type = models.CharField(max_length=30, choices=TYPE_CHOICES, default='Routine')
+    description = models.TextField()
+    cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    performed_by = models.CharField(max_length=150, blank=True,
+                                    help_text="Internal staff name or contractor name")
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='Completed')
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date', '-created_at']
+
+    def __str__(self):
+        return f"{self.equipment.equipment_code} - {self.maintenance_type} on {self.date}"

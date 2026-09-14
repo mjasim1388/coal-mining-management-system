@@ -1,8 +1,8 @@
 from django.contrib import admin
 from .models import (Employee, Mine, ProductionRecord, Attendance,
                      InventoryItem, StockTransaction, Payroll,
-                     Customer, Sale, Notification, ApprovalLog)
-
+                     Customer, Sale, Notification, ApprovalLog,
+                     Equipment, MaintenanceLog)
 
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
@@ -93,3 +93,19 @@ class ApprovalLogAdmin(admin.ModelAdmin):
     list_filter = ('object_type', 'status', 'created_at')
     search_fields = ('object_label', 'requested_by__username')
     date_hierarchy = 'created_at'
+
+@admin.register(Equipment)
+class EquipmentAdmin(admin.ModelAdmin):
+    list_display = ('equipment_code', 'name', 'equipment_type', 'mine', 'status', 'fuel_type')
+    list_filter = ('status', 'equipment_type', 'fuel_type', 'mine')
+    search_fields = ('equipment_code', 'name', 'model_number', 'serial_number')
+    list_per_page = 25
+
+
+@admin.register(MaintenanceLog)
+class MaintenanceLogAdmin(admin.ModelAdmin):
+    list_display = ('date', 'equipment', 'maintenance_type', 'cost',
+                    'performed_by', 'status')
+    list_filter = ('maintenance_type', 'status', 'date', 'equipment')
+    search_fields = ('equipment__name', 'equipment__equipment_code', 'description', 'performed_by')
+    date_hierarchy = 'date'

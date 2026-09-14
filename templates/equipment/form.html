@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - Coal Mine{% endblock %}
+{% block page_title %}{{ title|upper }}{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+    <div class="panel-title"><i class="bi bi-tools"></i> {{ title }}</div>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Equipment Code</label>
+                {{ form.equipment_code }}
+                <small style="color:var(--text-muted); font-size:11px;">Leave blank to auto-generate from name.</small>
+            </div>
+            <div class="col-md-8">
+                <label class="form-label">Equipment Name *</label>
+                {{ form.name }}
+                {{ form.name.errors }}
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Type</label>
+                {{ form.equipment_type }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Model Number</label>
+                {{ form.model_number }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Serial Number</label>
+                {{ form.serial_number }}
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Mine</label>
+                {{ form.mine }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Status</label>
+                {{ form.status }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Fuel Type</label>
+                {{ form.fuel_type }}
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Purchase Date</label>
+                {{ form.purchase_date }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Purchase Cost (PKR)</label>
+                {{ form.purchase_cost }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Notes</label>
+                {{ form.notes }}
+            </div>
+        </div>
+
+        <hr style="border-color:var(--border-light); margin:25px 0;">
+
+        <button type="submit" class="btn btn-amber">
+            <i class="bi bi-check-lg"></i> Save Equipment
+        </button>
+        <a href="{% url 'equipment_list' %}" class="btn btn-outline-amber">
+            <i class="bi bi-x-lg"></i> Cancel
+        </a>
+    </form>
+</div>
+
+{% endblock %}

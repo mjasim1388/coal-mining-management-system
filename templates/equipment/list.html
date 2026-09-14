@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+
+{% block title %}Equipment - Coal Mine{% endblock %}
+{% block page_title %}EQUIPMENT{% endblock %}
+
+{% block content %}
+
+<div class="panel mb-3">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label">Status</label>
+            <select name="status" class="form-select">
+                <option value="">All Status</option>
+                <option value="Working" {% if status_filter == 'Working' %}selected{% endif %}>Working</option>
+                <option value="Under Maintenance" {% if status_filter == 'Under Maintenance' %}selected{% endif %}>Under Maintenance</option>
+                <option value="Out of Service" {% if status_filter == 'Out of Service' %}selected{% endif %}>Out of Service</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Type</label>
+            <select name="type" class="form-select">
+                <option value="">All Types</option>
+                {% for val, label in type_choices %}
+                <option value="{{ val }}" {% if type_filter == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <button type="submit" class="btn btn-amber w-100">
+                <i class="bi bi-funnel"></i> Filter
+            </button>
+        </div>
+    </form>
+</div>
+
+<div class="panel">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="panel-title mb-0">
+            <i class="bi bi-tools"></i> Equipment ({{ equipment|length }})
+        </div>
+        <div>
+            <a href="{% url 'maintenance_list' %}" class="btn btn-outline-amber">
+                <i class="bi bi-wrench-adjustable"></i> Maintenance Logs
+            </a>
+            {% if is_manager or is_accountant %}
+            <a href="{% url 'equipment_add' %}" class="btn btn-amber">
+                <i class="bi bi-plus-lg"></i> Add Equipment
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if equipment %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Code</th>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Mine</th>
+                <th>Status</th>
+                <th>Fuel</th>
+                <th>Purchase Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for eq in equipment %}
+            <tr>
+                <td><span style="color:var(--accent);">{{ eq.equipment_code }}</span></td>
+                <td>
+                    <a href="{% url 'equipment_detail' eq.pk %}" style="color:var(--text-primary); text-decoration:none; font-weight:600;">
+                        {{ eq.name }}
+                    </a>
+                </td>
+                <td>{{ eq.equipment_type }}</td>
+                <td>{{ eq.mine.name|default:"—" }}</td>
+                <td>
+                    {% if eq.status == 'Working' %}
+                        <span class="badge-status badge-active">WORKING</span>
+                    {% elif eq.status == 'Under Maintenance' %}
+                        <span class="badge-status badge-leave">MAINTENANCE</span>
+                    {% else %}
+                        <span class="badge-status badge-inactive">OUT OF SERVICE</span>
+                    {% endif %}
+                </td>
+                <td>{{ eq.fuel_type }}</td>
+                <td>{{ eq.purchase_date|default:"—" }}</td>
+                <td>
+                    <a href="{% url 'equipment_detail' eq.pk %}" class="btn btn-sm btn-outline-amber" title="View">
+                        <i class="bi bi-eye"></i>
+                    </a>
+                    {% if is_manager or is_accountant %}
+                    <a href="{% url 'equipment_edit' eq.pk %}" class="btn btn-sm btn-outline-amber" title="Edit">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                    {% endif %}
+                    {% if is_manager %}
+                    <a href="{% url 'equipment_delete' eq.pk %}" class="btn btn-sm btn-outline-danger" title="Delete">
+                        <i class="bi bi-trash"></i>
+                    </a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--text-muted); text-align:center; padding:30px;">
+        <i class="bi bi-tools" style="font-size:40px; display:block; margin-bottom:10px; opacity:0.5;"></i>
+        No equipment added yet.
+        {% if is_manager or is_accountant %}
+        <a href="{% url 'equipment_add' %}" style="color:var(--accent);">Add the first one</a>.
+        {% endif %}
+    </p>
+    {% endif %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block title %}Maintenance Logs - Coal Mine{% endblock %}
+{% block page_title %}MAINTENANCE LOGS{% endblock %}
+
+{% block content %}
+
+<div class="panel mb-3">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-6">
+            <label class="form-label">Type</label>
+            <select name="type" class="form-select">
+                <option value="">All Types</option>
+                {% for val, label in type_choices %}
+                <option value="{{ val }}" {% if type_filter == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-6">
+            <button type="submit" class="btn btn-amber w-100">
+                <i class="bi bi-funnel"></i> Filter
+            </button>
+        </div>
+    </form>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="stat-card stat-amber">
+            <i class="bi bi-wrench-adjustable icon"></i>
+            <h2>{{ logs|length }}</h2>
+            <p>Total Logs</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card stat-red">
+            <i class="bi bi-cash-stack icon"></i>
+            <h2>{{ total_cost }}</h2>
+            <p>Total Cost (PKR)</p>
+        </div>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="panel-title mb-0">
+            <i class="bi bi-wrench-adjustable-circle"></i> All Maintenance ({{ logs|length }})
+        </div>
+        <div>
+            <a href="{% url 'equipment_list' %}" class="btn btn-outline-amber">
+                <i class="bi bi-tools"></i> Equipment
+            </a>
+            {% if is_manager or is_accountant %}
+            <a href="{% url 'maintenance_add' %}" class="btn btn-amber">
+                <i class="bi bi-plus-lg"></i> Add Log
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if logs %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Equipment</th>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Cost</th>
+                <th>Performed By</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.date }}</td>
+                <td>
+                    <a href="{% url 'equipment_detail' log.equipment.pk %}" style="color:var(--accent); text-decoration:none;">
+                        {{ log.equipment.name }}
+                    </a>
+                    <br><small style="color:var(--text-muted); font-family:monospace;">{{ log.equipment.equipment_code }}</small>
+                </td>
+                <td>
+                    {% if log.maintenance_type == 'Repair' %}
+                        <span class="badge-status badge-inactive">{{ log.maintenance_type }}</span>
+                    {% elif log.maintenance_type == 'Routine' %}
+                        <span class="badge-status badge-active">{{ log.maintenance_type }}</span>
+                    {% else %}
+                        <span class="badge-status badge-leave">{{ log.maintenance_type }}</span>
+                    {% endif %}
+                </td>
+                <td style="max-width:300px;">{{ log.description|truncatechars:60 }}</td>
+                <td style="color:var(--accent); font-weight:600;">PKR {{ log.cost }}</td>
+                <td>{{ log.performed_by|default:"—" }}</td>
+                <td>
+                    {% if log.status == 'Completed' %}
+                        <span class="badge-status badge-active">COMPLETED</span>
+                    {% elif log.status == 'In Progress' %}
+                        <span class="badge-status badge-leave">IN PROGRESS</span>
+                    {% else %}
+                        <span class="badge-status badge-inactive">PENDING PARTS</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if is_manager %}
+                    <a href="{% url 'maintenance_edit' log.pk %}" class="btn btn-sm btn-outline-amber" title="Edit">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                    <a href="{% url 'maintenance_delete' log.pk %}" class="btn btn-sm btn-outline-danger" title="Delete">
+                        <i class="bi bi-trash"></i>
+                    </a>
+                    {% else %}
+                    <span style="color:var(--text-muted); font-size:12px;">—</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--text-muted); text-align:center; padding:30px;">
+        <i class="bi bi-wrench" style="font-size:40px; display:block; margin-bottom:10px; opacity:0.5;"></i>
+        No maintenance logs yet.
+        {% if is_manager or is_accountant %}
+        <a href="{% url 'maintenance_add' %}" style="color:var(--accent);">Add the first one</a>.
+        {% endif %}
+    </p>
+    {% endif %}
+</div>
+
+{% endblock %}

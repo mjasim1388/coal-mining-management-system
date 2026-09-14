@@ -5,10 +5,11 @@ from django.db.models import Sum
 from .decorators import role_required
 from .models import (Employee, Mine, ProductionRecord, Attendance,
                      InventoryItem, StockTransaction, Payroll,
-                     Customer, Sale, Notification, ApprovalLog)
+                     Customer, Sale, Notification, ApprovalLog,
+                     Equipment, MaintenanceLog)
 from .forms import (EmployeeForm, MineForm, ProductionForm, AttendanceForm,
                     InventoryItemForm, StockTransactionForm, PayrollForm,
-                    CustomerForm, SaleForm)
+                    CustomerForm, SaleForm, EquipmentForm, MaintenanceLogForm)
 from .exports import make_excel_response
 from datetime import date
 
@@ -1290,3 +1291,141 @@ def payroll_slip(request, pk):
     """Printable salary slip for employee signature/thumbprint."""
     payroll = get_object_or_404(Payroll, pk=pk)
     return render(request, 'payroll/slip.html', {'payroll': payroll})
+
+# ---------- EQUIPMENT ----------
+@role_required('Manager', 'Accountant', 'Viewer')
+def equipment_list(request):
+    status_filter = request.GET.get('status', '')
+    type_filter = request.GET.get('type', '')
+    equipment = Equipment.objects.select_related('mine').all()
+    if status_filter:
+        equipment = equipment.filter(status=status_filter)
+    if type_filter:
+        equipment = equipment.filter(equipment_type=type_filter)
+
+    return render(request, 'equipment/list.html', {
+        'equipment': equipment,
+        'status_filter': status_filter,
+        'type_filter': type_filter,
+        'type_choices': Equipment.TYPE_CHOICES,
+    })
+
+@role_required('Manager', 'Accountant', 'Viewer')
+def equipment_detail(request, pk):
+    from datetime import date
+    equipment = get_object_or_404(Equipment, pk=pk)
+    logs = equipment.maintenance_logs.all()
+    total_cost = sum(m.cost for m in logs)
+    return render(request, 'equipment/detail.html', {
+        'equipment': equipment,
+        'logs': logs,
+        'total_cost': total_cost,
+    })
+
+
+@role_required('Manager', 'Accountant')
+def equipment_add(request):
+    if request.method == 'POST':
+        form = EquipmentForm(request.POST, request.FILES)
+        if form.is_valid():
+            eq = form.save()
+            messages.success(request, f'Equipment "{eq.name}" added with code {eq.equipment_code}.')
+            return redirect('equipment_list')
+    else:
+        form = EquipmentForm()
+    return render(request, 'equipment/form.html', {'form': form, 'title': 'Add Equipment'})
+
+
+@role_required('Manager', 'Accountant')
+def equipment_edit(request, pk):
+    equipment = get_object_or_404(Equipment, pk=pk)
+    if request.method == 'POST':
+        form = EquipmentForm(request.POST, request.FILES, instance=equipment)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Equipment updated.')
+            return redirect('equipment_detail', pk=equipment.pk)
+    else:
+        form = EquipmentForm(instance=equipment)
+    return render(request, 'equipment/form.html', {'form': form, 'title': 'Edit Equipment'})
+
+
+@role_required('Manager')
+def equipment_delete(request, pk):
+    equipment = get_object_or_404(Equipment, pk=pk)
+    if request.method == 'POST':
+        name = equipment.name
+        equipment.delete()
+        messages.success(request, f'Equipment "{name}" deleted.')
+        return redirect('equipment_list')
+    return render(request, 'equipment/delete.html', {'equipment': equipment})
+
+
+# ---------- MAINTENANCE ----------
+@role_required('Manager', 'Accountant', 'Viewer')
+def maintenance_list(request):
+    type_filter = request.GET.get('type', '')
+    logs = MaintenanceLog.objects.select_related('equipment').all()
+    if type_filter:
+        logs = logs.filter(maintenance_type=type_filter)
+    total_cost = sum(l.cost for l in logs)
+    return render(request, 'equipment/maintenance_list.html', {
+        'logs': logs,
+        'type_filter': type_filter,
+        'total_cost': total_cost,
+        'type_choices': MaintenanceLog.TYPE_CHOICES,
+    })
+
+
+@role_required('Manager', 'Accountant')
+def maintenance_add(request):
+    equipment_id = request.GET.get('equipment')
+    if request.method == 'POST':
+        form = MaintenanceLogForm(request.POST)
+        if form.is_valid():
+            log = form.save()
+            # Update equipment status based on maintenance status
+            eq = log.equipment
+            if log.status == 'In Progress':
+                eq.status = 'Under Maintenance'
+            elif log.status == 'Completed' and eq.status == 'Under Maintenance':
+                eq.status = 'Working'
+            eq.save()
+            messages.success(request, f'Maintenance log added for {eq.name}.')
+            return redirect('equipment_detail', pk=eq.pk)
+    else:
+        initial = {}
+        if equipment_id:
+            initial['equipment'] = equipment_id
+        form = MaintenanceLogForm(initial=initial)
+
+    return render(request, 'equipment/maintenance_form.html', {
+        'form': form, 'title': 'Add Maintenance Log',
+    })
+
+
+@role_required('Manager')
+def maintenance_edit(request, pk):
+    log = get_object_or_404(MaintenanceLog, pk=pk)
+    if request.method == 'POST':
+        form = MaintenanceLogForm(request.POST, instance=log)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Maintenance log updated.')
+            return redirect('equipment_detail', pk=log.equipment.pk)
+    else:
+        form = MaintenanceLogForm(instance=log)
+    return render(request, 'equipment/maintenance_form.html', {
+        'form': form, 'title': 'Edit Maintenance Log',
+    })
+
+
+@role_required('Manager')
+def maintenance_delete(request, pk):
+    log = get_object_or_404(MaintenanceLog, pk=pk)
+    equipment_pk = log.equipment.pk
+    if request.method == 'POST':
+        log.delete()
+        messages.success(request, 'Maintenance log deleted.')
+        return redirect('equipment_detail', pk=equipment_pk)
+    return render(request, 'equipment/maintenance_delete.html', {'log': log})
