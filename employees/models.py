@@ -243,6 +243,14 @@ class Payroll(models.Model):
     approved_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='payrolls_approved')
     approved_at = models.DateTimeField(null=True, blank=True)
     paid_requested_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='payrolls_paid_requested')
+    received_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    employee_confirmed = models.BooleanField(default=False)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    signed_slip_photo = models.ImageField(upload_to='payroll/slips/', blank=True, null=True,
+                                          help_text="Photo of signed/thumbprinted salary slip")
+    paid_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name='payrolls_paid')
+    confirmation_notes = models.TextField(blank=True)
 
     class Meta:
         ordering = ['-year', '-month', 'employee__employee_code']

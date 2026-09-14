@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+
+{% block title %}Pay Salary - {{ payroll.employee.first_name }}{% endblock %}
+{% block page_title %}PAY &amp; CONFIRM SALARY{% endblock %}
+
+{% block content %}
+
+<div class="panel mb-3">
+    <div class="panel-title"><i class="bi bi-cash-coin"></i> Employee Details</div>
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label">Employee</label>
+            <p style="font-size:16px; font-weight:600;">{{ payroll.employee.first_name }} {{ payroll.employee.last_name }}</p>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Code</label>
+            <p style="color:var(--accent); font-weight:600;">{{ payroll.employee.employee_code }}</p>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Period</label>
+            <p>{{ payroll.get_month_display }} {{ payroll.year }}</p>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Net Salary</label>
+            <p style="font-size:18px; font-weight:700; color:#34d399;">PKR {{ payroll.net_salary }}</p>
+        </div>
+    </div>
+</div>
+
+<div class="panel mb-3">
+    <div class="panel-title"><i class="bi bi-printer"></i> Step 1 — Print the Salary Slip</div>
+    <p style="color:var(--text-secondary); margin: 0 0 14px;">
+        Print this slip and ask the employee to press their thumb impression or sign it.
+    </p>
+    <a href="{% url 'payroll_slip' payroll.pk %}" target="_blank" class="btn btn-outline-amber">
+        <i class="bi bi-printer"></i> Open Printable Slip
+    </a>
+</div>
+
+<form method="post" enctype="multipart/form-data" action="{% url 'payroll_pay_save' payroll.pk %}">
+    {% csrf_token %}
+
+    <div class="panel mb-3">
+        <div class="panel-title"><i class="bi bi-camera-fill"></i> Step 2 — Photo of Signed Slip</div>
+
+        <div class="d-flex align-items-start gap-3">
+            <div id="slipPreviewBox" style="width:220px; height:280px; border:2px dashed var(--border-medium); border-radius:10px; display:flex; align-items:center; justify-content:center; overflow:hidden; background:var(--bg-app);">
+                <i class="bi bi-file-earmark-image" id="slipPlaceholder" style="font-size:60px; color:var(--border-medium);"></i>
+                <img id="slipPreview" style="width:100%; height:100%; object-fit:cover; display:none;">
+            </div>
+            <div class="flex-grow-1">
+                <div style="display:none;">
+                    <input type="file" name="signed_slip_photo" accept="image/*" id="id_signed_slip_photo">
+                </div>
+                <button type="button" class="btn btn-amber mb-2" onclick="openCamera();">
+                    <i class="bi bi-camera-fill"></i> Take Photo of Signed Slip
+                </button>
+                <button type="button" class="btn btn-outline-amber mb-2" onclick="document.getElementById('id_signed_slip_photo').click();">
+                    <i class="bi bi-upload"></i> Upload from File
+                </button>
+                <small style="color:var(--text-muted); display:block; margin-top:6px;">
+                    Photo of the slip <strong>after</strong> the employee has signed/thumbprinted it.
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel mb-3">
+        <div class="panel-title"><i class="bi bi-check-circle"></i> Step 3 — Confirm Payment</div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Amount Handed Over (PKR) *</label>
+                <input type="number" step="0.01" name="received_amount" class="form-control"
+                       value="{{ payroll.net_salary }}" required>
+                <small style="color:var(--text-muted); font-size:11px;">
+                    Default is the net salary. Change only if partial payment.
+                </small>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Notes (optional)</label>
+                <input type="text" name="confirmation_notes" class="form-control"
+                       placeholder="e.g. Partial payment, balance next week">
+            </div>
+        </div>
+
+        <div style="margin-top:16px; padding:14px 16px; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.35); border-radius:8px;">
+            <label style="display:flex; align-items:center; gap:10px; margin:0; cursor:pointer; color:#6ee7b7; font-size:13.5px;">
+                <input type="checkbox" required style="width:18px; height:18px; accent-color:#10b981;">
+                I confirm the employee has received the amount above and the signed slip photo is attached.
+            </label>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-amber" style="padding: 12px 26px;">
+            <i class="bi bi-check-lg"></i> Confirm Payment
+        </button>
+        <a href="{% url 'payroll_detail' payroll.pk %}" class="btn btn-outline-amber" style="padding: 12px 26px;">
+            <i class="bi bi-x-lg"></i> Cancel
+        </a>
+    </div>
+</form>
+
+<!-- CAMERA MODAL -->
+<div class="modal fade" id="cameraModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="background:var(--bg-panel); border:1px solid var(--border-light); color:var(--text-primary);">
+            <div class="modal-header" style="border-bottom:1px solid var(--border-light);">
+                <h5 class="modal-title"><i class="bi bi-camera-video-fill" style="color:var(--accent);"></i> Capture Signed Slip</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="stopCamera();"></button>
+            </div>
+            <div class="modal-body text-center">
+                <video id="cameraVideo" autoplay playsinline style="width:100%; max-height:520px; display:block; border-radius:8px; background:#000;"></video>
+                <canvas id="cameraCanvas" style="display:none;"></canvas>
+                <div id="cameraError" style="color:#f87171; display:none; margin-top:12px;"></div>
+            </div>
+            <div class="modal-footer" style="border-top:1px solid var(--border-light);">
+                <button type="button" class="btn btn-outline-amber" data-bs-dismiss="modal" onclick="stopCamera();">Cancel</button>
+                <button type="button" class="btn btn-amber" onclick="captureSlip();">
+                    <i class="bi bi-camera-fill"></i> Capture
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let cameraStream = null;
+    let cameraModal = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        cameraModal = new bootstrap.Modal(document.getElementById('cameraModal'));
+
+        document.getElementById('id_signed_slip_photo').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) showPreview(URL.createObjectURL(file));
+        });
+    });
+
+    function showPreview(src) {
+        const preview = document.getElementById('slipPreview');
+        const placeholder = document.getElementById('slipPlaceholder');
+        preview.src = src;
+        preview.style.display = 'block';
+        if (placeholder) placeholder.style.display = 'none';
+    }
+
+    async function openCamera() {
+        document.getElementById('cameraError').style.display = 'none';
+        cameraModal.show();
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: { width: 1280, height: 960, facingMode: 'environment' },
+                audio: false
+            });
+            document.getElementById('cameraVideo').srcObject = cameraStream;
+        } catch (err) {
+            const box = document.getElementById('cameraError');
+            box.style.display = 'block';
+            box.textContent = 'Camera error: ' + err.message;
+        }
+    }
+
+    function stopCamera() {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(t => t.stop());
+            cameraStream = null;
+        }
+    }
+
+    function captureSlip() {
+        const video = document.getElementById('cameraVideo');
+        const canvas = document.getElementById('cameraCanvas');
+        if (!video.videoWidth) return;
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        canvas.toBlob(function(blob) {
+            const file = new File([blob], 'signed_slip.jpg', { type: 'image/jpeg' });
+            const input = document.getElementById('id_signed_slip_photo');
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            input.files = dt.files;
+
+            showPreview(URL.createObjectURL(blob));
+            stopCamera();
+            cameraModal.hide();
+        }, 'image/jpeg', 0.92);
+    }
+</script>
+
+{% endblock %}

@@ -113,9 +113,53 @@
     </div>
     {% endif %}
 
-    <hr style="border-color:var(--coal-line); margin:25px 0;">
+    {% if payroll.signed_slip_photo or payroll.confirmed_at %}
+    <div class="panel mt-3" style="background:var(--bg-app); border:1px solid #10b981;">
+        <div class="panel-title" style="color:#34d399;">
+            <i class="bi bi-patch-check-fill"></i> Payment Confirmation
+        </div>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Confirmed By</label>
+                <p>{{ payroll.paid_by.username|default:"—" }}</p>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Confirmed At</label>
+                <p>{{ payroll.confirmed_at|date:"d M Y, H:i"|default:"—" }}</p>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Amount Received</label>
+                <p style="color:#34d399; font-weight:700;">PKR {{ payroll.received_amount|default:payroll.net_salary }}</p>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Notes</label>
+                <p>{{ payroll.confirmation_notes|default:"—" }}</p>
+            </div>
+            {% if payroll.signed_slip_photo %}
+            <div class="col-12">
+                <label class="form-label">Signed / Thumbprinted Slip</label>
+                <br>
+                <a href="{{ payroll.signed_slip_photo.url }}" target="_blank">
+                    <img src="{{ payroll.signed_slip_photo.url }}" alt="Signed slip"
+                         style="max-width: 380px; border: 2px solid var(--border-medium); border-radius: 8px; cursor: pointer;">
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
 
-    <a href="{% url 'payroll_edit' payroll.pk %}" class="btn btn-amber">
+    <hr style="border-color:var(--border-light); margin:25px 0;">
+
+    {% if payroll.status == 'Approved' %}
+    <a href="{% url 'payroll_pay_confirm' payroll.pk %}" class="btn btn-amber">
+        <i class="bi bi-cash-coin"></i> Pay &amp; Confirm
+    </a>
+    {% endif %}
+    <a href="{% url 'payroll_slip' payroll.pk %}" target="_blank" class="btn btn-outline-amber">
+        <i class="bi bi-printer"></i> Print Slip
+    </a>
+    <a href="{% url 'payroll_edit' payroll.pk %}" class="btn btn-outline-amber">
         <i class="bi bi-pencil"></i> Edit
     </a>
     <a href="{% url 'payroll_delete' payroll.pk %}" class="btn btn-outline-danger">

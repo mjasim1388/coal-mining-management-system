@@ -95,6 +95,9 @@
                                 <td>
                     {% if p.status == 'Paid' %}
                         <span class="badge-status badge-active">PAID</span>
+                        {% if p.signed_slip_photo %}
+                            <i class="bi bi-patch-check-fill" style="color:#34d399; margin-left:4px;" title="Signed slip on file"></i>
+                        {% endif %}
                     {% elif p.status == 'Approved' %}
                         <span class="badge-status badge-active">APPROVED</span>
                     {% elif p.status == 'Paid Pending' %}
@@ -103,17 +106,19 @@
                         <span class="badge-status badge-inactive">PENDING</span>
                     {% endif %}
                 </td>
-                 <td>
+                                 <td>
                     <a href="{% url 'payroll_detail' p.pk %}" class="btn btn-sm btn-outline-amber" title="View">
                         <i class="bi bi-eye"></i>
                     </a>
                     {% if p.status == 'Approved' %}
-                    <form method="post" action="{% url 'payroll_mark_paid' p.pk %}" style="display:inline;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-sm btn-amber" title="Mark as Paid">
-                            <i class="bi bi-cash"></i> Mark Paid
-                        </button>
-                    </form>
+                    <a href="{% url 'payroll_pay_confirm' p.pk %}" class="btn btn-sm btn-amber" title="Pay & Confirm">
+                        <i class="bi bi-cash-coin"></i> Pay
+                    </a>
+                    {% endif %}
+                    {% if p.signed_slip_photo %}
+                    <a href="{{ p.signed_slip_photo.url }}" target="_blank" class="btn btn-sm btn-outline-amber" title="View Signed Slip">
+                        <i class="bi bi-file-earmark-image"></i>
+                    </a>
                     {% endif %}
                     <a href="{% url 'payroll_edit' p.pk %}" class="btn btn-sm btn-outline-amber" title="Edit">
                         <i class="bi bi-pencil"></i>

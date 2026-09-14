@@ -48,6 +48,9 @@ urlpatterns = [
     path('payroll/<int:pk>/edit/', views.payroll_edit, name='payroll_edit'),
     path('payroll/<int:pk>/delete/', views.payroll_delete, name='payroll_delete'),
     path('payroll/<int:pk>/mark-paid/', views.payroll_mark_paid, name='payroll_mark_paid'),
+    path('payroll/<int:pk>/pay-confirm/', views.payroll_pay_confirm, name='payroll_pay_confirm'),
+    path('payroll/<int:pk>/pay-save/', views.payroll_pay_save, name='payroll_pay_save'),
+    path('payroll/<int:pk>/slip/', views.payroll_slip, name='payroll_slip'),
 
     # Customers
     path('customers/', views.customer_list, name='customer_list'),

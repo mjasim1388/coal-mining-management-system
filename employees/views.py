@@ -1227,3 +1227,66 @@ def backup_delete(request, filename):
             messages.error(request, 'File not found.')
 
     return redirect('backup_list')
+
+# ---------- SALARY PAYMENT CONFIRMATION ----------
+@role_required('Manager', 'Accountant')
+def payroll_pay_confirm(request, pk):
+    """Show the pay & confirm page where manager/accountant uploads signed slip photo."""
+    payroll = get_object_or_404(Payroll, pk=pk)
+    return render(request, 'payroll/pay_confirm.html', {'payroll': payroll})
+
+
+@role_required('Manager', 'Accountant')
+def payroll_pay_save(request, pk):
+    """Handle the confirm payment POST."""
+    from django.utils import timezone
+    from decimal import Decimal
+
+    payroll = get_object_or_404(Payroll, pk=pk)
+
+    if request.method != 'POST':
+        return redirect('payroll_list')
+
+    received = request.POST.get('received_amount', '').strip()
+    notes = request.POST.get('confirmation_notes', '').strip()
+    photo = request.FILES.get('signed_slip_photo')
+
+    try:
+        payroll.received_amount = Decimal(received) if received else payroll.net_salary
+    except Exception:
+        payroll.received_amount = payroll.net_salary
+
+    payroll.confirmation_notes = notes
+    payroll.paid_by = request.user
+    payroll.confirmed_at = timezone.now()
+    payroll.payment_date = timezone.now().date()
+    payroll.employee_confirmed = True
+    payroll.status = 'Paid'
+
+    if photo:
+        payroll.signed_slip_photo = photo
+
+    payroll.save()
+
+    # Notify the accountant who created it (if different from who paid)
+    if payroll.created_by and payroll.created_by != request.user:
+        create_notification(
+            payroll.created_by,
+            f'Salary for {payroll.employee.first_name} {payroll.employee.last_name} '
+            f'({payroll.get_month_display()} {payroll.year}) has been PAID by {request.user.username}.',
+            link=f'/payroll/{payroll.pk}/'
+        )
+
+    messages.success(
+        request,
+        f'✅ Salary paid to {payroll.employee.first_name} {payroll.employee.last_name}. '
+        f'Amount: PKR {payroll.received_amount}'
+    )
+    return redirect('payroll_detail', pk=payroll.pk)
+
+
+@role_required('Manager', 'Accountant')
+def payroll_slip(request, pk):
+    """Printable salary slip for employee signature/thumbprint."""
+    payroll = get_object_or_404(Payroll, pk=pk)
+    return render(request, 'payroll/slip.html', {'payroll': payroll})
