@@ -122,7 +122,10 @@ def employee_add(request):
                 emp.save()
                 notify_managers(
                     f'Employee {emp.first_name} {emp.last_name} added by {request.user.username} is awaiting your approval.',
-                    link='/approvals/'
+                    link='/approvals/',
+                    status='Pending',
+                    object_type='Employee',
+                    object_id=emp.pk,
                 )
                 messages.info(request, 'Employee submitted for manager approval.')
             return redirect('employee_list')
@@ -341,7 +344,10 @@ def inventory_add(request):
                 item.save()
                 notify_managers(
                     f'Inventory item "{item.name}" added by {request.user.username} is awaiting your approval.',
-                    link='/approvals/'
+                    link='/approvals/',
+                    status='Pending',
+                    object_type='InventoryItem',
+                    object_id=item.pk,
                 )
                 messages.info(request, 'Item submitted for manager approval.')
             return redirect('inventory_list')
@@ -545,7 +551,10 @@ def payroll_add(request):
                 notify_managers(
                     f'Payroll for {payroll.employee.first_name} {payroll.employee.last_name} '
                     f'({payroll.get_month_display()} {payroll.year}) created by {request.user.username} is awaiting your approval.',
-                    link='/approvals/'
+                    link='/approvals/',
+                    status='Pending',
+                    object_type='Payroll',
+                    object_id=payroll.pk,
                 )
                 messages.info(request, 'Payroll submitted for manager approval.')
             return redirect('payroll_list')
@@ -799,20 +808,26 @@ def create_notification(user, message, link=''):
         Notification.objects.create(user=user, message=message, link=link)
 
 
-def notify_role(role_name, message, link=''):
+def notify_role(role_name, message, link='', status='Info', object_type='', object_id=None):
     from django.contrib.auth.models import User
     users = User.objects.filter(groups__name=role_name)
     for user in users:
-        Notification.objects.create(user=user, message=message, link=link)
+        Notification.objects.create(
+            user=user,
+            message=message,
+            link=link,
+            status=status,
+            object_type=object_type,
+            object_id=object_id,
+        )
 
 
-def notify_accountants(message, link=''):
-    notify_role('Accountant', message, link)
+def notify_accountants(message, link='', status='Info', object_type='', object_id=None):
+    notify_role('Accountant', message, link, status, object_type, object_id)
 
 
-def notify_managers(message, link=''):
-    notify_role('Manager', message, link)
-
+def notify_managers(message, link='', status='Info', object_type='', object_id=None):
+    notify_role('Manager', message, link, status, object_type, object_id)
 
 @login_required
 def notification_list(request):
@@ -854,6 +869,16 @@ def approve_employee(request, pk):
             requested_by=emp.added_by or request.user,
             status='Approved', reviewed_by=request.user,
         )
+        Notification.objects.filter(
+            user=request.user,
+            object_type='Employee',
+            object_id=emp.pk,
+            status='Pending',
+        ).update(
+            status='Approved',
+            message=f'You approved employee {emp.first_name} {emp.last_name}.',
+            is_read=True,
+        )
         messages.success(request, f'Employee {emp.first_name} {emp.last_name} approved.')
     return redirect('approval_list')
 
@@ -869,6 +894,16 @@ def reject_employee(request, pk):
                 emp.added_by,
                 f'Your employee record for {emp.first_name} {emp.last_name} was rejected.',
             )
+            Notification.objects.filter(
+            user=request.user,
+            object_type='Employee',
+            object_id=emp.pk,
+            status='Pending',
+        ).update(
+            status='Rejected',
+            message=f'You rejected employee {emp.first_name} {emp.last_name}.',
+            is_read=True,
+        )
         messages.warning(request, f'Employee {emp.first_name} {emp.last_name} rejected.')
     return redirect('approval_list')
 
@@ -885,6 +920,16 @@ def approve_inventory(request, pk):
                 f'Inventory item "{item.name}" has been approved by {request.user.username}.',
                 link=f'/inventory/{item.pk}/edit/'
             )
+            Notification.objects.filter(
+            user=request.user,
+            object_type='InventoryItem',
+            object_id=item.pk,
+            status='Pending',
+        ).update(
+            status='Approved',
+            message=f'You approved inventory item "{item.name}".',
+            is_read=True,
+        )
         messages.success(request, f'Inventory item "{item.name}" approved.')
     return redirect('approval_list')
 
@@ -900,6 +945,16 @@ def reject_inventory(request, pk):
                 item.added_by,
                 f'Inventory item "{item.name}" was rejected.',
             )
+            Notification.objects.filter(
+            user=request.user,
+            object_type='InventoryItem',
+            object_id=item.pk,
+            status='Pending',
+        ).update(
+            status='Rejected',
+            message=f'You rejected inventory item "{item.name}".',
+            is_read=True,
+        )
         messages.warning(request, f'Inventory item "{item.name}" rejected.')
     return redirect('approval_list')
 
@@ -920,6 +975,16 @@ def approve_payroll(request, pk):
                 f'({payroll.get_month_display()} {payroll.year}) has been approved by {request.user.username}.',
                 link=f'/payroll/{payroll.pk}/'
             )
+            Notification.objects.filter(
+            user=request.user,
+            object_type='Payroll',
+            object_id=payroll.pk,
+            status='Pending',
+        ).update(
+            status='Approved',
+            message=f'You approved payroll for {payroll.employee.first_name} {payroll.employee.last_name} ({payroll.get_month_display()} {payroll.year}).',
+            is_read=True,
+        )
         messages.success(request, f'Payroll for {payroll.employee.first_name} {payroll.employee.last_name} approved.')
     return redirect('approval_list')
 

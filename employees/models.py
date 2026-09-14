@@ -323,9 +323,19 @@ class Sale(models.Model):
         super().save(*args, **kwargs)
 
 class Notification(models.Model):
+    STATUS_CHOICES = [
+        ('Info', 'Info'),
+        ('Pending', 'Pending'),
+        ('Approved', 'Approved'),
+        ('Rejected', 'Rejected'),
+    ]
+
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='notifications')
     message = models.CharField(max_length=300)
     link = models.CharField(max_length=200, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Info')
+    object_type = models.CharField(max_length=50, blank=True)
+    object_id = models.IntegerField(null=True, blank=True)
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -334,7 +344,6 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"{self.user.username}: {self.message[:40]}"
-
 
 class ApprovalLog(models.Model):
     OBJECT_TYPES = [

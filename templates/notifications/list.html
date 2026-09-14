@@ -10,16 +10,36 @@
 
     {% if notifications %}
         {% for n in notifications %}
-        <div style="padding:16px; border-bottom:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center;">
-            <div>
-                <div style="color:var(--text-primary); margin-bottom:4px;">{{ n.message }}</div>
-                <small style="color:var(--text-muted);">{{ n.created_at|date:"d M Y, H:i" }}</small>
+        <div style="padding:16px; border-bottom:1px solid var(--border-light); display:flex; justify-content:space-between; align-items:center; gap:12px;">
+            <div style="display:flex; align-items:center; gap:14px; flex:1;">
+                {% if n.status == 'Approved' %}
+                    <i class="bi bi-check-circle-fill" style="font-size:22px; color:#10b981; flex-shrink:0;"></i>
+                {% elif n.status == 'Rejected' %}
+                    <i class="bi bi-x-circle-fill" style="font-size:22px; color:#ef4444; flex-shrink:0;"></i>
+                {% elif n.status == 'Pending' %}
+                    <i class="bi bi-hourglass-split" style="font-size:22px; color:#f59e0b; flex-shrink:0;"></i>
+                {% else %}
+                    <i class="bi bi-info-circle-fill" style="font-size:22px; color:#3b82f6; flex-shrink:0;"></i>
+                {% endif %}
+                <div>
+                    <div style="color:var(--text-primary); margin-bottom:4px;">{{ n.message }}</div>
+                    <small style="color:var(--text-muted);">{{ n.created_at|date:"d M Y, H:i" }}</small>
+                </div>
             </div>
-            {% if n.link %}
-            <a href="{{ n.link }}" class="btn btn-sm btn-outline-amber">
-                <i class="bi bi-arrow-right"></i> View
-            </a>
-            {% endif %}
+            <div style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
+                {% if n.status == 'Approved' %}
+                    <span class="badge-status badge-active">APPROVED</span>
+                {% elif n.status == 'Rejected' %}
+                    <span class="badge-status badge-inactive">REJECTED</span>
+                {% elif n.status == 'Pending' %}
+                    <span class="badge-status badge-leave">PENDING</span>
+                {% endif %}
+                {% if n.link %}
+                <a href="{{ n.link }}" class="btn btn-sm btn-outline-amber">
+                    <i class="bi bi-arrow-right"></i> View
+                </a>
+                {% endif %}
+            </div>
         </div>
         {% endfor %}
     {% else %}
