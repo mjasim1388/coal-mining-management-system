@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dispatch Slip - {{ sale.dispatch_no }}</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f1f5f9;
+            padding: 20px;
+            color: #0f172a;
+        }
+        .slip {
+            background: #fff;
+            max-width: 800px;
+            margin: 0 auto 20px;
+            padding: 28px 34px;
+            border: 2px solid #0f172a;
+            border-radius: 6px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 3px double #0f172a;
+            padding-bottom: 16px;
+            margin-bottom: 18px;
+        }
+        .header .company { display: flex; align-items: center; gap: 16px; }
+        .header .logo-box {
+            width: 60px; height: 60px;
+            border: 2px solid #0f172a;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 26px; font-weight: 800; letter-spacing: -2px;
+            background: #0f172a; color: #fff;
+        }
+        .header .company-info h1 {
+            font-size: 22px;
+            letter-spacing: 1.5px;
+            margin-bottom: 2px;
+            color: #0f172a;
+        }
+        .header .company-info p {
+            font-size: 12px;
+            color: #475569;
+            line-height: 1.4;
+        }
+        .header .dispatch-badge {
+            text-align: right;
+        }
+        .header .dispatch-badge .slip-type {
+            font-size: 11px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #64748b;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .header .dispatch-badge .dispatch-no {
+            font-size: 20px;
+            font-weight: 800;
+            font-family: 'Consolas', monospace;
+            color: #b87708;
+            padding: 8px 14px;
+            background: #fef3c7;
+            border: 2px solid #b87708;
+            border-radius: 6px;
+            display: inline-block;
+        }
+        .header .dispatch-badge .date-time {
+            font-size: 12px;
+            color: #475569;
+            margin-top: 6px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px 24px;
+            margin-bottom: 18px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 7px 0;
+            border-bottom: 1px dashed #cbd5e1;
+            font-size: 13.5px;
+        }
+        .info-row .label { color: #475569; font-weight: 600; }
+        .info-row .value { color: #0f172a; font-weight: 600; text-align: right; }
+
+        .amount-box {
+            margin: 18px 0;
+            padding: 16px 20px;
+            background: #0f172a;
+            color: #fff;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .amount-box .label {
+            font-size: 12px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.75;
+        }
+        .amount-box .amount {
+            font-size: 26px; font-weight: 800; color: #fbbf24;
+        }
+
+        .note-box {
+            padding: 12px 16px;
+            background: #fef3c7;
+            border-left: 4px solid #b87708;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #78350f;
+            margin-bottom: 22px;
+            line-height: 1.5;
+        }
+
+        .signatures {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 24px;
+            margin-top: 46px;
+            page-break-inside: avoid;
+        }
+        .sig-box {
+            text-align: center;
+            border-top: 2px solid #0f172a;
+            padding-top: 8px;
+            font-size: 11.5px;
+            color: #475569;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .footer {
+            margin-top: 22px;
+            padding-top: 14px;
+            border-top: 2px dashed #cbd5e1;
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #64748b;
+        }
+        .footer .verification {
+            font-family: 'Consolas', monospace;
+            color: #b87708;
+            font-weight: 700;
+        }
+
+        .print-bar {
+            max-width: 800px;
+            margin: 0 auto 14px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            border: none;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-print { background: #b87708; color: #fff; }
+        .btn-print:hover { background: #9a6206; }
+        .btn-back  { background: #e2e8f0; color: #0f172a; }
+        .btn-back:hover { background: #cbd5e1; }
+
+        @media print {
+            body { background: #fff; padding: 0; }
+            .print-bar { display: none; }
+            .slip { border: 2px solid #000; box-shadow: none; margin: 0; page-break-after: always; }
+            .slip:last-child { page-break-after: auto; }
+        }
+        @page { size: A4; margin: 12mm; }
+    </style>
+</head>
+<body>
+
+<div class="print-bar">
+    <a href="javascript:void(0);" onclick="window.history.back();" class="btn btn-back">
+        <i>←</i> Back
+    </a>
+    <button class="btn btn-print" onclick="window.print()">
+        🖨 Print Slip (2 copies)
+    </button>
+</div>
+
+<!-- ============ COPY 1: DRIVER COPY ============ -->
+<div class="slip">
+    <div class="header">
+        <div class="company">
+            <div class="logo-box">CM</div>
+            <div class="company-info">
+                <h1>COAL MINE COMPANY</h1>
+                <p>Coal Mining &amp; Dispatch Division</p>
+                <p>Office: _________________________ &nbsp;|&nbsp; Ph: ____________________</p>
+            </div>
+        </div>
+        <div class="dispatch-badge">
+            <div class="slip-type">Driver Copy</div>
+            <div class="dispatch-no">{{ sale.dispatch_no }}</div>
+            <div class="date-time">
+                {{ sale.created_at|date:"d M Y, H:i" }}
+            </div>
+        </div>
+    </div>
+
+    <div class="info-grid">
+        <div>
+            <div class="info-row">
+                <span class="label">Customer</span>
+                <span class="value">{{ sale.customer.name }}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Mine</span>
+                <span class="value">{{ sale.mine.name|default:"—" }}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Coal Type</span>
+                <span class="value">{{ sale.coal_type }}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Quantity</span>
+                <span class="value">{{ sale.quantity_tons }} tons</span>
+            </div>
+        </div>
+        <div>
+            <div class="info-row">
+                <span class="label">Truck No</span>
+                <span class="value">{{ sale.truck_no|default:"—" }}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Driver Name</span>
+                <span class="value">{{ sale.driver_name|default:"—" }}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Driver Phone</span>
+                <span class="value">{{ sale.driver_phone|default:"—" }}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Rate / Ton</span>
+                <span class="value">PKR {{ sale.price_per_ton }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="amount-box">
+        <div class="label">Total Amount</div>
+        <div class="amount">PKR {{ sale.total_amount }}</div>
+    </div>
+
+    <div class="note-box">
+        <strong>Important:</strong> This dispatch slip must accompany the loaded truck from the mine to the customer. The driver is responsible for this document and must produce it at the gate and at delivery. Any tampering will void this slip.
+    </div>
+
+    <div class="signatures">
+        <div class="sig-box">Driver Signature</div>
+        <div class="sig-box">Gate Guard</div>
+        <div class="sig-box">Accountant / Manager</div>
+    </div>
+
+    <div class="footer">
+        <span>Printed: <span id="printTime1"></span></span>
+        <span class="verification">Verification Code: {{ sale.dispatch_no }}-{{ sale.pk }}</span>
+    </div>
+</div>
+
+<!-- ============ COPY 2: COMPANY COPY ============ -->
+<div class="slip">
+    <div class="header">
+        <div class="company">
+            <div class="logo-box">CM</div>
+            <div class="company-info">
+                <h1>COAL MINE COMPANY</h1>
+                <p>Coal Mining &amp; Dispatch Division</p>
+                <p>Office: _________________________ &nbsp;|&nbsp; Ph: ____________________</p>
+            </div>
+        </div>
+        <div class="dispatch-badge">
+            <div class="slip-type">Company Copy — Archive</div>
+            <div class="dispatch-no">{{ sale.dispatch_no }}</div>
+            <div class="date-time">
+                {{ sale.created_at|date:"d M Y, H:i" }}
+            </div>
+        </div>
+    </div>
+
+    <div class="info-grid">
+        <div>
+            <div class="info-row">
+                <span class="label">Customer</span>
+                <span class="value">{{ sale.customer.name }}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Mine</span>
+                <span class="value">{{ sale.mine.name|default:"—" }}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Coal Type</span>
+                <span class="value">{{ sale.coal_type }}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Quantity</span>
+                <span class="value">{{ sale.quantity_tons }} tons</span>
+            </div>
+        </div>
+        <div>
+            <div class="info-row">
+                <span class="label">Truck No</span>
+                <span class="value">{{ sale.truck_no|default:"—" }}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Driver Name</span>
+                <span class="value">{{ sale.driver_name|default:"—" }}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Driver Phone</span>
+                <span class="value">{{ sale.driver_phone|default:"—" }}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Rate / Ton</span>
+                <span class="value">PKR {{ sale.price_per_ton }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="amount-box">
+        <div class="label">Total Amount</div>
+        <div class="amount">PKR {{ sale.total_amount }}</div>
+    </div>
+
+    <div class="note-box">
+        <strong>Company Archive Copy:</strong> This slip is retained in the company's permanent dispatch records. It cannot be modified once issued. If the dispatch is voided by the manager, this copy is marked accordingly.
+    </div>
+
+    <div class="signatures">
+        <div class="sig-box">Driver Signature</div>
+        <div class="sig-box">Gate Guard</div>
+        <div class="sig-box">Accountant / Manager</div>
+    </div>
+
+    <div class="footer">
+        <span>Printed: <span id="printTime2"></span></span>
+        <span class="verification">Verification Code: {{ sale.dispatch_no }}-{{ sale.pk }}</span>
+    </div>
+</div>
+
+<script>
+    (function() {
+        var now = new Date().toLocaleString('en-GB', {
+            day: '2-digit', month: 'short', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+        document.getElementById('printTime1').textContent = now;
+        document.getElementById('printTime2').textContent = now;
+    })();
+</script>
+
+</body>
+</html>

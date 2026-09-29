@@ -316,6 +316,15 @@ class Sale(models.Model):
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    dispatch_no = models.CharField(max_length=30, unique=True, blank=True)
+    is_locked = models.BooleanField(default=False)
+    voided = models.BooleanField(default=False)
+    voided_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='sales_voided')
+    voided_at = models.DateTimeField(null=True, blank=True)
+    voided_reason = models.TextField(blank=True)
+    created_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='sales_created')
 
     class Meta:
         ordering = ['-date', '-created_at']
@@ -328,7 +337,30 @@ class Sale(models.Model):
         return (self.total_amount or 0) - (self.amount_paid or 0)
 
     def save(self, *args, **kwargs):
+        from django.utils import timezone
+
+        # Auto-calculate total
         self.total_amount = (self.quantity_tons or 0) * (self.price_per_ton or 0)
+
+        # Auto-generate dispatch number on first save
+        if not self.dispatch_no:
+            today = timezone.localtime().strftime('%Y%m%d')
+            prefix = f'DISP-{today}-'
+            last = Sale.objects.filter(dispatch_no__startswith=prefix).order_by('-dispatch_no').first()
+            if last:
+                try:
+                    last_num = int(last.dispatch_no.split('-')[-1])
+                except (ValueError, IndexError):
+                    last_num = 0
+            else:
+                last_num = 0
+            self.dispatch_no = f'{prefix}{last_num + 1:04d}'
+            self.is_locked = True
+
+        # Auto-generate invoice_no (mirrors the dispatch number)
+        if not self.invoice_no:
+            self.invoice_no = self.dispatch_no
+
         super().save(*args, **kwargs)
 
 

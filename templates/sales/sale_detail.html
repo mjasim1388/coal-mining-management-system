@@ -99,18 +99,31 @@
 
     <hr style="border-color:var(--coal-line); margin:25px 0;">
 
-    <a href="{% url 'sale_edit' sale.pk %}" class="btn btn-amber">
-        <i class="bi bi-pencil"></i> Edit
-    </a>
-    <a href="{% url 'sale_delete' sale.pk %}" class="btn btn-outline-danger">
-        <i class="bi bi-trash"></i> Delete
+    <a href="{% url 'sale_slip' sale.pk %}" target="_blank" class="btn btn-amber">
+        <i class="bi bi-printer"></i> Print Dispatch Slip
     </a>
     <button onclick="window.print()" class="btn btn-outline-amber">
         <i class="bi bi-printer"></i> Print Invoice
     </button>
-    <a href="{% url 'sale_list' %}" class="btn btn-outline-amber">
+    {% if is_manager %}
+    <a href="{% url 'sale_delete' sale.pk %}" class="btn btn-outline-danger">
+        <i class="bi bi-x-circle"></i> Void Dispatch
+    </a>
+    {% endif %}
+    <a href="javascript:void(0);" onclick="goBack()" class="btn btn-outline-amber">
         <i class="bi bi-arrow-left"></i> Back
     </a>
+
+    <script>
+        function goBack() {
+            // If there's history, go back to preserve scroll position
+            if (document.referrer && document.referrer.indexOf(window.location.host) !== -1) {
+                window.history.back();
+            } else {
+                window.location.href = "{% url 'sale_list' %}";
+            }
+        }
+    </script>
 </div>
 
 {% endblock %}

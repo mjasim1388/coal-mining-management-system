@@ -1,0 +1,342 @@
+{% extends 'base.html' %}
+
+{% block title %}Sales Dashboard - Coal Mine{% endblock %}
+{% block page_title %}SALES DASHBOARD{% endblock %}
+
+{% block content %}
+
+<style>
+    .dash-wrap { max-width: 1600px; margin: 0 auto; }
+    .dash-wrap .stat-card { padding: 14px 18px; }
+    .dash-wrap .stat-card h2 { font-size: 22px; padding-right: 40px; }
+    .dash-wrap .stat-card p { font-size: 12px; margin-top: 2px; }
+    .dash-wrap .stat-card .icon { width: 32px; height: 32px; font-size: 16px; top: 14px; right: 14px; }
+    .dash-wrap .panel { padding: 16px 18px; }
+    .dash-wrap .panel-title { font-size: 14px; margin-bottom: 12px; padding-bottom: 10px; }
+    .dash-wrap .table thead th { padding: 8px 12px; font-size: 12px; }
+    .dash-wrap .table tbody td { padding: 8px 12px; font-size: 13px; }
+
+    .mini-kpi-row { margin-bottom: 14px; }
+    .chart-row { margin-bottom: 14px; }
+
+    .top-cust-item { padding: 8px 0; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; }
+    .top-cust-item:last-child { border-bottom: none; }
+
+    /* Live feed */
+    .live-dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: #ef4444; animation: pulse 1.6s infinite; display: inline-block;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(1.3); }
+    }
+
+    .dispatch-item {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border-light);
+        display: flex; gap: 12px; align-items: center;
+        transition: background 0.3s ease;
+    }
+    .dispatch-item:last-child { border-bottom: none; }
+    .dispatch-item:hover { background: var(--bg-hover-row); }
+
+    .dispatch-icon {
+        width: 36px; height: 36px; border-radius: 8px;
+        background: var(--accent-soft); color: var(--accent);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 17px; flex-shrink: 0;
+    }
+    .dispatch-info { flex: 1; min-width: 0; }
+    .dispatch-title {
+        font-size: 13.5px; font-weight: 600; color: var(--text-primary);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .dispatch-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .dispatch-time { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+
+    @keyframes flashIn {
+        0% { background: rgba(229, 161, 28, 0.4); transform: translateX(-10px); opacity: 0; }
+        100% { background: transparent; transform: translateX(0); opacity: 1; }
+    }
+    .dispatch-item.new { animation: flashIn 0.8s ease; }
+</style>
+
+<div class="dash-wrap">
+
+    <!-- KPI Cards -->
+    <div class="row g-3 mini-kpi-row">
+        <div class="col-md-3">
+            <a href="{% url 'sale_list' %}" class="stat-link">
+                <div class="stat-card stat-amber">
+                    <i class="bi bi-cash-stack icon"></i>
+                    <h2>{{ total_sales }}</h2>
+                    <p>Total Sales (PKR)</p>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="{% url 'sale_list' %}?status=Paid" class="stat-link">
+                <div class="stat-card stat-green">
+                    <i class="bi bi-check-circle-fill icon"></i>
+                    <h2>{{ total_received }}</h2>
+                    <p>Amount Received</p>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="{% url 'sale_list' %}?status=Unpaid" class="stat-link">
+                <div class="stat-card stat-red">
+                    <i class="bi bi-hourglass-split icon"></i>
+                    <h2>{{ total_outstanding }}</h2>
+                    <p>Outstanding</p>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="{% url 'sale_list' %}" class="stat-link">
+                <div class="stat-card stat-blue">
+                    <i class="bi bi-truck icon"></i>
+                    <h2>{{ total_tons_sold }}</h2>
+                    <p>Tons Sold</p>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Chart Row -->
+    <div class="row g-3 chart-row">
+        <div class="col-md-8">
+            <div class="panel h-100">
+                <div class="panel-title d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-graph-up"></i> Sales Trend — Last 30 Days</span>
+                    <small style="color:var(--text-muted); font-weight:400; font-size:12px;">PKR</small>
+                </div>
+                <canvas id="salesTrendChart"></canvas>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="panel h-100">
+                <div class="panel-title"><i class="bi bi-trophy-fill"></i> Top Customers</div>
+                {% if top_customers %}
+                    {% for name, amount in top_customers %}
+                    <div class="top-cust-item">
+                        <div style="min-width:0;">
+                            <div style="color:var(--text-primary); font-weight:500; font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ name }}</div>
+                            <small style="color:var(--text-muted); font-size:12px;">PKR {{ amount|floatformat:0 }}</small>
+                        </div>
+                        <i class="bi bi-star-fill" style="color:var(--accent); flex-shrink:0;"></i>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p style="color:var(--text-muted); margin:0; font-size:13px;">No data yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Dispatch Feed + Recent Sales -->
+    <div class="row g-3">
+        <div class="col-md-5">
+            <div class="panel h-100">
+                <div class="panel-title d-flex justify-content-between align-items-center">
+                    <span>
+                        <i class="bi bi-broadcast" style="color:#ef4444;"></i> Live Dispatch Feed
+                    </span>
+                    <span id="liveIndicator" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); font-weight:400;">
+                        <span class="live-dot"></span> LIVE
+                    </span>
+                </div>
+                <div id="liveFeed" style="max-height:340px; overflow-y:auto;">
+                    <p style="color:var(--text-muted); text-align:center; padding:20px; margin:0; font-size:13px;">
+                        Waiting for dispatches...
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-7">
+            <div class="panel h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="panel-title mb-0" style="border:none; padding:0;">
+                        <i class="bi bi-receipt"></i> Recent Sales
+                    </div>
+                    <a href="{% url 'sale_list' %}" class="btn btn-outline-amber btn-sm">
+                        View All <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+                {% if recent_sales %}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Invoice</th>
+                            <th>Date</th>
+                            <th>Customer</th>
+                            <th>Tons</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in recent_sales|slice:":8" %}
+                        <tr>
+                            <td><span style="color:var(--accent); font-weight:600;">{{ s.invoice_no }}</span></td>
+                            <td>{{ s.date }}</td>
+                            <td>{{ s.customer.name }}</td>
+                            <td>{{ s.quantity_tons }}</td>
+                            <td>{{ s.total_amount }}</td>
+                            <td>
+                                {% if s.payment_status == 'Paid' %}
+                                    <span class="badge-status badge-active">PAID</span>
+                                {% elif s.payment_status == 'Partial' %}
+                                    <span class="badge-status badge-leave">PARTIAL</span>
+                                {% else %}
+                                    <span class="badge-status badge-inactive">UNPAID</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p style="color:var(--text-muted); text-align:center; padding:20px; margin:0;">No sales yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{{ trend_labels|json_script:"trend_labels" }}
+{{ trend_data|json_script:"trend_data" }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    (function() {
+        // ==================== CHART ====================
+        const trendLabels = JSON.parse(document.getElementById('trend_labels').textContent);
+        const trendData = JSON.parse(document.getElementById('trend_data').textContent);
+
+        const style = getComputedStyle(document.documentElement);
+        const accent = style.getPropertyValue('--accent').trim();
+        const borderLight = style.getPropertyValue('--border-light').trim();
+        const textMuted = style.getPropertyValue('--text-muted').trim();
+
+        const ctx = document.getElementById('salesTrendChart').getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+        gradient.addColorStop(0, 'rgba(229, 161, 28, 0.4)');
+        gradient.addColorStop(1, 'rgba(229, 161, 28, 0.02)');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: trendLabels,
+                datasets: [{
+                    label: 'Sales (PKR)',
+                    data: trendData,
+                    borderColor: accent,
+                    backgroundColor: gradient,
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.35,
+                    pointBackgroundColor: accent,
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 3.2,
+                animation: { duration: 500 },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.85)',
+                        padding: 10,
+                        titleColor: '#fff',
+                        bodyColor: '#fff',
+                        callbacks: {
+                            label: function(context) {
+                                return 'PKR ' + Number(context.parsed.y).toLocaleString();
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: textMuted, font: { size: 10 }, maxRotation: 0, autoSkipPadding: 15 }, grid: { color: borderLight, drawBorder: false } },
+                    y: {
+                        ticks: {
+                            color: textMuted,
+                            font: { size: 10 },
+                            callback: function(v) {
+                                if (v >= 1000000) return (v / 1000000).toFixed(1) + 'M';
+                                if (v >= 1000) return (v / 1000).toFixed(0) + 'K';
+                                return v;
+                            }
+                        },
+                        grid: { color: borderLight, drawBorder: false },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // ==================== LIVE FEED ====================
+        const feedBox = document.getElementById('liveFeed');
+        let knownIds = new Set();
+        let firstLoad = true;
+
+        function statusBadge(status) {
+            if (status === 'Paid') return '<span class="badge-status badge-active" style="font-size:10.5px;">PAID</span>';
+            if (status === 'Partial') return '<span class="badge-status badge-leave" style="font-size:10.5px;">PARTIAL</span>';
+            return '<span class="badge-status badge-inactive" style="font-size:10.5px;">UNPAID</span>';
+        }
+
+        function renderFeed(dispatches) {
+            if (!dispatches.length) {
+                feedBox.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:20px; margin:0; font-size:13px;">No dispatches today.</p>';
+                return;
+            }
+
+            const html = dispatches.map(d => {
+                const isNew = !knownIds.has(d.id) && !firstLoad;
+                return `
+                    <div class="dispatch-item ${isNew ? 'new' : ''}">
+                        <div class="dispatch-icon"><i class="bi bi-truck"></i></div>
+                        <div class="dispatch-info">
+                            <div class="dispatch-title">${d.customer}</div>
+                            <div class="dispatch-meta">
+                                ${d.truck_no ? '<i class="bi bi-truck"></i> ' + d.truck_no + ' · ' : ''}
+                                <strong style="color:var(--accent);">${d.quantity_tons} T</strong>
+                                · ${d.invoice_no}
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            ${statusBadge(d.payment_status)}
+                            <div class="dispatch-time" style="margin-top:4px;">${d.created_at_display}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            feedBox.innerHTML = html;
+            dispatches.forEach(d => knownIds.add(d.id));
+        }
+
+        function pollFeed() {
+            fetch('{% url "sales_live_api" %}')
+                .then(r => r.json())
+                .then(data => {
+                    renderFeed(data.dispatches || []);
+                    firstLoad = false;
+                })
+                .catch(err => console.error('Live feed error:', err));
+        }
+
+        pollFeed();
+        setInterval(pollFeed, 10000);
+    })();
+</script>
+
+{% endblock %}

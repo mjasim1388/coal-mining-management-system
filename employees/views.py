@@ -18,6 +18,52 @@ from datetime import date
 def dashboard(request):
     from datetime import date, timedelta
 
+    # Check role
+    user_roles = set(request.user.groups.values_list('name', flat=True))
+    is_viewer_only = (user_roles == {'Viewer'}) and not request.user.is_superuser
+
+    # ---------- VIEWER-ONLY DASHBOARD (SALES ONLY) ----------
+    if is_viewer_only:
+        sales = Sale.objects.select_related('customer').all()
+
+        total_sales = sum(s.total_amount for s in sales)
+        total_received = sum(s.amount_paid for s in sales)
+        total_outstanding = total_sales - total_received
+        total_tons_sold = sum(s.quantity_tons for s in sales)
+
+        recent_sales = sales.order_by('-date')[:10]
+
+        # Sales trend (last 30 days)
+        today = date.today()
+        trend_labels = []
+        trend_data = []
+        for i in range(29, -1, -1):
+            d = today - timedelta(days=i)
+            amount = sum(
+                s.total_amount for s in Sale.objects.filter(date=d)
+            )
+            trend_labels.append(d.strftime('%d %b'))
+            trend_data.append(float(amount))
+
+        # Top customers
+        customer_totals = {}
+        for s in sales:
+            name = s.customer.name
+            customer_totals[name] = customer_totals.get(name, 0) + float(s.total_amount)
+        top_customers = sorted(customer_totals.items(), key=lambda x: x[1], reverse=True)[:5]
+
+        return render(request, 'viewer_dashboard.html', {
+            'total_sales': total_sales,
+            'total_received': total_received,
+            'total_outstanding': total_outstanding,
+            'total_tons_sold': total_tons_sold,
+            'recent_sales': recent_sales,
+            'trend_labels': trend_labels,
+            'trend_data': trend_data,
+            'top_customers': top_customers,
+        })
+
+    # ---------- FULL DASHBOARD (MANAGER / ACCOUNTANT) ----------
     total = Employee.objects.count()
     active = Employee.objects.filter(status='Active').count()
     on_leave = Employee.objects.filter(status='On Leave').count()
@@ -26,21 +72,15 @@ def dashboard(request):
     total_production = ProductionRecord.objects.aggregate(t=Sum('quantity_tons'))['t'] or 0
     mine_count = Mine.objects.count()
 
-    # Sales & finance
     total_sales = sum(s.total_amount for s in Sale.objects.all())
     total_received = sum(s.amount_paid for s in Sale.objects.all())
     total_outstanding = total_sales - total_received
 
-    # Payroll
     total_payroll = sum(p.net_salary for p in Payroll.objects.all())
 
-    # Low stock items
     low_stock_items = [i for i in InventoryItem.objects.all() if i.is_low_stock]
-
-    # Unpaid / partial invoices
     unpaid_sales = Sale.objects.exclude(payment_status='Paid')[:5]
 
-    # Production trend - last 7 days
     today = date.today()
     trend_labels = []
     trend_data = []
@@ -50,7 +90,6 @@ def dashboard(request):
         qty = ProductionRecord.objects.filter(date=d).aggregate(t=Sum('quantity_tons'))['t'] or 0
         trend_data.append(float(qty))
 
-    # Production by mine (top 5)
     mine_labels = []
     mine_data = []
     for m in Mine.objects.all()[:5]:
@@ -59,23 +98,13 @@ def dashboard(request):
         mine_data.append(float(q))
 
     context = {
-        'total': total,
-        'active': active,
-        'on_leave': on_leave,
-        'inactive': inactive,
-        'recent': recent,
-        'total_production': total_production,
-        'mine_count': mine_count,
-        'total_sales': total_sales,
-        'total_received': total_received,
-        'total_outstanding': total_outstanding,
-        'total_payroll': total_payroll,
-        'low_stock_items': low_stock_items,
-        'unpaid_sales': unpaid_sales,
-        'trend_labels': trend_labels,
-        'trend_data': trend_data,
-        'mine_labels': mine_labels,
-        'mine_data': mine_data,
+        'total': total, 'active': active, 'on_leave': on_leave, 'inactive': inactive,
+        'recent': recent, 'total_production': total_production, 'mine_count': mine_count,
+        'total_sales': total_sales, 'total_received': total_received,
+        'total_outstanding': total_outstanding, 'total_payroll': total_payroll,
+        'low_stock_items': low_stock_items, 'unpaid_sales': unpaid_sales,
+        'trend_labels': trend_labels, 'trend_data': trend_data,
+        'mine_labels': mine_labels, 'mine_data': mine_data,
     }
     return render(request, 'dashboard.html', context)
 
@@ -676,39 +705,67 @@ def sale_detail(request, pk):
 
 @role_required('Manager', 'Accountant')
 def sale_add(request):
+    from datetime import date as date_today
+
     if request.method == 'POST':
         form = SaleForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Sale record added.')
-            return redirect('sale_list')
+            sale = form.save(commit=False)
+            sale.created_by = request.user
+            sale.date = date_today.today()           # ← Auto-set today
+            sale.dispatch_date = date_today.today()  # ← Auto-set today
+            sale.save()
+            messages.success(request, f'Dispatch {sale.dispatch_no} created. Print the slip for the driver.')
+            return redirect('sale_slip', pk=sale.pk)  # ← Auto-open slip
     else:
         form = SaleForm()
-    return render(request, 'sales/sale_form.html', {'form': form, 'title': 'Add Sale'})
-
+    return render(request, 'sales/sale_form.html', {'form': form, 'title': 'New Dispatch'})
 
 @role_required('Manager', 'Accountant')
 def sale_edit(request, pk):
     sale = get_object_or_404(Sale, pk=pk)
+
+    # Locked dispatches can only be edited by managers
+    is_manager_user = request.user.is_superuser or request.user.groups.filter(name='Manager').exists()
+    if sale.is_locked and not is_manager_user:
+        messages.error(request, 'This dispatch is locked and cannot be edited. Contact the manager.')
+        return redirect('sale_detail', pk=sale.pk)
+
+    if sale.voided:
+        messages.error(request, 'This dispatch has been voided and cannot be edited.')
+        return redirect('sale_detail', pk=sale.pk)
+
     if request.method == 'POST':
         form = SaleForm(request.POST, instance=sale)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Sale updated.')
+            messages.success(request, 'Dispatch updated.')
             return redirect('sale_list')
     else:
         form = SaleForm(instance=sale)
-    return render(request, 'sales/sale_form.html', {'form': form, 'title': 'Edit Sale'})
+    return render(request, 'sales/sale_form.html', {'form': form, 'title': 'Edit Dispatch'})
 
 
-@role_required('Manager', 'Accountant')
+@role_required('Manager')
 def sale_delete(request, pk):
     sale = get_object_or_404(Sale, pk=pk)
+
     if request.method == 'POST':
-        sale.delete()
-        messages.success(request, 'Sale deleted.')
+        reason = request.POST.get('void_reason', '').strip()
+        if not reason:
+            messages.error(request, 'Please provide a reason for voiding.')
+            return redirect('sale_delete', pk=sale.pk)
+
+        sale.voided = True
+        sale.voided_by = request.user
+        sale.voided_reason = reason
+        from django.utils import timezone
+        sale.voided_at = timezone.now()
+        sale.save()
+        messages.success(request, f'Dispatch {sale.dispatch_no} has been voided.')
         return redirect('sale_list')
-    return render(request, 'sales/sale_delete.html', {'sale': sale})
+
+    return render(request, 'sales/sale_void.html', {'sale': sale})
 
 # ---------- EXCEL EXPORTS ----------
 @role_required('Manager', 'Accountant')
@@ -1429,3 +1486,49 @@ def maintenance_delete(request, pk):
         messages.success(request, 'Maintenance log deleted.')
         return redirect('equipment_detail', pk=equipment_pk)
     return render(request, 'equipment/maintenance_delete.html', {'log': log})
+
+# ---------- LIVE DISPATCH API ----------
+@role_required('Manager', 'Accountant', 'Viewer')
+def sales_live_api(request):
+    """Returns recent dispatches as JSON for live polling."""
+    from django.http import JsonResponse
+    from datetime import date, timedelta
+
+    # Show dispatches from the last 24 hours + today
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+
+    recent = Sale.objects.select_related('customer', 'mine').filter(
+        date__gte=yesterday
+    ).order_by('-created_at')[:15]
+
+    data = []
+    for s in recent:
+        data.append({
+            'id': s.pk,
+            'invoice_no': s.invoice_no,
+            'customer': s.customer.name,
+            'mine': s.mine.name if s.mine else '',
+            'quantity_tons': float(s.quantity_tons),
+            'total_amount': float(s.total_amount),
+            'truck_no': s.truck_no or '',
+            'driver_name': s.driver_name or '',
+            'dispatch_date': str(s.dispatch_date) if s.dispatch_date else '',
+            'date': str(s.date),
+            'payment_status': s.payment_status,
+            'created_at': s.created_at.isoformat(),
+            'created_at_display': s.created_at.strftime('%H:%M:%S'),
+        })
+
+    return JsonResponse({
+        'dispatches': data,
+        'server_time': today.isoformat(),
+        'count': len(data),
+    })
+
+# ---------- DISPATCH SLIP ----------
+@role_required('Manager', 'Accountant', 'Viewer')
+def sale_slip(request, pk):
+    """Printable dispatch slip for the driver."""
+    sale = get_object_or_404(Sale, pk=pk)
+    return render(request, 'sales/slip.html', {'sale': sale})

@@ -117,16 +117,18 @@
                         <span class="badge-status badge-inactive">UNPAID</span>
                     {% endif %}
                 </td>
-                <td>
-                    <a href="{% url 'sale_detail' s.pk %}" class="btn btn-sm btn-outline-amber">
+                <td style="white-space: nowrap;">
+                    <a href="{% url 'sale_detail' s.pk %}" class="btn btn-sm btn-outline-amber" title="View Invoice">
                         <i class="bi bi-eye"></i>
                     </a>
-                    <a href="{% url 'sale_edit' s.pk %}" class="btn btn-sm btn-outline-amber">
-                        <i class="bi bi-pencil"></i>
+                    <a href="{% url 'sale_slip' s.pk %}" target="_blank" class="btn btn-sm btn-amber" title="Print Dispatch Slip">
+                        <i class="bi bi-printer"></i> Slip
                     </a>
-                    <a href="{% url 'sale_delete' s.pk %}" class="btn btn-sm btn-outline-danger">
-                        <i class="bi bi-trash"></i>
+                    {% if is_manager %}
+                    <a href="{% url 'sale_delete' s.pk %}" class="btn btn-sm btn-outline-danger" title="Void Dispatch">
+                        <i class="bi bi-x-circle"></i>
                     </a>
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}
@@ -139,5 +141,20 @@
     </p>
     {% endif %}
 </div>
+<script>
+    (function() {
+        // Save scroll position when leaving the page
+        window.addEventListener('beforeunload', function() {
+            sessionStorage.setItem('salesListScroll', window.scrollY);
+        });
 
+        // Restore scroll position when returning
+        window.addEventListener('load', function() {
+            var saved = sessionStorage.getItem('salesListScroll');
+            if (saved) {
+                window.scrollTo(0, parseInt(saved));
+            }
+        });
+    })();
+</script>
 {% endblock %}

@@ -23,15 +23,6 @@
            DESIGN TOKENS
            ========================================================= */
         :root {
-            /* Sidebar stays dark in both themes */
-            --sb-bg: #0a0e13;
-            --sb-hover: #121922;
-            --sb-active: #172029;
-            --sb-border: #1b2430;
-            --sb-text: #9aa7b6;
-            --sb-heading: #66768a;
-            --sb-accent: #e5a11c;
-
             --sidebar-width: 244px;
             --radius-lg: 10px;
             --radius-md: 8px;
@@ -62,6 +53,17 @@
             --warning: #e5a11c;
             --warning-soft: rgba(229, 161, 28, 0.15);
             --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+                        /* Sidebar (dark theme) */
+            --sb-bg: #0a0e13;
+            --sb-hover: #121922;
+            --sb-active: #172029;
+            --sb-border: #1b2430;
+            --sb-text: #9aa7b6;
+            --sb-heading: #66768a;
+            --sb-accent: #e5a11c;
+            --sb-brand-text: #ffffff;
+            --sb-link-hover-text: #ffffff;
+            --sb-active-text: #ffffff;
         }
 
         [data-theme="light"] {
@@ -87,6 +89,17 @@
             --warning: #b87708;
             --warning-soft: rgba(184, 119, 8, 0.10);
             --shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+                        /* Sidebar (light theme) */
+            --sb-bg: #ffffff;
+            --sb-hover: #f3f5f8;
+            --sb-active: #eef1f5;
+            --sb-border: #e2e6ec;
+            --sb-text: #455366;
+            --sb-heading: #8a94a3;
+            --sb-accent: #b87708;
+            --sb-brand-text: #17202b;
+            --sb-link-hover-text: #17202b;
+            --sb-active-text: #17202b;
         }
 
         /* =========================================================
@@ -155,7 +168,7 @@
         }
         .brand-text strong {
             display: block;
-            color: #fff;
+            color: var(--sb-brand-text);
             font-size: 15px;
             font-weight: 700;
             letter-spacing: 0.2px;
@@ -202,11 +215,11 @@
         }
         .sidebar-nav a:hover,
         .sidebar-nav form button:hover {
-            color: #fff;
+            color: var(--sb-link-hover-text);
             background: var(--sb-hover);
         }
         .sidebar-nav a.active {
-            color: #fff;
+            color: var(--sb-active-text);
             background: var(--sb-active);
         }
         .sidebar-nav a.active::before {
@@ -228,11 +241,17 @@
             flex-shrink: 0;
         }
         .sidebar-nav a.active i { color: var(--sb-accent); }
-        .sidebar-nav a.nav-backup { color: #4cc790; }
-        .sidebar-nav a.nav-backup:hover { background: rgba(47, 182, 124, 0.12); color: #7fdcb2; }
-        .sidebar-nav a.nav-backup.active { background: rgba(47, 182, 124, 0.16); color: #7fdcb2; }
-        .sidebar-nav a.nav-backup.active i { color: #4cc790; }
-        .sidebar-nav a.nav-backup.active::before { background: #4cc790; }
+        .sidebar-nav a.nav-backup { color: var(--success); }
+        .sidebar-nav a.nav-backup:hover {
+            background: color-mix(in srgb, var(--success) 12%, transparent);
+            color: var(--success);
+        }
+        .sidebar-nav a.nav-backup.active {
+            background: color-mix(in srgb, var(--success) 16%, transparent);
+            color: var(--success);
+        }
+        .sidebar-nav a.nav-backup.active i { color: var(--success); }
+        .sidebar-nav a.nav-backup.active::before { background: var(--success); }
 
         .sidebar-backdrop {
             display: none;
@@ -876,6 +895,61 @@
         document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setSidebar(false); });
     })();
 </script>
+
+<script>
+    /* =========================================================
+       GLOBAL SCROLL POSITION PRESERVATION
+       ========================================================= */
+    (function () {
+        // Unique key per page URL (path only, so filters/params are ignored)
+        var key = 'scrollPos:' + window.location.pathname;
+
+        // Save scroll position continuously (debounced)
+        var saveTimer = null;
+        window.addEventListener('scroll', function () {
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(function () {
+                try { sessionStorage.setItem(key, String(window.scrollY)); } catch (e) {}
+            }, 150);
+        }, { passive: true });
+
+        // Save immediately before navigating away (more reliable than beforeunload)
+        window.addEventListener('pagehide', function () {
+            try { sessionStorage.setItem(key, String(window.scrollY)); } catch (e) {}
+        });
+
+        // Restore on load
+        window.addEventListener('load', function () {
+            try {
+                var saved = sessionStorage.getItem(key);
+                if (saved && parseInt(saved) > 0) {
+                    // Wait one frame so layout completes
+                    requestAnimationFrame(function () {
+                        window.scrollTo(0, parseInt(saved));
+                    });
+                }
+            } catch (e) {}
+        });
+
+        // Clear the saved position when the page is reached via a fresh link
+        // (i.e. not via Back button). We detect this with the Navigation API where
+        // supported, otherwise rely on performance.navigation.
+        try {
+            var navEntries = performance.getEntriesByType('navigation');
+            if (navEntries.length && navEntries[0].type !== 'back_forward') {
+                // For fresh navigations we still restore — but only within the same
+                // session. Reset the key when the user clicks any link from the sidebar
+                // or a filter form (those are intentional fresh visits).
+                document.querySelectorAll('.sidebar a, .sidebar form button').forEach(function (el) {
+                    el.addEventListener('click', function () {
+                        try { sessionStorage.removeItem(key); } catch (e) {}
+                    });
+                });
+            }
+        } catch (e) {}
+    })();
+</script>
+
 {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -63,7 +63,9 @@ urlpatterns = [
     path('sales/add/', views.sale_add, name='sale_add'),
     path('sales/<int:pk>/', views.sale_detail, name='sale_detail'),
     path('sales/<int:pk>/edit/', views.sale_edit, name='sale_edit'),
-    path('sales/<int:pk>/delete/', views.sale_delete, name='sale_delete'),
+    path('sales/<int:pk>/void/', views.sale_delete, name='sale_delete'),
+    path('sales/<int:pk>/slip/', views.sale_slip, name='sale_slip'),
+    path('sales/live/', views.sales_live_api, name='sales_live_api'),
 
     # Excel Exports
     path('export/employees/', views.export_employees, name='export_employees'),
@@ -103,5 +105,7 @@ urlpatterns = [
     path('maintenance/add/', views.maintenance_add, name='maintenance_add'),
     path('maintenance/<int:pk>/edit/', views.maintenance_edit, name='maintenance_edit'),
     path('maintenance/<int:pk>/delete/', views.maintenance_delete, name='maintenance_delete'),
+
+
 
 ]

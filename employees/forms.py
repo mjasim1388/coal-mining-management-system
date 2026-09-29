@@ -162,26 +162,27 @@ class CustomerForm(forms.ModelForm):
 class SaleForm(forms.ModelForm):
     class Meta:
         model = Sale
-        fields = ['invoice_no', 'customer', 'mine', 'date', 'coal_type',
-                  'quantity_tons', 'price_per_ton', 'truck_no', 'driver_name',
-                  'driver_phone', 'dispatch_date', 'payment_status',
-                  'amount_paid', 'notes']
+        fields = ['customer', 'mine', 'coal_type', 'quantity_tons',
+                  'price_per_ton', 'truck_no', 'driver_name', 'driver_phone',
+                  'payment_status', 'amount_paid', 'notes']
         widgets = {
-            'invoice_no': forms.TextInput(attrs={'class': 'form-control'}),
-            'customer': forms.Select(attrs={'class': 'form-control'}),
+            'customer': forms.Select(attrs={'class': 'form-control', 'required': True}),
             'mine': forms.Select(attrs={'class': 'form-control'}),
-            'date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'coal_type': forms.Select(attrs={'class': 'form-control'}),
-            'quantity_tons': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'price_per_ton': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'truck_no': forms.TextInput(attrs={'class': 'form-control'}),
-            'driver_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'quantity_tons': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'required': True, 'placeholder': 'e.g. 50'}),
+            'price_per_ton': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'required': True, 'placeholder': 'e.g. 25000'}),
+            'truck_no': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. TRK-001'}),
+            'driver_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Driver full name'}),
             'driver_phone': forms.TextInput(attrs={'class': 'form-control'}),
-            'dispatch_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'payment_status': forms.Select(attrs={'class': 'form-control'}),
             'amount_paid': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Only show customers that are approved (not needed — customers have no approval)
+        self.fields['customer'].empty_label = 'Select Customer...'
 
 class EquipmentForm(forms.ModelForm):
     class Meta:

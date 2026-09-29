@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}Void Dispatch - Coal Mine{% endblock %}
+{% block page_title %}VOID DISPATCH{% endblock %}
+
+{% block content %}
+
+<div class="panel" style="max-width: 640px;">
+    <div class="panel-title" style="color:#ef5b5b;">
+        <i class="bi bi-exclamation-triangle-fill"></i> Void Dispatch
+    </div>
+
+    <div style="padding: 16px 18px; background: var(--bg-raised); border-radius: 8px; border: 1px solid var(--border-light); margin-bottom: 22px;">
+        <div class="row g-2">
+            <div class="col-md-6">
+                <label class="form-label">Dispatch No</label>
+                <p style="color: var(--accent); font-family: monospace; font-weight: 600;">{{ sale.dispatch_no }}</p>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Date</label>
+                <p>{{ sale.date }}</p>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Customer</label>
+                <p>{{ sale.customer.name }}</p>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Truck No</label>
+                <p>{{ sale.truck_no|default:"—" }}</p>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Quantity</label>
+                <p>{{ sale.quantity_tons }} tons</p>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Total</label>
+                <p>PKR {{ sale.total_amount }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div style="padding: 14px 18px; background: rgba(239, 91, 91, 0.1); border: 1px solid rgba(239, 91, 91, 0.35); border-radius: 8px; margin-bottom: 22px;">
+        <p style="margin: 0; color: #ef5b5b; font-size: 13.5px;">
+            <i class="bi bi-info-circle-fill"></i>
+            <strong>This action cannot be undone.</strong>
+            The dispatch record will be marked as VOIDED but will remain in the system as a permanent record. The driver's slip remains valid proof that a dispatch was issued.
+        </p>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label">Reason for voiding *</label>
+            <textarea name="void_reason" class="form-control" rows="3" required
+                      placeholder="e.g. Wrong quantity entered, truck returned, wrong customer..."></textarea>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-danger">
+                <i class="bi bi-x-circle-fill"></i> Yes, Void This Dispatch
+            </button>
+            <a href="{% url 'sale_detail' sale.pk %}" class="btn btn-outline-amber">
+                <i class="bi bi-arrow-left"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+{% endblock %}
