@@ -4,158 +4,249 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Coal Mining System{% endblock %}</title>
+
+    <!-- Apply saved theme before first paint to avoid a flash -->
+    <script>
+        (function () {
+            var t = 'dark';
+            try { t = localStorage.getItem('cm-theme') || 'dark'; } catch (e) {}
+            document.documentElement.setAttribute('data-theme', t);
+            document.documentElement.setAttribute('data-bs-theme', t);
+        })();
+    </script>
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* =========================================================
+           DESIGN TOKENS
+           ========================================================= */
         :root {
-            --bg-app: #0f172a;
-            --bg-panel: #1e293b;
-            --bg-sidebar: #0a0e16;
-            --bg-sidebar-hover: #1e293b;
-            --bg-sidebar-active: #000000;
-            --bg-hover-row: #263449;
-            --border-light: #293548;
-            --border-medium: #3d4c63;
-            --text-primary: #f1f5f9;
-            --text-secondary: #cbd5e1;
-            --text-muted: #64748b;
-            --text-sidebar: #94a3b8;
-            --accent: #f59e0b;
-            --accent-hover: #fbbf24;
-            --accent-soft: rgba(245, 158, 11, 0.15);
-            --success: #10b981;
-            --success-soft: rgba(16, 185, 129, 0.18);
-            --danger: #ef4444;
-            --danger-soft: rgba(239, 68, 68, 0.18);
-            --info: #3b82f6;
-            --info-soft: rgba(59, 130, 246, 0.18);
-            --warning-soft: rgba(245, 158, 11, 0.18);
+            /* Sidebar stays dark in both themes */
+            --sb-bg: #0a0e13;
+            --sb-hover: #121922;
+            --sb-active: #172029;
+            --sb-border: #1b2430;
+            --sb-text: #9aa7b6;
+            --sb-heading: #66768a;
+            --sb-accent: #e5a11c;
+
+            --sidebar-width: 244px;
+            --radius-lg: 10px;
+            --radius-md: 8px;
+            --radius-sm: 6px;
+            --font-sans: 'IBM Plex Sans', -apple-system, 'Segoe UI', Roboto, sans-serif;
         }
+
+        [data-theme="dark"] {
+            --bg-app: #0d1117;
+            --bg-panel: #151b23;
+            --bg-raised: #1b232d;
+            --bg-hover-row: #1a222c;
+            --border-light: #232c38;
+            --border-medium: #334050;
+            --text-primary: #e6eaf0;
+            --text-secondary: #b0bbc8;
+            --text-muted: #8391a3;
+            --accent: #e5a11c;
+            --accent-hover: #f0b43f;
+            --accent-ink: #1a1200;
+            --accent-soft: rgba(229, 161, 28, 0.14);
+            --success: #2fb67c;
+            --success-soft: rgba(47, 182, 124, 0.15);
+            --danger: #ef5b5b;
+            --danger-soft: rgba(239, 91, 91, 0.15);
+            --info: #4c9aff;
+            --info-soft: rgba(76, 154, 255, 0.15);
+            --warning: #e5a11c;
+            --warning-soft: rgba(229, 161, 28, 0.15);
+            --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+        }
+
+        [data-theme="light"] {
+            --bg-app: #f3f5f8;
+            --bg-panel: #ffffff;
+            --bg-raised: #f8f9fb;
+            --bg-hover-row: #f5f7fa;
+            --border-light: #e2e6ec;
+            --border-medium: #c9d0da;
+            --text-primary: #17202b;
+            --text-secondary: #455366;
+            --text-muted: #6a7788;
+            --accent: #b87708;
+            --accent-hover: #9a6206;
+            --accent-ink: #ffffff;
+            --accent-soft: rgba(184, 119, 8, 0.10);
+            --success: #0f8a5c;
+            --success-soft: rgba(15, 138, 92, 0.10);
+            --danger: #cf3a3a;
+            --danger-soft: rgba(207, 58, 58, 0.09);
+            --info: #1f6feb;
+            --info-soft: rgba(31, 111, 235, 0.09);
+            --warning: #b87708;
+            --warning-soft: rgba(184, 119, 8, 0.10);
+            --shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+        }
+
+        /* =========================================================
+           BASE
+           ========================================================= */
         * { box-sizing: border-box; }
         html, body { height: 100%; }
         body {
             background: var(--bg-app);
             color: var(--text-primary);
-            font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+            font-family: var(--font-sans);
             font-size: 14px;
+            line-height: 1.5;
             margin: 0;
             -webkit-font-smoothing: antialiased;
+            font-variant-numeric: tabular-nums;
+        }
+        a { color: var(--accent); }
+        a:hover { color: var(--accent-hover); }
+        h1, h2, h3, h4, h5, h6 { color: var(--text-primary); font-weight: 600; }
+        .text-muted { color: var(--text-muted) !important; }
+        hr { border-color: var(--border-light); opacity: 1; }
+
+        :focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
         }
 
-        /* ---------- LAYOUT ---------- */
+        /* =========================================================
+           LAYOUT
+           ========================================================= */
         .app-container { display: flex; min-height: 100vh; }
 
-        /* ---------- SIDEBAR ---------- */
+        /* =========================================================
+           SIDEBAR
+           ========================================================= */
         .sidebar {
-            width: 240px;
-            background: var(--bg-sidebar);
-            padding: 20px 0;
+            width: var(--sidebar-width);
+            background: var(--sb-bg);
             position: fixed;
             top: 0; left: 0; bottom: 0;
-            overflow-y: auto;
-            z-index: 100;
-            border-right: 1px solid var(--border-light);
+            display: flex;
+            flex-direction: column;
+            z-index: 1040;
+            border-right: 1px solid var(--sb-border);
+            transition: transform 0.2s ease;
         }
         .sidebar-brand {
-            padding: 4px 24px 24px;
-            border-bottom: 1px solid var(--border-light);
-            margin-bottom: 16px;
-        }
-        .sidebar-brand h5 {
-            margin: 0;
-            font-weight: 800;
-            font-size: 15px;
-            letter-spacing: 0.5px;
-            color: #fff;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
+            padding: 18px 20px;
+            border-bottom: 1px solid var(--sb-border);
         }
-        .sidebar-brand h5 i { color: var(--accent); font-size: 20px; }
-        .sidebar-brand small {
-            color: var(--text-muted);
-            font-size: 10px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            margin-left: 30px;
+        .brand-mark {
+            width: 34px;
+            height: 34px;
+            border-radius: var(--radius-md);
+            background: var(--sb-accent);
+            color: #1a1200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .brand-text strong {
             display: block;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            line-height: 1.2;
+        }
+        .brand-text span {
+            display: block;
+            color: var(--sb-heading);
+            font-size: 12px;
+            line-height: 1.3;
+        }
+        .sidebar-nav {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0 16px;
         }
         .sidebar-section {
-            padding: 10px 24px 6px;
-            font-size: 10px;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            font-weight: 700;
+            padding: 18px 20px 6px;
+            font-size: 12px;
+            color: var(--sb-heading);
+            font-weight: 600;
         }
-        .sidebar a {
-            color: var(--text-sidebar);
-            padding: 10px 24px;
+        .sidebar-nav a,
+        .sidebar-nav form button {
+            color: var(--sb-text);
+            margin: 1px 10px;
+            padding: 8px 12px;
             display: flex;
             align-items: center;
             text-decoration: none;
-            font-size: 13.5px;
+            font-size: 14px;
             font-weight: 500;
-            border-left: 3px solid transparent;
-            transition: all 0.15s ease;
+            border-radius: var(--radius-sm);
+            transition: background 0.12s ease, color 0.12s ease;
+            position: relative;
         }
-        .sidebar a:hover {
-            color: #fff;
-            background: var(--bg-sidebar-hover);
-        }
-        .sidebar a.active {
-            color: #fff;
-            background: var(--bg-sidebar-active);
-            border-left-color: var(--accent);
-        }
-        .sidebar a i {
-            margin-right: 12px;
-            font-size: 16px;
-            width: 18px;
-            text-align: center;
-                    .sidebar a[href*="backup"] {
-            color: #34d399 !important;
-            font-weight: 600;
-        }
-        .sidebar a[href*="backup"]:hover {
-            background: rgba(16, 185, 129, 0.15) !important;
-            color: #6ee7b7 !important;
-        }
-        .sidebar a[href*="backup"].active {
-            background: rgba(16, 185, 129, 0.2) !important;
-        }
-        }
-        .sidebar form button {
-            color: var(--text-sidebar);
+        .sidebar-nav form button {
             background: none;
             border: none;
-            padding: 10px 24px;
-            display: flex;
-            align-items: center;
-            width: 100%;
+            width: calc(100% - 20px);
             text-align: left;
-            font-size: 13.5px;
-            font-weight: 500;
             cursor: pointer;
             font-family: inherit;
-            border-left: 3px solid transparent;
-            transition: all 0.15s ease;
         }
-        .sidebar form button:hover {
+        .sidebar-nav a:hover,
+        .sidebar-nav form button:hover {
             color: #fff;
-            background: var(--bg-sidebar-hover);
+            background: var(--sb-hover);
         }
-        .sidebar form button i {
+        .sidebar-nav a.active {
+            color: #fff;
+            background: var(--sb-active);
+        }
+        .sidebar-nav a.active::before {
+            content: '';
+            position: absolute;
+            left: -10px;
+            top: 8px;
+            bottom: 8px;
+            width: 3px;
+            border-radius: 0 3px 3px 0;
+            background: var(--sb-accent);
+        }
+        .sidebar-nav a i,
+        .sidebar-nav form button i {
             margin-right: 12px;
             font-size: 16px;
             width: 18px;
             text-align: center;
+            flex-shrink: 0;
+        }
+        .sidebar-nav a.active i { color: var(--sb-accent); }
+        .sidebar-nav a.nav-backup { color: #4cc790; }
+        .sidebar-nav a.nav-backup:hover { background: rgba(47, 182, 124, 0.12); color: #7fdcb2; }
+        .sidebar-nav a.nav-backup.active { background: rgba(47, 182, 124, 0.16); color: #7fdcb2; }
+        .sidebar-nav a.nav-backup.active i { color: #4cc790; }
+        .sidebar-nav a.nav-backup.active::before { background: #4cc790; }
+
+        .sidebar-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            z-index: 1035;
         }
 
-        /* ---------- MAIN ---------- */
+        /* =========================================================
+           MAIN AREA + TOPBAR
+           ========================================================= */
         .main-area {
-            margin-left: 240px;
+            margin-left: var(--sidebar-width);
             flex: 1;
             min-width: 0;
             display: flex;
@@ -163,7 +254,8 @@
         }
         .topbar {
             background: var(--bg-panel);
-            padding: 16px 32px;
+            height: 60px;
+            padding: 0 28px;
             border-bottom: 1px solid var(--border-light);
             display: flex;
             justify-content: space-between;
@@ -171,345 +263,400 @@
             position: sticky;
             top: 0;
             z-index: 50;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
+        .topbar-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
         .topbar .page-title {
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 600;
-            letter-spacing: 0.5px;
             color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        .topbar .page-title i { color: var(--accent); font-size: 16px; }
-        .topbar .user-chip {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: var(--bg-app);
-            padding: 6px 14px 6px 6px;
-            border-radius: 30px;
-            font-size: 13px;
-            border: 1px solid var(--border-light);
-            color: var(--text-secondary);
-        }
-        .topbar .user-avatar {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--accent), #d97706);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-            font-weight: 700;
-            font-size: 12px;
-            text-transform: uppercase;
-        }
-        .content { padding: 28px 32px; flex: 1; }
-                /* ---------- FOOTER ---------- */
-        .app-footer {
-            background: var(--bg-panel);
-            border-top: 1px solid var(--border-light);
-            padding: 14px 32px;
-            font-size: 12.5px;
-            color: var(--text-muted);
-            text-align: center;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 8px;
-            letter-spacing: 0.3px;
-        }
-        .app-footer strong {
-            color: var(--accent);
-            font-weight: 700;
-        }
-        .footer-sep {
-            opacity: 0.5;
-        }
+        .topbar-right { display: flex; align-items: center; gap: 6px; }
 
-        /* Notification bell */
-        .notification-bell {
+        .icon-btn {
             position: relative;
+            width: 38px;
+            height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            border-radius: var(--radius-md);
             color: var(--text-secondary);
-            font-size: 20px;
-            padding: 8px 12px;
-            border-radius: 8px;
+            font-size: 18px;
             text-decoration: none;
-            transition: all 0.15s;
+            cursor: pointer;
+            transition: background 0.12s ease, color 0.12s ease;
         }
-        .notification-bell:hover {
-            background: var(--accent-soft);
-            color: var(--accent-hover);
-        }
+        .icon-btn:hover { background: var(--bg-raised); color: var(--text-primary); }
+        .sidebar-toggle { display: none; }
+
         .notification-badge {
             position: absolute;
-            top: 2px;
-            right: 4px;
+            top: 3px;
+            right: 2px;
             background: var(--danger);
             color: #fff;
             font-size: 10px;
             font-weight: 700;
-            padding: 2px 6px;
+            line-height: 1;
+            padding: 3px 5px;
             border-radius: 10px;
-            min-width: 18px;
+            min-width: 17px;
             text-align: center;
+            border: 2px solid var(--bg-panel);
         }
 
-        /* ---------- STAT CARDS ---------- */
+        .topbar-divider {
+            width: 1px;
+            height: 24px;
+            background: var(--border-light);
+            margin: 0 8px;
+        }
+        .user-chip {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 4px 4px 4px 0;
+        }
+        .user-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: var(--bg-raised);
+            border: 1px solid var(--border-medium);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .user-meta { line-height: 1.25; }
+        .user-meta .user-name { font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
+        .user-meta .user-role { font-size: 12px; color: var(--text-muted); }
+
+        .content { padding: 28px; flex: 1; }
+
+        /* =========================================================
+           FOOTER
+           ========================================================= */
+        .app-footer {
+            border-top: 1px solid var(--border-light);
+            padding: 14px 28px;
+            font-size: 12.5px;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 4px 16px;
+        }
+        .app-footer strong { color: var(--text-secondary); font-weight: 600; }
+
+        /* =========================================================
+           STAT CARDS
+           ========================================================= */
         .stat-card {
+            --stat-color: var(--accent);
             background: var(--bg-panel);
             border: 1px solid var(--border-light);
-            border-radius: 12px;
-            padding: 22px;
+            border-left: 3px solid var(--stat-color);
+            border-radius: var(--radius-lg);
+            padding: 18px 20px;
             position: relative;
-            overflow: hidden;
-            transition: all 0.2s ease;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+            box-shadow: var(--shadow);
+            transition: border-color 0.15s ease;
         }
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 3px;
-            background: var(--accent);
-        }
-        .stat-card.stat-green::before { background: var(--success); }
-        .stat-card.stat-red::before { background: var(--danger); }
-        .stat-card.stat-blue::before { background: var(--info); }
+        .stat-card.stat-green { --stat-color: var(--success); }
+        .stat-card.stat-red   { --stat-color: var(--danger); }
+        .stat-card.stat-blue  { --stat-color: var(--info); }
         .stat-card .icon {
             position: absolute;
-            top: 20px;
-            right: 20px;
-            font-size: 28px;
-            color: var(--text-muted);
-            opacity: 0.4;
+            top: 16px;
+            right: 16px;
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: var(--stat-color);
+            background: color-mix(in srgb, var(--stat-color) 14%, transparent);
         }
         .stat-card h2 {
-            font-size: 28px;
+            font-size: 26px;
             font-weight: 700;
             margin: 0;
-            color: var(--text-primary);
-            letter-spacing: -0.5px;
+            padding-right: 48px;
+            letter-spacing: -0.3px;
         }
         .stat-card p {
-            margin: 6px 0 0;
-            font-size: 11px;
-            letter-spacing: 1.2px;
-            text-transform: uppercase;
+            margin: 4px 0 0;
+            font-size: 13px;
             color: var(--text-muted);
-            font-weight: 600;
+            font-weight: 500;
         }
         .stat-link { text-decoration: none; display: block; color: inherit; }
-        .stat-link:hover .stat-card {
-            transform: translateY(-3px);
-            border-color: var(--accent);
-            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
-        }
+        .stat-link:hover { color: inherit; }
+        .stat-link:hover .stat-card { border-color: var(--border-medium); border-left-color: var(--stat-color); }
 
-        /* ---------- PANELS ---------- */
+        /* =========================================================
+           PANELS
+           ========================================================= */
         .panel {
             background: var(--bg-panel);
             border: 1px solid var(--border-light);
-            border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+            border-radius: var(--radius-lg);
+            padding: 22px 24px;
+            box-shadow: var(--shadow);
         }
         .panel-title {
-            font-size: 12px;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            color: var(--text-secondary);
-            margin-bottom: 18px;
-            font-weight: 700;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--border-light);
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
         }
-        .panel-title i { color: var(--accent); font-size: 14px; }
+        .panel-title i { color: var(--accent); font-size: 16px; }
 
-        /* ---------- TABLES ---------- */
-        .table { color: var(--text-primary); margin: 0; --bs-table-bg: transparent; --bs-table-color: var(--text-primary); }
+        /* =========================================================
+           TABLES
+           ========================================================= */
+        .table {
+            color: var(--text-primary);
+            margin: 0;
+            --bs-table-bg: transparent;
+            --bs-table-color: var(--text-primary);
+            --bs-table-hover-bg: var(--bg-hover-row);
+        }
         .table thead th {
-            background: var(--bg-app);
-            color: var(--text-muted);
-            font-size: 10.5px;
-            letter-spacing: 1.2px;
-            text-transform: uppercase;
+            background: var(--bg-raised);
+            color: var(--text-secondary);
+            font-size: 12.5px;
+            font-weight: 600;
             border: none;
             border-bottom: 1px solid var(--border-light);
-            padding: 14px 16px;
-            font-weight: 700;
+            padding: 11px 16px;
+            white-space: nowrap;
         }
+        .table thead th:first-child { border-top-left-radius: var(--radius-sm); }
+        .table thead th:last-child  { border-top-right-radius: var(--radius-sm); }
         .table tbody td {
             border: none;
             border-bottom: 1px solid var(--border-light);
-            padding: 14px 16px;
-            font-size: 13.5px;
+            padding: 12px 16px;
+            font-size: 14px;
             vertical-align: middle;
             color: var(--text-primary);
             background: transparent;
         }
         .table tbody tr:last-child td { border-bottom: none; }
-        .table tbody tr { transition: background 0.15s; }
         .table tbody tr:hover td { background: var(--bg-hover-row); }
 
-        /* ---------- FORMS ---------- */
+        /* =========================================================
+           FORMS
+           ========================================================= */
         .form-label {
-            font-size: 11px;
-            letter-spacing: 1px;
-            text-transform: uppercase;
+            font-size: 13px;
             color: var(--text-secondary);
             margin-bottom: 6px;
-            font-weight: 600;
+            font-weight: 500;
         }
         .form-control, .form-select {
-            background: var(--bg-app);
-            border: 1px solid var(--border-light);
+            background-color: var(--bg-app);
+            border: 1px solid var(--border-medium);
             color: var(--text-primary);
-            padding: 10px 14px;
-            border-radius: 8px;
-            font-size: 13.5px;
-            transition: all 0.15s;
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            transition: border-color 0.12s ease, box-shadow 0.12s ease;
         }
         .form-control::placeholder { color: var(--text-muted); }
         .form-control:focus, .form-select:focus {
-            background: var(--bg-app);
+            background-color: var(--bg-app);
             color: var(--text-primary);
             border-color: var(--accent);
             box-shadow: 0 0 0 3px var(--accent-soft);
         }
+        .form-control:disabled, .form-select:disabled { background-color: var(--bg-raised); opacity: 0.7; }
         .form-select option { background: var(--bg-panel); color: var(--text-primary); }
+        .form-text, .invalid-feedback { font-size: 12.5px; }
 
-        /* ---------- BUTTONS ---------- */
+        /* =========================================================
+           BUTTONS
+           ========================================================= */
         .btn {
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
-            padding: 9px 18px;
-            transition: all 0.15s;
-            letter-spacing: 0.2px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 500;
+            padding: 8px 16px;
+            transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
         }
-        .btn-amber {
+        .btn-amber, .btn-primary {
             background: var(--accent);
-            color: #1a1a1a;
-            border: none;
+            color: var(--accent-ink);
+            border: 1px solid var(--accent);
+            font-weight: 600;
         }
-        .btn-amber:hover { background: var(--accent-hover); color: #000; }
-        .btn-outline-amber {
+        .btn-amber:hover, .btn-primary:hover,
+        .btn-amber:focus-visible, .btn-primary:focus-visible {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+            color: var(--accent-ink);
+        }
+        .btn-outline-amber, .btn-outline-secondary {
             background: transparent;
             border: 1px solid var(--border-medium);
             color: var(--text-secondary);
         }
-        .btn-outline-amber:hover {
-            background: var(--accent-soft);
-            border-color: var(--accent);
-            color: var(--accent-hover);
+        .btn-outline-amber:hover, .btn-outline-secondary:hover {
+            background: var(--bg-raised);
+            border-color: var(--text-muted);
+            color: var(--text-primary);
         }
         .btn-outline-danger {
             background: transparent;
-            border: 1px solid rgba(239,68,68,0.4);
-            color: #f87171;
+            border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+            color: var(--danger);
         }
         .btn-outline-danger:hover {
             background: var(--danger-soft);
             border-color: var(--danger);
-            color: #fca5a5;
+            color: var(--danger);
         }
         .btn-danger {
             background: var(--danger);
-            border: none;
+            border: 1px solid var(--danger);
             color: #fff;
         }
-        .btn-danger:hover { background: #dc2626; color: #fff; }
-        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .btn-danger:hover { filter: brightness(0.92); background: var(--danger); color: #fff; }
+        .btn-sm { padding: 5px 11px; font-size: 13px; }
 
-        /* ---------- BADGES ---------- */
+        /* =========================================================
+           STATUS BADGES
+           ========================================================= */
         .badge-status {
-            font-size: 10.5px;
-            padding: 4px 10px;
-            border-radius: 6px;
-            letter-spacing: 0.5px;
-            font-weight: 600;
-            text-transform: uppercase;
-            display: inline-block;
+            font-size: 12px;
+            padding: 3px 10px 3px 8px;
+            border-radius: 20px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
         }
-        .badge-active { background: var(--success-soft); color: #34d399; }
-        .badge-leave  { background: var(--warning-soft); color: #fbbf24; }
-        .badge-inactive { background: var(--danger-soft); color: #f87171; }
+        .badge-status::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        .badge-active   { background: var(--success-soft); color: var(--success); }
+        .badge-leave    { background: var(--warning-soft); color: var(--warning); }
+        .badge-inactive { background: var(--danger-soft);  color: var(--danger); }
 
-        /* ---------- ALERTS ---------- */
+        /* =========================================================
+           ALERTS
+           ========================================================= */
         .alert {
-            border-radius: 10px;
+            border-radius: var(--radius-md);
             border: 1px solid;
-            padding: 14px 18px;
-            font-size: 13.5px;
+            border-left-width: 3px;
+            padding: 12px 16px;
+            font-size: 14px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
         }
+        .alert span { flex: 1; min-width: 0; word-break: break-word; }
+        .alert i { font-size: 16px; flex-shrink: 0; }
+        .alert .btn-close { margin-left: auto; position: static; padding: 4px; }
         .alert-success {
             background: var(--success-soft);
-            border-color: rgba(16,185,129,0.35);
-            color: #6ee7b7;
+            border-color: var(--success);
+            color: var(--text-primary);
         }
-                .alert-error-custom {
-            background: rgba(239, 68, 68, 0.15);
-            border: 1px solid rgba(239, 68, 68, 0.5);
-            color: #fca5a5;
-            border-radius: 10px;
-            padding: 14px 18px;
-            font-size: 13.5px;
-            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+        .alert-success i { color: var(--success); }
+        .alert-error-custom {
+            background: var(--danger-soft);
+            border-color: var(--danger);
+            color: var(--text-primary);
+            display: flex; align-items: center; gap: 8px;
+            border-radius: var(--radius-md);
+            border-style: solid; border-width: 1px 1px 1px 3px;
+            padding: 12px 16px; font-size: 14px;
         }
-        .alert-error-custom i {
-            color: #ef4444;
-            font-size: 16px;
-            margin-right: 6px;
-        }
-        .alert-error-custom strong {
-            color: #ef4444;
-        }
+        .alert-error-custom i, .alert-error-custom strong { color: var(--danger); }
         .alert-warning-custom {
-            background: rgba(245, 158, 11, 0.15);
-            border: 1px solid rgba(245, 158, 11, 0.5);
-            color: #fcd34d;
-            border-radius: 10px;
-            padding: 14px 18px;
-            font-size: 13.5px;
+            background: var(--warning-soft);
+            border-color: var(--warning);
+            color: var(--text-primary);
+            display: flex; align-items: center; gap: 8px;
+            border-radius: var(--radius-md);
+            border-style: solid; border-width: 1px 1px 1px 3px;
+            padding: 12px 16px; font-size: 14px;
         }
-        .alert-warning-custom i {
-            color: #f59e0b;
-            font-size: 16px;
-            margin-right: 6px;
-        }
+        .alert-warning-custom i { color: var(--warning); }
         .alert-info-custom {
-            background: rgba(59, 130, 246, 0.15);
-            border: 1px solid rgba(59, 130, 246, 0.5);
-            color: #93c5fd;
-            border-radius: 10px;
-            padding: 14px 18px;
-            font-size: 13.5px;
+            background: var(--info-soft);
+            border-color: var(--info);
+            color: var(--text-primary);
+            display: flex; align-items: center; gap: 8px;
+            border-radius: var(--radius-md);
+            border-style: solid; border-width: 1px 1px 1px 3px;
+            padding: 12px 16px; font-size: 14px;
         }
-        .alert-info-custom i {
-            color: #3b82f6;
-            font-size: 16px;
-            margin-right: 6px;
-        }
-        .btn-close { filter: invert(1); opacity: 0.6; }
+        .alert-info-custom i { color: var(--info); }
+        [data-theme="dark"] .btn-close { filter: invert(1); opacity: 0.6; }
+        [data-theme="light"] .btn-close { opacity: 0.5; }
 
-        /* ---------- SCROLLBAR ---------- */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        /* =========================================================
+           SCROLLBAR
+           ========================================================= */
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb {
             background: var(--border-medium);
-            border-radius: 4px;
+            border-radius: 6px;
+            border: 2px solid transparent;
+            background-clip: content-box;
         }
-        ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); background-clip: content-box; }
 
-        /* ---------- PRINT ---------- */
+        /* =========================================================
+           RESPONSIVE
+           ========================================================= */
+        @media (max-width: 991.98px) {
+            .sidebar { transform: translateX(-100%); }
+            body.sidebar-open .sidebar { transform: translateX(0); }
+            body.sidebar-open .sidebar-backdrop { display: block; }
+            .main-area { margin-left: 0; }
+            .sidebar-toggle { display: inline-flex; }
+            .topbar { padding: 0 16px; }
+            .content { padding: 20px 16px; }
+            .app-footer { padding: 14px 16px; }
+            .user-meta { display: none; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * { transition: none !important; }
+        }
+
+        /* =========================================================
+           PRINT
+           ========================================================= */
         @media print {
             body { background: #fff !important; color: #000 !important; }
-            .sidebar, .topbar, .btn, .alert { display: none !important; }
+            .sidebar, .sidebar-backdrop, .topbar, .btn, .alert, .app-footer { display: none !important; }
             .main-area { margin-left: 0 !important; }
             .content { padding: 0 !important; }
             .panel {
@@ -518,7 +665,7 @@
                 padding: 0 !important;
                 box-shadow: none !important;
             }
-            .panel-title, h4, h5, strong { color: #000 !important; }
+            .panel-title, h1, h2, h3, h4, h5, strong { color: #000 !important; border-color: #333 !important; }
             .form-label { color: #555 !important; font-size: 10px !important; }
             p, td, small { color: #000 !important; }
             .table { color: #000 !important; }
@@ -541,149 +688,194 @@
             @page { size: A4; margin: 15mm; }
         }
     </style>
+    {% block extra_head %}{% endblock %}
 </head>
 <body>
 <div class="app-container">
+
     <!-- SIDEBAR -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
         <div class="sidebar-brand">
-            <h5><i class="bi bi-gem"></i> COALMINE</h5>
-            <small>Control System</small>
+            <div class="brand-mark"><i class="bi bi-minecart-loaded"></i></div>
+            <div class="brand-text">
+                <strong>Coalmine</strong>
+                <span>Control system</span>
+            </div>
         </div>
 
-        <div class="sidebar-section">Operations</div>
-        <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
-            <i class="bi bi-grid-1x2-fill"></i> Dashboard
-        </a>
+        <nav class="sidebar-nav">
+            <div class="sidebar-section">Operations</div>
+            <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <i class="bi bi-grid-1x2-fill"></i> Dashboard
+            </a>
 
-        {% if is_manager or is_accountant %}
-        <a href="{% url 'employee_list' %}" class="{% if 'employee' in request.resolver_match.url_name %}active{% endif %}">
-            <i class="bi bi-people-fill"></i> Employees
-        </a>
-        {% endif %}
+            {% if is_manager or is_accountant %}
+            <a href="{% url 'employee_list' %}" class="{% if 'employee' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-people-fill"></i> Employees
+            </a>
+            {% endif %}
 
-        {% if is_manager %}
-        <a href="{% url 'mine_list' %}" class="{% if 'mine' in request.resolver_match.url_name %}active{% endif %}">
-            <i class="bi bi-geo-alt-fill"></i> Mines
-        </a>
-        {% endif %}
+            {% if is_manager %}
+            <a href="{% url 'mine_list' %}" class="{% if 'mine' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-geo-alt-fill"></i> Mines
+            </a>
+            {% endif %}
 
-        {% if is_manager or is_accountant %}
-        <a href="{% url 'production_list' %}" class="{% if 'production' in request.resolver_match.url_name %}active{% endif %}">
-            <i class="bi bi-clipboard-data-fill"></i> Production
-        </a>
+            {% if is_manager or is_accountant %}
+            <a href="{% url 'production_list' %}" class="{% if 'production' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-clipboard-data-fill"></i> Production
+            </a>
 
-        <div class="sidebar-section">Workforce</div>
-                <a href="{% url 'attendance_punch' %}" class="{% if request.resolver_match.url_name == 'attendance_punch' %}active{% endif %}">
-            <i class="bi bi-fingerprint"></i> Punch In / Out
-        </a>
-        <a href="{% url 'attendance_list' %}" class="{% if 'attendance' in request.resolver_match.url_name and request.resolver_match.url_name != 'attendance_punch' %}active{% endif %}">
-            <i class="bi bi-calendar-check-fill"></i> Attendance Records
-        </a>
-        <a href="{% url 'payroll_list' %}" class="{% if 'payroll' in request.resolver_match.url_name %}active{% endif %}">
-            <i class="bi bi-cash-coin"></i> Payroll
-        </a>
+            <div class="sidebar-section">Workforce</div>
+            <a href="{% url 'attendance_punch' %}" class="{% if request.resolver_match.url_name == 'attendance_punch' %}active{% endif %}">
+                <i class="bi bi-fingerprint"></i> Punch in / out
+            </a>
+            <a href="{% url 'attendance_list' %}" class="{% if 'attendance' in request.resolver_match.url_name and request.resolver_match.url_name != 'attendance_punch' %}active{% endif %}">
+                <i class="bi bi-calendar-check-fill"></i> Attendance records
+            </a>
+            <a href="{% url 'payroll_list' %}" class="{% if 'payroll' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-cash-coin"></i> Payroll
+            </a>
 
-        <div class="sidebar-section">Resources</div>
-        <a href="{% url 'equipment_list' %}" class="{% if 'equipment' in request.resolver_match.url_name or 'maintenance' in request.resolver_match.url_name %}active{% endif %}">
-            <i class="bi bi-tools"></i> Equipment
-        </a>
-        <a href="{% url 'inventory_list' %}" class="{% if 'inventory' in request.resolver_match.url_name or 'stock' in request.resolver_match.url_name %}active{% endif %}">
-            <i class="bi bi-box-seam-fill"></i> Inventory
-        </a>
-        <a href="{% url 'sale_list' %}" class="{% if 'sale' in request.resolver_match.url_name and 'customer' not in request.resolver_match.url_name %}active{% endif %}">
-            <i class="bi bi-receipt"></i> Sales
-        </a>
-        <a href="{% url 'customer_list' %}" class="{% if 'customer' in request.resolver_match.url_name %}active{% endif %}">
-            <i class="bi bi-person-vcard"></i> Customers
-        </a>
-        {% endif %}
+            <div class="sidebar-section">Resources</div>
+            <a href="{% url 'equipment_list' %}" class="{% if 'equipment' in request.resolver_match.url_name or 'maintenance' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-tools"></i> Equipment
+            </a>
+            <a href="{% url 'inventory_list' %}" class="{% if 'inventory' in request.resolver_match.url_name or 'stock' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-box-seam-fill"></i> Inventory
+            </a>
+            <a href="{% url 'sale_list' %}" class="{% if 'sale' in request.resolver_match.url_name and 'customer' not in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-receipt"></i> Sales
+            </a>
+            <a href="{% url 'customer_list' %}" class="{% if 'customer' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-person-vcard"></i> Customers
+            </a>
+            {% endif %}
 
-        {% if is_manager %}
-        <div class="sidebar-section">Approvals</div>
-        <a href="{% url 'approval_list' %}" class="{% if 'approval' in request.resolver_match.url_name %}active{% endif %}">
-            <i class="bi bi-shield-check"></i> Pending Approvals
-        </a>
-        {% endif %}
+            {% if is_manager %}
+            <div class="sidebar-section">Approvals</div>
+            <a href="{% url 'approval_list' %}" class="{% if 'approval' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-shield-check"></i> Pending approvals
+            </a>
+            {% endif %}
 
-                <div class="sidebar-section">System</div>
-                {% if is_manager or is_accountant %}
-        <a href="{% url 'backup_now' %}" class="{% if request.resolver_match.url_name == 'backup_now' %}active{% endif %}" style="color:#34d399;">
-            <i class="bi bi-shield-check"></i> Backup Now
-        </a>
-        <a href="{% url 'backup_list' %}" class="{% if 'backup_list' in request.resolver_match.url_name or 'backup_download' in request.resolver_match.url_name or 'backup_delete' in request.resolver_match.url_name %}active{% endif %}">
-            <i class="bi bi-archive"></i> Backup History
-        </a>
-        {% endif %}
-        {% if user.is_superuser %}
-        <a href="/admin/"><i class="bi bi-sliders"></i> Admin Panel</a>
-        {% endif %}
-        <form method="post" action="{% url 'logout' %}" style="margin:0;">
-            {% csrf_token %}
-            <button type="submit">
-                <i class="bi bi-box-arrow-right"></i> Logout
-            </button>
-        </form>
+            <div class="sidebar-section">System</div>
+            {% if is_manager or is_accountant %}
+            <a href="{% url 'backup_now' %}" class="nav-backup {% if request.resolver_match.url_name == 'backup_now' %}active{% endif %}">
+                <i class="bi bi-cloud-arrow-down-fill"></i> Back up now
+            </a>
+            <a href="{% url 'backup_list' %}" class="{% if 'backup_list' in request.resolver_match.url_name or 'backup_download' in request.resolver_match.url_name or 'backup_delete' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-archive"></i> Backup history
+            </a>
+            {% endif %}
+            {% if user.is_superuser %}
+            <a href="/admin/"><i class="bi bi-sliders"></i> Admin panel</a>
+            {% endif %}
+            <form method="post" action="{% url 'logout' %}" style="margin:0;">
+                {% csrf_token %}
+                <button type="submit">
+                    <i class="bi bi-box-arrow-right"></i> Log out
+                </button>
+            </form>
+        </nav>
     </aside>
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
     <!-- MAIN -->
     <div class="main-area">
-        <div class="topbar">
-            <span class="page-title">
-                <i class="bi bi-hammer"></i>
-                {% block page_title %}MINE MANAGEMENT{% endblock %}
-            </span>
-            <div style="display:flex; align-items:center; gap:12px;">
-                <a href="{% url 'notification_list' %}" class="notification-bell" title="Notifications">
+        <header class="topbar">
+            <div class="topbar-left">
+                <button type="button" class="icon-btn sidebar-toggle" id="sidebarToggle" aria-label="Open menu">
+                    <i class="bi bi-list"></i>
+                </button>
+                <h1 class="page-title m-0">{% block page_title %}Mine management{% endblock %}</h1>
+            </div>
+            <div class="topbar-right">
+                <button type="button" class="icon-btn" id="themeToggle" aria-label="Switch between light and dark theme" title="Switch theme">
+                    <i class="bi bi-sun-fill" id="themeIcon"></i>
+                </button>
+                <a href="{% url 'notification_list' %}" class="icon-btn notification-bell" title="Notifications" aria-label="Notifications">
                     <i class="bi bi-bell-fill"></i>
                     {% if unread_notifications_count > 0 %}
                     <span class="notification-badge">{{ unread_notifications_count }}</span>
                     {% endif %}
                 </a>
+                <div class="topbar-divider"></div>
                 <div class="user-chip">
                     <div class="user-avatar">{{ request.user.username|first|upper }}</div>
-                    <span>{{ request.user.username|upper }}</span>
+                    <div class="user-meta">
+                        <div class="user-name">{{ request.user.username }}</div>
+                        <div class="user-role">{% if is_manager %}Manager{% elif is_accountant %}Accountant{% else %}Staff{% endif %}</div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </header>
 
-                <div class="content">
-                        {% if messages %}
+        <main class="content">
+            {% if messages %}
                 {% for message in messages %}
                     {% if message.tags == 'error' %}
-                        <div class="alert alert-error-custom alert-dismissible fade show">
-                            <i class="bi bi-exclamation-triangle-fill"></i> <strong>Error:</strong> {{ message }}
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+                        <div class="alert alert-error-custom alert-dismissible fade show" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill"></i> <span><strong>Error:</strong> {{ message }}</span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
                     {% elif message.tags == 'warning' %}
-                        <div class="alert alert-warning-custom alert-dismissible fade show">
-                            <i class="bi bi-exclamation-circle-fill"></i> {{ message }}
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+                        <div class="alert alert-warning-custom alert-dismissible fade show" role="alert">
+                            <i class="bi bi-exclamation-circle-fill"></i> <span>{{ message }}</span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
                     {% elif message.tags == 'info' %}
-                        <div class="alert alert-info-custom alert-dismissible fade show">
-                            <i class="bi bi-info-circle-fill"></i> {{ message }}
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+                        <div class="alert alert-info-custom alert-dismissible fade show" role="alert">
+                            <i class="bi bi-info-circle-fill"></i> <span>{{ message }}</span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
                     {% else %}
-                        <div class="alert alert-success alert-dismissible fade show">
-                            <i class="bi bi-check-circle-fill"></i> {{ message }}
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="bi bi-check-circle-fill"></i> <span>{{ message }}</span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
                     {% endif %}
                 {% endfor %}
             {% endif %}
             {% block content %}{% endblock %}
-        </div>
+        </main>
 
         <!-- FOOTER -->
         <footer class="app-footer">
-            <span>© 2026 Coal Mine Management System</span>
-            <span class="footer-sep">·</span>
+            <span>&copy; 2026 Coal Mine Management System</span>
             <span>Developed by <strong>Muhammad Jasim</strong></span>
         </footer>
     </div>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    (function () {
+        var root = document.documentElement;
+        var icon = document.getElementById('themeIcon');
+
+        function syncIcon() {
+            var dark = root.getAttribute('data-theme') === 'dark';
+            icon.className = dark ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+        }
+        syncIcon();
+
+        document.getElementById('themeToggle').addEventListener('click', function () {
+            var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            root.setAttribute('data-bs-theme', next);
+            try { localStorage.setItem('cm-theme', next); } catch (e) {}
+            syncIcon();
+        });
+
+        function setSidebar(open) { document.body.classList.toggle('sidebar-open', open); }
+        document.getElementById('sidebarToggle').addEventListener('click', function () {
+            setSidebar(!document.body.classList.contains('sidebar-open'));
+        });
+        document.getElementById('sidebarBackdrop').addEventListener('click', function () { setSidebar(false); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setSidebar(false); });
+    })();
+</script>
+{% block extra_js %}{% endblock %}
 </body>
 </html>
