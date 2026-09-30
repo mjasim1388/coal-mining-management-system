@@ -16,7 +16,7 @@
             background: #fff;
             max-width: 800px;
             margin: 0 auto 20px;
-            padding: 28px 34px;
+            padding: 30px 36px;
             border: 2px solid #0f172a;
             border-radius: 6px;
         }
@@ -26,7 +26,7 @@
             align-items: flex-start;
             border-bottom: 3px double #0f172a;
             padding-bottom: 16px;
-            margin-bottom: 18px;
+            margin-bottom: 20px;
         }
         .header .company { display: flex; align-items: center; gap: 16px; }
         .header .logo-box {
@@ -80,12 +80,12 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px 24px;
-            margin-bottom: 18px;
+            margin-bottom: 20px;
         }
         .info-row {
             display: flex;
             justify-content: space-between;
-            padding: 7px 0;
+            padding: 8px 0;
             border-bottom: 1px dashed #cbd5e1;
             font-size: 13.5px;
         }
@@ -93,7 +93,7 @@
         .info-row .value { color: #0f172a; font-weight: 600; text-align: right; }
 
         .amount-box {
-            margin: 18px 0;
+            margin: 20px 0;
             padding: 16px 20px;
             background: #0f172a;
             color: #fff;
@@ -109,22 +109,11 @@
             font-size: 26px; font-weight: 800; color: #fbbf24;
         }
 
-        .note-box {
-            padding: 12px 16px;
-            background: #fef3c7;
-            border-left: 4px solid #b87708;
-            border-radius: 4px;
-            font-size: 12px;
-            color: #78350f;
-            margin-bottom: 22px;
-            line-height: 1.5;
-        }
-
         .signatures {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
             gap: 24px;
-            margin-top: 46px;
+            margin-top: 50px;
             page-break-inside: avoid;
         }
         .sig-box {
@@ -262,10 +251,6 @@
         <div class="amount">PKR {{ sale.total_amount }}</div>
     </div>
 
-    <div class="note-box">
-        <strong>Important:</strong> This dispatch slip must accompany the loaded truck from the mine to the customer. The driver is responsible for this document and must produce it at the gate and at delivery. Any tampering will void this slip.
-    </div>
-
     <div class="signatures">
         <div class="sig-box">Driver Signature</div>
         <div class="sig-box">Gate Guard</div>
@@ -340,10 +325,6 @@
     <div class="amount-box">
         <div class="label">Total Amount</div>
         <div class="amount">PKR {{ sale.total_amount }}</div>
-    </div>
-
-    <div class="note-box">
-        <strong>Company Archive Copy:</strong> This slip is retained in the company's permanent dispatch records. It cannot be modified once issued. If the dispatch is voided by the manager, this copy is marked accordingly.
     </div>
 
     <div class="signatures">

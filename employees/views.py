@@ -248,16 +248,27 @@ def production_list(request):
 
 @role_required('Manager', 'Accountant')
 def production_add(request):
+    from datetime import date as date_today
+
     if request.method == 'POST':
         form = ProductionForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Production record added.')
+            record = form.save(commit=False)
+            record.save()
+            messages.success(request, f'Production record saved for {record.mine.name} — {record.quantity_tons} tons.')
             return redirect('production_list')
     else:
-        form = ProductionForm()
+        # Pre-fill from the last production record
+        initial = {}
+        last = ProductionRecord.objects.order_by('-created_at').first()
+        if last:
+            initial['mine'] = last.mine
+            initial['shift'] = last.shift
+            initial['coal_type'] = last.coal_type
+            initial['supervisor'] = last.supervisor
+        initial['date'] = date_today.today()  # Auto-set today
+        form = ProductionForm(initial=initial)
     return render(request, 'production/form.html', {'form': form, 'title': 'Add Production Record'})
-
 
 @role_required('Manager', 'Accountant')
 def production_edit(request, pk):
@@ -302,6 +313,8 @@ def attendance_list(request):
 
 @role_required('Manager')
 def attendance_add(request):
+    from datetime import date as date_today
+
     if request.method == 'POST':
         form = AttendanceForm(request.POST, request.FILES)
         if form.is_valid():
@@ -309,9 +322,15 @@ def attendance_add(request):
             messages.success(request, 'Attendance record added.')
             return redirect('attendance_list')
     else:
-        form = AttendanceForm()
+        # Pre-fill from the last attendance record
+        initial = {}
+        last = Attendance.objects.order_by('-created_at').first()
+        if last:
+            initial['shift'] = last.shift
+            initial['status'] = last.status
+        initial['date'] = date_today.today()  # Auto-set today
+        form = AttendanceForm(initial=initial)
     return render(request, 'attendance/form.html', {'form': form, 'title': 'Add Attendance'})
-
 @role_required('Manager')
 def attendance_edit(request, pk):
     record = get_object_or_404(Attendance, pk=pk)
@@ -340,19 +359,42 @@ def attendance_delete(request, pk):
 def inventory_list(request):
     category_filter = request.GET.get('category', '')
     low_filter = request.GET.get('low', '')
+    search_query = request.GET.get('q', '')
+
     items = list(InventoryItem.objects.all())
+
+    if search_query:
+        q = search_query.lower()
+        items = [i for i in items if q in i.name.lower() or q in i.category.lower()]
     if category_filter:
         items = [i for i in items if i.category == category_filter]
     if low_filter:
         items = [i for i in items if i.is_low_stock]
-    low_stock_count = sum(1 for i in InventoryItem.objects.all() if i.is_low_stock)
+
+    # Summary stats
+    all_items = list(InventoryItem.objects.all())
+    total_items = len(all_items)
+    total_value = sum(float(i.quantity) * float(i.unit_price) for i in all_items)
+    low_stock_count = sum(1 for i in all_items if i.is_low_stock)
+
+    # Recent movements (last 30)
+    recent_movements = StockTransaction.objects.select_related(
+        'item', 'issued_to_equipment', 'issued_to_employee', 'issued_to_mine'
+    ).all()[:30]
+
     return render(request, 'inventory/list.html', {
         'items': items,
         'category_filter': category_filter,
-        'low_stock_count': low_stock_count,
         'low_filter': low_filter,
+        'search_query': search_query,
+        'low_stock_count': low_stock_count,
+        'total_items': total_items,
+        'total_value': total_value,
+        'recent_movements': recent_movements,
+        'equipment_list': Equipment.objects.all(),
+        'employee_list': Employee.objects.filter(status='Active'),
+        'mine_list': Mine.objects.all(),
     })
-
 
 @role_required('Manager', 'Accountant')
 def inventory_add(request):
@@ -429,6 +471,8 @@ def stock_transaction_list(request):
 
 @role_required('Manager', 'Accountant')
 def stock_transaction_add(request):
+    from datetime import date as date_today
+
     if request.method == 'POST':
         form = StockTransactionForm(request.POST)
         if form.is_valid():
@@ -448,11 +492,18 @@ def stock_transaction_add(request):
             messages.success(request, f'Stock {trans.transaction_type} recorded. New quantity: {item.quantity} {item.unit}')
             return redirect('stock_transaction_list')
     else:
-        form = StockTransactionForm()
+        # Pre-fill from the last transaction
+        initial = {}
+        last = StockTransaction.objects.order_by('-created_at').first()
+        if last:
+            initial['item'] = last.item
+            initial['transaction_type'] = last.transaction_type
+            initial['handled_by'] = last.handled_by
+        initial['date'] = date_today.today()  # Auto-set today
+        form = StockTransactionForm(initial=initial)
     return render(request, 'inventory/transaction_form.html', {
         'form': form, 'title': 'Add Stock Transaction',
     })
-
 
 @login_required
 def stock_transaction_delete(request, pk):
@@ -712,15 +763,26 @@ def sale_add(request):
         if form.is_valid():
             sale = form.save(commit=False)
             sale.created_by = request.user
-            sale.date = date_today.today()           # ← Auto-set today
-            sale.dispatch_date = date_today.today()  # ← Auto-set today
+            sale.date = date_today.today()
+            sale.dispatch_date = date_today.today()
             sale.save()
             messages.success(request, f'Dispatch {sale.dispatch_no} created. Print the slip for the driver.')
-            return redirect('sale_slip', pk=sale.pk)  # ← Auto-open slip
+            return redirect('sale_slip', pk=sale.pk)
     else:
-        form = SaleForm()
+        # Pre-fill with the last dispatch's settings for quick entry
+        initial = {}
+        last_sale = Sale.objects.order_by('-created_at').first()
+        if last_sale:
+            initial['coal_type'] = last_sale.coal_type           # ← auto-select coal type
+            initial['mine'] = last_sale.mine                     # ← same mine
+            initial['price_per_ton'] = last_sale.price_per_ton   # ← same rate
+            initial['customer'] = last_sale.customer             # ← same customer
+            initial['truck_no'] = last_sale.truck_no             # ← same truck
+            initial['driver_name'] = last_sale.driver_name       # ← same driver
+            initial['driver_phone'] = last_sale.driver_phone     # ← same phone
+            initial['payment_status'] = last_sale.payment_status
+        form = SaleForm(initial=initial)
     return render(request, 'sales/sale_form.html', {'form': form, 'title': 'New Dispatch'})
-
 @role_required('Manager', 'Accountant')
 def sale_edit(request, pk):
     sale = get_object_or_404(Sale, pk=pk)
@@ -1532,3 +1594,93 @@ def sale_slip(request, pk):
     """Printable dispatch slip for the driver."""
     sale = get_object_or_404(Sale, pk=pk)
     return render(request, 'sales/slip.html', {'sale': sale})
+
+# ---------- QUICK STOCK IN/OUT ----------
+@role_required('Manager', 'Accountant')
+def stock_quick_in(request, item_pk):
+    """Quick stock-in from the inventory page modal."""
+    from datetime import date as date_today
+    from decimal import Decimal
+
+    item = get_object_or_404(InventoryItem, pk=item_pk)
+
+    if request.method == 'POST':
+        try:
+            qty = Decimal(request.POST.get('quantity', '0'))
+        except Exception:
+            messages.error(request, 'Invalid quantity.')
+            return redirect('inventory_list')
+
+        if qty <= 0:
+            messages.error(request, 'Quantity must be greater than 0.')
+            return redirect('inventory_list')
+
+        item.quantity += qty
+        item.save()
+
+        StockTransaction.objects.create(
+            item=item,
+            date=date_today.today(),
+            transaction_type='IN',
+            quantity=qty,
+            reason=request.POST.get('reason', 'Stock received'),
+            handled_by=request.POST.get('handled_by', request.user.username),
+            created_by=request.user,
+        )
+        messages.success(request, f'Added {qty} {item.unit} to {item.name}. New stock: {item.quantity} {item.unit}')
+
+    return redirect('inventory_list')
+
+
+@role_required('Manager', 'Accountant')
+def stock_quick_out(request, item_pk):
+    """Quick stock-out from the inventory page modal, with 'issued to'."""
+    from datetime import date as date_today
+    from decimal import Decimal
+
+    item = get_object_or_404(InventoryItem, pk=item_pk)
+
+    if request.method == 'POST':
+        try:
+            qty = Decimal(request.POST.get('quantity', '0'))
+        except Exception:
+            messages.error(request, 'Invalid quantity.')
+            return redirect('inventory_list')
+
+        if qty <= 0:
+            messages.error(request, 'Quantity must be greater than 0.')
+            return redirect('inventory_list')
+
+        if qty > item.quantity:
+            messages.error(request, f'Not enough stock. Available: {item.quantity} {item.unit}')
+            return redirect('inventory_list')
+
+        issued_to_type = request.POST.get('issued_to_type', 'General')
+        eq_id = request.POST.get('issued_to_equipment') or None
+        emp_id = request.POST.get('issued_to_employee') or None
+        mine_id = request.POST.get('issued_to_mine') or None
+
+        trans = StockTransaction(
+            item=item,
+            date=date_today.today(),
+            transaction_type='OUT',
+            quantity=qty,
+            reason=request.POST.get('reason', ''),
+            issued_to_type=issued_to_type,
+            handled_by=request.POST.get('handled_by', request.user.username),
+            created_by=request.user,
+        )
+        if issued_to_type == 'Equipment' and eq_id:
+            trans.issued_to_equipment_id = eq_id
+        elif issued_to_type == 'Employee' and emp_id:
+            trans.issued_to_employee_id = emp_id
+        elif issued_to_type == 'Mine' and mine_id:
+            trans.issued_to_mine_id = mine_id
+        trans.save()
+
+        item.quantity -= qty
+        item.save()
+
+        messages.success(request, f'Issued {qty} {item.unit} of {item.name}. New stock: {item.quantity} {item.unit}')
+
+    return redirect('inventory_list')

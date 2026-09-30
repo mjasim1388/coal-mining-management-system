@@ -8,8 +8,14 @@
 <div class="panel">
     <div class="panel-title"><i class="bi bi-arrow-left-right"></i> {{ title }}</div>
 
-    <form method="post">
+    <div class="alert alert-info-custom mb-3" id="prefillNotice" style="border-radius: 8px;">
+        <i class="bi bi-info-circle-fill"></i>
+        <span>Item, type, and handled-by are pre-filled from the last transaction. Date is set to today.</span>
+    </div>
+
+    <form method="post" id="stockForm">
         {% csrf_token %}
+
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label">Item *</label>
@@ -20,6 +26,7 @@
                 <label class="form-label">Date *</label>
                 {{ form.date }}
                 {{ form.date.errors }}
+                <small style="color:var(--text-muted); font-size:11px;">Defaults to today.</small>
             </div>
             <div class="col-md-3">
                 <label class="form-label">Type *</label>
@@ -46,21 +53,95 @@
             </div>
         </div>
 
-        <div class="alert" style="background:rgba(245,158,11,0.08); border:1px solid var(--coal-line); color:var(--text-dim); margin-top:20px;">
-            <i class="bi bi-info-circle"></i>
-            The item's stock quantity will be updated automatically:
-            <strong>Stock In</strong> increases it, <strong>Stock Out</strong> decreases it.
+        <!-- Live summary -->
+        <div id="totalPreview" style="margin-top:22px; padding:16px 20px; background:var(--bg-raised); border:1px solid var(--border-light); border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <div style="font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); font-weight:600;">New Stock Level</div>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">After this transaction</div>
+            </div>
+            <div style="font-size:26px; font-weight:700; color:var(--accent);" id="stockPreview">—</div>
         </div>
 
-        <hr style="border-color:var(--coal-line); margin:25px 0;">
+        <div class="alert" style="background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.35); color:#fbbf24; margin-top:16px; border-radius:10px; padding:14px 18px; font-size:13.5px;">
+            <i class="bi bi-info-circle-fill"></i>
+            The item's stock quantity updates automatically: <strong>Stock In</strong> increases it, <strong>Stock Out</strong> decreases it.
+        </div>
 
-        <button type="submit" class="btn btn-amber">
-            <i class="bi bi-check-lg"></i> Save Transaction
-        </button>
-        <a href="{% url 'stock_transaction_list' %}" class="btn btn-outline-amber">
-            <i class="bi bi-x-lg"></i> Cancel
-        </a>
+        <hr style="border-color:var(--border-light); margin:25px 0;">
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-amber" style="padding: 12px 26px;">
+                <i class="bi bi-check-lg"></i> Save Transaction
+            </button>
+            <button type="button" class="btn btn-outline-amber" style="padding: 12px 26px;" onclick="clearForm()">
+                <i class="bi bi-eraser"></i> Clear Form
+            </button>
+            <a href="{% url 'stock_transaction_list' %}" class="btn btn-outline-amber" style="padding: 12px 26px;">
+                <i class="bi bi-x-lg"></i> Cancel
+            </a>
+        </div>
     </form>
 </div>
+
+<!-- Hidden item data for live preview -->
+<script id="itemData" type="application/json">
+{
+    {% for item in form.fields.item.queryset %}
+        "{{ item.pk }}": {"qty": {{ item.quantity }}, "unit": "{{ item.unit|escapejs }}", "name": "{{ item.name|escapejs }}"}{% if not forloop.last %},{% endif %}
+    {% endfor %}
+}
+</script>
+
+<script>
+    (function() {
+        var form = document.getElementById('stockForm');
+        var itemField = document.getElementById('id_item');
+        var typeField = document.getElementById('id_transaction_type');
+        var qtyField = document.getElementById('id_quantity');
+        var out = document.getElementById('stockPreview');
+
+        var itemData = JSON.parse(document.getElementById('itemData').textContent);
+
+        function updatePreview() {
+            var itemId = itemField.value;
+            var type = typeField.value;
+            var qty = parseFloat(qtyField.value) || 0;
+
+            if (!itemId || !itemData[itemId]) {
+                out.textContent = '—';
+                return;
+            }
+
+            var item = itemData[itemId];
+            var current = parseFloat(item.qty) || 0;
+            var newQty = type === 'IN' ? current + qty : current - qty;
+
+            var color = newQty < 0 ? '#ef5b5b' : 'var(--accent)';
+            out.style.color = color;
+            out.textContent = newQty.toLocaleString() + ' ' + item.unit;
+        }
+
+        itemField.addEventListener('change', updatePreview);
+        typeField.addEventListener('change', updatePreview);
+        qtyField.addEventListener('input', updatePreview);
+        updatePreview();
+
+        window.clearForm = function() {
+            form.querySelectorAll('input[type="text"], input[type="number"], textarea').forEach(function(el) {
+                el.value = '';
+            });
+            form.querySelectorAll('select').forEach(function(el) {
+                el.selectedIndex = 0;
+            });
+            updatePreview();
+
+            var notice = document.getElementById('prefillNotice');
+            if (notice) notice.style.display = 'none';
+
+            var item = document.getElementById('id_item');
+            if (item) item.focus();
+        };
+    })();
+</script>
 
 {% endblock %}

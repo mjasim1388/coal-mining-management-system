@@ -1,113 +1,506 @@
 {% extends 'base.html' %}
 
 {% block title %}Inventory - Coal Mine{% endblock %}
-{% block page_title %}INVENTORY MANAGEMENT{% endblock %}
+{% block page_title %}INVENTORY{% endblock %}
 
 {% block content %}
 
-<div class="panel mb-3">
-    <form method="get" class="row g-2 align-items-end">
-        <div class="col-md-6">
-            <label class="form-label">Filter by Category</label>
-            <select name="category" class="form-select">
-                <option value="">All Categories</option>
-                <option value="Spare Part" {% if category_filter == 'Spare Part' %}selected{% endif %}>Spare Part</option>
-                <option value="Fuel" {% if category_filter == 'Fuel' %}selected{% endif %}>Fuel</option>
-                <option value="Explosive" {% if category_filter == 'Explosive' %}selected{% endif %}>Explosive</option>
-                <option value="Safety Gear" {% if category_filter == 'Safety Gear' %}selected{% endif %}>Safety Gear</option>
-                <option value="Consumable" {% if category_filter == 'Consumable' %}selected{% endif %}>Consumable</option>
-                <option value="Other" {% if category_filter == 'Other' %}selected{% endif %}>Other</option>
-            </select>
+<!-- KPI Cards -->
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="stat-card stat-amber">
+            <i class="bi bi-box-seam icon"></i>
+            <h2>{{ total_items }}</h2>
+            <p>Total Items</p>
         </div>
-        <div class="col-md-3">
-            <button type="submit" class="btn btn-amber w-100">
-                <i class="bi bi-funnel"></i> Filter
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card stat-green">
+            <i class="bi bi-cash-stack icon"></i>
+            <h2>{{ total_value|floatformat:0 }}</h2>
+            <p>Total Stock Value (PKR)</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <a href="{% url 'inventory_list' %}?low=1" class="stat-link">
+            <div class="stat-card stat-red">
+                <i class="bi bi-exclamation-triangle-fill icon"></i>
+                <h2>{{ low_stock_count }}</h2>
+                <p>Low Stock Items</p>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Tabs -->
+<div class="panel">
+    <div class="d-flex justify-content-between align-items-center mb-3" style="border-bottom: 1px solid var(--border-light); padding-bottom: 0;">
+        <div style="display:flex; gap:4px;">
+            <button type="button" class="inv-tab active" data-tab="items" onclick="switchTab('items')">
+                <i class="bi bi-box-seam"></i> Items
+            </button>
+            <button type="button" class="inv-tab" data-tab="movements" onclick="switchTab('movements')">
+                <i class="bi bi-arrow-left-right"></i> Movements
             </button>
         </div>
-        <div class="col-md-3">
-            <a href="{% url 'stock_transaction_list' %}" class="btn btn-outline-amber w-100">
-                <i class="bi bi-arrow-left-right"></i> Transactions
-            </a>
-        </div>
-    </form>
-</div>
-
-{% if low_stock_count > 0 %}
-<div class="panel mb-3" style="border-left: 4px solid #ef4444;">
-    <div style="color:#f87171;">
-        <i class="bi bi-exclamation-triangle-fill"></i>
-        <strong>{{ low_stock_count }}</strong> item(s) below reorder level. Please restock soon.
-    </div>
-</div>
-{% endif %}
-
-<div class="panel">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div class="panel-title mb-0">
-            <i class="bi bi-box-seam"></i> Items ({{ items|length }})
-        </div>
-        <div>
-            <a href="{% url 'export_inventory' %}" class="btn btn-outline-amber">
+        <div style="padding-bottom: 12px;">
+            <a href="{% url 'export_inventory' %}" class="btn btn-outline-amber btn-sm">
                 <i class="bi bi-file-earmark-excel"></i> Export
             </a>
-            <a href="{% url 'inventory_add' %}" class="btn btn-amber">
-                <i class="bi bi-plus-lg"></i> Add Item
+            <a href="{% url 'inventory_add' %}" class="btn btn-amber btn-sm">
+                <i class="bi bi-plus-lg"></i> Add New Item
             </a>
         </div>
     </div>
 
-    {% if items %}
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Category</th>
-                <th>Quantity</th>
-                <th>Unit</th>
-                <th>Reorder Level</th>
-                <th>Unit Price</th>
-                <th>Location</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in items %}
-            <tr>
-                <td>
-                    <span style="color:var(--accent-bright);">{{ item.name }}</span>
-                    {% if item.approval_status == 'Pending' %}
-                        <span class="badge-status badge-leave" style="margin-left:6px;">PENDING</span>
-                    {% elif item.approval_status == 'Rejected' %}
-                        <span class="badge-status badge-inactive" style="margin-left:6px;">REJECTED</span>
-                    {% endif %}
-                    {% if item.is_low_stock %}
-                        <span class="badge-status badge-inactive" style="margin-left:6px;">LOW</span>
-                    {% endif %}
-                </td>
-                <td>{{ item.category }}</td>
-                <td>{{ item.quantity }}</td>
-                <td>{{ item.unit }}</td>
-                <td>{{ item.reorder_level }}</td>
-                <td>{{ item.unit_price }}</td>
-                <td>{{ item.location|default:"—" }}</td>
-                <td>
-                    <a href="{% url 'inventory_edit' item.pk %}" class="btn btn-sm btn-outline-amber">
-                        <i class="bi bi-pencil"></i>
-                    </a>
-                    <a href="{% url 'inventory_delete' item.pk %}" class="btn btn-sm btn-outline-danger">
-                        <i class="bi bi-trash"></i>
-                    </a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p style="color:var(--text-muted); text-align:center; padding:30px;">
-        <i class="bi bi-box" style="font-size:40px; display:block; margin-bottom:10px;"></i>
-        No inventory items. <a href="{% url 'inventory_add' %}" style="color:var(--accent);">Add the first one</a>.
-    </p>
-    {% endif %}
+    <!-- ============ TAB: ITEMS ============ -->
+    <div id="tab-items">
+        <form method="get" class="row g-2 mb-3">
+            <input type="hidden" name="tab" value="items">
+            <div class="col-md-6">
+                <input type="text" name="q" value="{{ search_query }}" class="form-control" placeholder="Search items by name or category...">
+            </div>
+            <div class="col-md-4">
+                <select name="category" class="form-select">
+                    <option value="">All Categories</option>
+                    <option value="Spare Part" {% if category_filter == 'Spare Part' %}selected{% endif %}>Spare Part</option>
+                    <option value="Fuel" {% if category_filter == 'Fuel' %}selected{% endif %}>Fuel</option>
+                    <option value="Explosive" {% if category_filter == 'Explosive' %}selected{% endif %}>Explosive</option>
+                    <option value="Safety Gear" {% if category_filter == 'Safety Gear' %}selected{% endif %}>Safety Gear</option>
+                    <option value="Consumable" {% if category_filter == 'Consumable' %}selected{% endif %}>Consumable</option>
+                    <option value="Other" {% if category_filter == 'Other' %}selected{% endif %}>Other</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-amber w-100">
+                    <i class="bi bi-funnel"></i> Filter
+                </button>
+            </div>
+        </form>
+
+        {% if items %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Category</th>
+                    <th style="min-width:180px;">Stock Level</th>
+                    <th style="text-align:right;">Quantity</th>
+                    <th style="text-align:right;">Unit Price</th>
+                    <th style="text-align:right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>
+                        <strong style="color:var(--text-primary);">{{ item.name }}</strong>
+                        {% if item.approval_status == 'Pending' %}
+                            <span class="badge-status badge-leave" style="margin-left:6px;">PENDING</span>
+                        {% elif item.approval_status == 'Rejected' %}
+                            <span class="badge-status badge-inactive" style="margin-left:6px;">REJECTED</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ item.category }}</td>
+                    <td>
+                        <div class="stock-bar-wrap" data-qty="{{ item.quantity }}" data-reorder="{{ item.reorder_level }}">
+                            <div class="stock-bar-track">
+                                <div class="stock-bar-fill"></div>
+                            </div>
+                            <div class="stock-bar-label"></div>
+                        </div>
+                    </td>
+                    <td style="text-align:right;">
+                        <strong style="color:var(--accent); font-size:15px;">{{ item.quantity }}</strong>
+                        <small style="color:var(--text-muted);">{{ item.unit }}</small>
+                    </td>
+                    <td style="text-align:right;">{{ item.unit_price }}</td>
+                    <td style="text-align:right; white-space:nowrap;">
+                        <button type="button"
+                                class="btn btn-sm btn-amber stock-btn-in"
+                                data-pk="{{ item.pk }}"
+                                data-name="{{ item.name }}"
+                                data-unit="{{ item.unit }}"
+                                data-qty="{{ item.quantity }}"
+                                title="Add stock">
+                            <i class="bi bi-plus-lg"></i> In
+                        </button>
+                        <button type="button"
+                                class="btn btn-sm btn-outline-amber stock-btn-out"
+                                data-pk="{{ item.pk }}"
+                                data-name="{{ item.name }}"
+                                data-unit="{{ item.unit }}"
+                                data-qty="{{ item.quantity }}"
+                                title="Issue stock">
+                            <i class="bi bi-dash-lg"></i> Out
+                        </button>
+                        <a href="{% url 'inventory_edit' item.pk %}" class="btn btn-sm btn-outline-amber" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        {% if is_manager %}
+                        <a href="{% url 'inventory_delete' item.pk %}" class="btn btn-sm btn-outline-danger" title="Delete">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color:var(--text-muted); text-align:center; padding:30px;">
+            <i class="bi bi-box" style="font-size:40px; display:block; margin-bottom:10px; opacity:0.5;"></i>
+            No items found.
+        </p>
+        {% endif %}
+    </div>
+
+    <!-- ============ TAB: MOVEMENTS ============ -->
+    <div id="tab-movements" style="display:none;">
+        {% if recent_movements %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Item</th>
+                    <th>Type</th>
+                    <th style="text-align:right;">Qty</th>
+                    <th>Issued To</th>
+                    <th>Reason</th>
+                    <th>By</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in recent_movements %}
+                <tr>
+                    <td>{{ t.date }}</td>
+                    <td><strong>{{ t.item.name }}</strong></td>
+                    <td>
+                        {% if t.transaction_type == 'IN' %}
+                            <span class="badge-status badge-active">IN</span>
+                        {% else %}
+                            <span class="badge-status badge-inactive">OUT</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align:right;">
+                        <strong style="color:var(--accent);">{{ t.quantity }}</strong>
+                        <small style="color:var(--text-muted);">{{ t.item.unit }}</small>
+                    </td>
+                    <td>{{ t.issued_to_display }}</td>
+                    <td style="max-width:200px;">{{ t.reason|default:"—" }}</td>
+                    <td>{{ t.handled_by|default:"—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div style="text-align:center; margin-top:14px;">
+            <a href="{% url 'stock_transaction_list' %}" class="btn btn-outline-amber btn-sm">
+                <i class="bi bi-list-ul"></i> View All Movements
+            </a>
+        </div>
+        {% else %}
+        <p style="color:var(--text-muted); text-align:center; padding:30px;">
+            <i class="bi bi-arrow-left-right" style="font-size:40px; display:block; margin-bottom:10px; opacity:0.5;"></i>
+            No stock movements yet.
+        </p>
+        {% endif %}
+    </div>
 </div>
+
+<!-- ============ MODAL: STOCK IN ============ -->
+<div class="modal fade" id="stockInModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--bg-panel); border:1px solid var(--border-light); color:var(--text-primary);">
+            <form method="post" id="stockInForm">
+                {% csrf_token %}
+                <div class="modal-header" style="border-bottom:1px solid var(--border-light);">
+                    <h5 class="modal-title">
+                        <i class="bi bi-arrow-down-circle-fill" style="color:var(--success);"></i>
+                        Add Stock — <span id="inItemName">Item</span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Quantity to Add (<span id="inItemUnit">unit</span>) *</label>
+                        <input type="number" step="0.01" name="quantity" class="form-control" required autofocus>
+                        <small style="color:var(--text-muted); font-size:12px;">
+                            Current stock: <strong id="inCurrentQty">0</strong> <span id="inCurrentUnit"></span>
+                        </small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Reason</label>
+                        <input type="text" name="reason" class="form-control" placeholder="e.g. Purchase, Return" value="Stock received">
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label">Handled By</label>
+                        <input type="text" name="handled_by" class="form-control" value="{{ request.user.username }}">
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--border-light);">
+                    <button type="button" class="btn btn-outline-amber" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-amber">
+                        <i class="bi bi-check-lg"></i> Add Stock
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============ MODAL: STOCK OUT ============ -->
+<div class="modal fade" id="stockOutModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--bg-panel); border:1px solid var(--border-light); color:var(--text-primary);">
+            <form method="post" id="stockOutForm">
+                {% csrf_token %}
+                <div class="modal-header" style="border-bottom:1px solid var(--border-light);">
+                    <h5 class="modal-title">
+                        <i class="bi bi-arrow-up-circle-fill" style="color:var(--danger);"></i>
+                        Issue Stock — <span id="outItemName">Item</span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Quantity to Issue (<span id="outItemUnit">unit</span>) *</label>
+                        <input type="number" step="0.01" name="quantity" class="form-control" required autofocus>
+                        <small style="color:var(--text-muted); font-size:12px;">
+                            Available: <strong id="outCurrentQty">0</strong> <span id="outCurrentUnit"></span>
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Issued To *</label>
+                        <select name="issued_to_type" class="form-select" id="issuedToType" onchange="onIssuedToChange()">
+                            <option value="General">General / Not specified</option>
+                            <option value="Equipment">Equipment / Machine</option>
+                            <option value="Employee">Employee</option>
+                            <option value="Mine">Mine site</option>
+                            <option value="Sold">Sold</option>
+                            <option value="Damaged">Damaged / Lost</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3" id="issueEquipment" style="display:none;">
+                        <label class="form-label">Select Equipment</label>
+                        <select name="issued_to_equipment" class="form-select">
+                            <option value="">— Choose equipment —</option>
+                            {% for eq in equipment_list %}
+                            <option value="{{ eq.pk }}">{{ eq.equipment_code }} — {{ eq.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3" id="issueEmployee" style="display:none;">
+                        <label class="form-label">Select Employee</label>
+                        <select name="issued_to_employee" class="form-select">
+                            <option value="">— Choose employee —</option>
+                            {% for emp in employee_list %}
+                            <option value="{{ emp.pk }}">{{ emp.employee_code }} — {{ emp.first_name }} {{ emp.last_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3" id="issueMine" style="display:none;">
+                        <label class="form-label">Select Mine</label>
+                        <select name="issued_to_mine" class="form-select">
+                            <option value="">— Choose mine —</option>
+                            {% for m in mine_list %}
+                            <option value="{{ m.pk }}">{{ m.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Reason</label>
+                        <input type="text" name="reason" class="form-control" placeholder="e.g. Fuel refill, issued to worker">
+                    </div>
+
+                    <div class="mb-0">
+                        <label class="form-label">Handled By</label>
+                        <input type="text" name="handled_by" class="form-control" value="{{ request.user.username }}">
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--border-light);">
+                    <button type="button" class="btn btn-outline-amber" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-amber">
+                        <i class="bi bi-check-lg"></i> Issue Stock
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .inv-tab {
+        background: none;
+        border: none;
+        padding: 12px 20px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-muted);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.15s;
+        font-family: inherit;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .inv-tab:hover {
+        color: var(--text-primary);
+    }
+    .inv-tab.active {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+    }
+
+    /* ---------- STOCK LEVEL BAR ---------- */
+    .stock-bar-wrap {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .stock-bar-track {
+        flex: 1;
+        height: 8px;
+        background: var(--bg-raised);
+        border-radius: 4px;
+        overflow: hidden;
+        border: 1px solid var(--border-light);
+        min-width: 100px;
+    }
+    .stock-bar-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.3s ease, background-color 0.3s ease;
+        width: 0%;
+    }
+    .stock-bar-label {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text-muted);
+        min-width: 42px;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Fill colors based on level */
+    .stock-bar-wrap.level-green .stock-bar-fill { background: linear-gradient(90deg, #2fb67c, #4ade80); }
+    .stock-bar-wrap.level-green .stock-bar-label { color: #4ade80; }
+
+    .stock-bar-wrap.level-yellow .stock-bar-fill { background: linear-gradient(90deg, #d97706, #fbbf24); }
+    .stock-bar-wrap.level-yellow .stock-bar-label { color: #fbbf24; }
+
+    .stock-bar-wrap.level-red .stock-bar-fill { background: linear-gradient(90deg, #dc2626, #ef5b5b); }
+    .stock-bar-wrap.level-red .stock-bar-label { color: #ef5b5b; }
+
+
+</style>
+
+<script>
+    // Tab switching
+    function switchTab(tab) {
+        document.getElementById('tab-items').style.display = tab === 'items' ? '' : 'none';
+        document.getElementById('tab-movements').style.display = tab === 'movements' ? '' : 'none';
+        document.querySelectorAll('.inv-tab').forEach(function(t) {
+            t.classList.toggle('active', t.dataset.tab === tab);
+        });
+        var url = new URL(window.location.href);
+        url.searchParams.set('tab', tab);
+        window.history.replaceState({}, '', url);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var urlParams = new URLSearchParams(window.location.search);
+        var tab = urlParams.get('tab') || sessionStorage.getItem('inventoryActiveTab') || 'items';
+        switchTab(tab);
+
+        document.querySelectorAll('.inv-tab').forEach(function(t) {
+            t.addEventListener('click', function() {
+                sessionStorage.setItem('inventoryActiveTab', t.dataset.tab);
+            });
+        });
+
+        // Safe event listeners for stock buttons (avoids HTML escaping issues)
+        document.querySelectorAll('.stock-btn-in').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                openStockIn(this.dataset.pk, this.dataset.name, this.dataset.unit, this.dataset.qty);
+            });
+        });
+
+        document.querySelectorAll('.stock-btn-out').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                openStockOut(this.dataset.pk, this.dataset.name, this.dataset.unit, this.dataset.qty);
+            });
+        });
+                // ---------- STOCK LEVEL BARS ----------
+        document.querySelectorAll('.stock-bar-wrap').forEach(function (wrap) {
+            var qty = parseFloat(wrap.dataset.qty) || 0;
+            var reorder = parseFloat(wrap.dataset.reorder) || 0;
+
+            // Reference max: 3× reorder level, or 100 if no reorder set
+            var referenceMax = reorder > 0 ? reorder * 3 : 100;
+
+            var fillPercent = 0;
+            var level = 'green';
+            var labelText = '';
+
+            if (qty === 0) {
+                fillPercent = 0;
+                level = 'red';
+                labelText = 'EMPTY';
+            } else if (reorder > 0 && qty <= reorder) {
+                // Below or at reorder level
+                fillPercent = Math.max(8, (qty / referenceMax) * 100);
+                level = 'red';
+                labelText = 'LOW';
+            } else if (reorder > 0 && qty <= reorder * 1.5) {
+                // Between reorder and 1.5× reorder
+                fillPercent = (qty / referenceMax) * 100;
+                level = 'yellow';
+                labelText = 'WATCH';
+            } else {
+                // Healthy
+                fillPercent = Math.min(100, (qty / referenceMax) * 100);
+                level = 'green';
+                labelText = 'OK';
+            }
+
+            wrap.classList.add('level-' + level);
+            wrap.querySelector('.stock-bar-fill').style.width = fillPercent + '%';
+            wrap.querySelector('.stock-bar-label').textContent = labelText;
+        });
+    });
+
+    function openStockIn(pk, name, unit, currentQty) {
+        document.getElementById('inItemName').textContent = name;
+        document.getElementById('inItemUnit').textContent = unit;
+        document.getElementById('inCurrentQty').textContent = currentQty;
+        document.getElementById('inCurrentUnit').textContent = unit;
+        document.getElementById('stockInForm').action = '/inventory/quick-in/' + pk + '/';
+        new bootstrap.Modal(document.getElementById('stockInModal')).show();
+    }
+
+    function openStockOut(pk, name, unit, currentQty) {
+        document.getElementById('outItemName').textContent = name;
+        document.getElementById('outItemUnit').textContent = unit;
+        document.getElementById('outCurrentQty').textContent = currentQty;
+        document.getElementById('outCurrentUnit').textContent = unit;
+        document.getElementById('stockOutForm').action = '/inventory/quick-out/' + pk + '/';
+        document.getElementById('issuedToType').value = 'General';
+        onIssuedToChange();
+        new bootstrap.Modal(document.getElementById('stockOutModal')).show();
+    }
+
+    function onIssuedToChange() {
+        var v = document.getElementById('issuedToType').value;
+        document.getElementById('issueEquipment').style.display = v === 'Equipment' ? '' : 'none';
+        document.getElementById('issueEmployee').style.display = v === 'Employee' ? '' : 'none';
+        document.getElementById('issueMine').style.display = v === 'Mine' ? '' : 'none';
+    }
+</script>
 
 {% endblock %}

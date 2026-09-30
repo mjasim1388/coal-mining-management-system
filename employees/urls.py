@@ -106,6 +106,8 @@ urlpatterns = [
     path('maintenance/<int:pk>/edit/', views.maintenance_edit, name='maintenance_edit'),
     path('maintenance/<int:pk>/delete/', views.maintenance_delete, name='maintenance_delete'),
 
-
+    # Quick Stock Actions
+    path('inventory/quick-in/<int:item_pk>/', views.stock_quick_in, name='stock_quick_in'),
+    path('inventory/quick-out/<int:item_pk>/', views.stock_quick_out, name='stock_quick_out'),
 
 ]

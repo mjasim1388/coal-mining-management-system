@@ -8,8 +8,14 @@
 <div class="panel">
     <div class="panel-title"><i class="bi bi-clipboard-data"></i> {{ title }}</div>
 
-    <form method="post">
+    <div class="alert alert-info-custom mb-3" id="prefillNotice" style="border-radius: 8px;">
+        <i class="bi bi-info-circle-fill"></i>
+        <span>Mine, shift, coal type, and supervisor are pre-filled from the last record. Date is set to today.</span>
+    </div>
+
+    <form method="post" id="productionForm">
         {% csrf_token %}
+
         <div class="row g-3">
             <div class="col-md-4">
                 <label class="form-label">Mine *</label>
@@ -20,6 +26,7 @@
                 <label class="form-label">Date *</label>
                 {{ form.date }}
                 {{ form.date.errors }}
+                <small style="color:var(--text-muted); font-size:11px;">Defaults to today.</small>
             </div>
             <div class="col-md-4">
                 <label class="form-label">Shift</label>
@@ -54,15 +61,64 @@
             </div>
         </div>
 
-        <hr style="border-color:var(--coal-line); margin:25px 0;">
+        <!-- Live summary -->
+        <div id="totalPreview" style="margin-top:22px; padding:16px 20px; background:var(--bg-raised); border:1px solid var(--border-light); border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <div style="font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); font-weight:600;">Total Material Moved</div>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">Coal + Overburden</div>
+            </div>
+            <div style="font-size:26px; font-weight:700; color:var(--accent);" id="totalValue">0 tons</div>
+        </div>
 
-        <button type="submit" class="btn btn-amber">
-            <i class="bi bi-check-lg"></i> Save Record
-        </button>
-        <a href="{% url 'production_list' %}" class="btn btn-outline-amber">
-            <i class="bi bi-x-lg"></i> Cancel
-        </a>
+        <hr style="border-color:var(--border-light); margin:25px 0;">
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-amber" style="padding: 12px 26px;">
+                <i class="bi bi-check-lg"></i> Save Production Record
+            </button>
+            <button type="button" class="btn btn-outline-amber" style="padding: 12px 26px;" onclick="clearForm()">
+                <i class="bi bi-eraser"></i> Clear Form
+            </button>
+            <a href="{% url 'production_list' %}" class="btn btn-outline-amber" style="padding: 12px 26px;">
+                <i class="bi bi-x-lg"></i> Cancel
+            </a>
+        </div>
     </form>
 </div>
+
+<script>
+    (function() {
+        var form = document.getElementById('productionForm');
+        var qty = document.getElementById('id_quantity_tons');
+        var ob = document.getElementById('id_overburden_removed');
+        var out = document.getElementById('totalValue');
+
+        function updateTotal() {
+            var q = parseFloat(qty.value) || 0;
+            var o = parseFloat(ob.value) || 0;
+            var total = q + o;
+            out.textContent = total.toLocaleString() + ' tons';
+        }
+        qty.addEventListener('input', updateTotal);
+        ob.addEventListener('input', updateTotal);
+        updateTotal();
+
+        window.clearForm = function() {
+            form.querySelectorAll('input[type="text"], input[type="number"], textarea').forEach(function(el) {
+                el.value = '';
+            });
+            form.querySelectorAll('select').forEach(function(el) {
+                el.selectedIndex = 0;
+            });
+            updateTotal();
+
+            var notice = document.getElementById('prefillNotice');
+            if (notice) notice.style.display = 'none';
+
+            var mine = document.getElementById('id_mine');
+            if (mine) mine.focus();
+        };
+    })();
+</script>
 
 {% endblock %}

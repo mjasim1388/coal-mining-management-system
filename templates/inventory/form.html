@@ -8,22 +8,26 @@
 <div class="panel">
     <div class="panel-title"><i class="bi bi-box-seam"></i> {{ title }}</div>
 
-    <form method="post">
+    <form method="post" id="inventoryForm">
         {% csrf_token %}
+
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label">Item Name *</label>
                 {{ form.name }}
                 {{ form.name.errors }}
+                <small style="color:var(--text-muted); font-size:11px;">Unit will auto-suggest based on the name. Press Enter to jump to the next field.</small>
             </div>
             <div class="col-md-6">
-                <label class="form-label">Category</label>
+                <label class="form-label">Category *</label>
                 {{ form.category }}
+                {{ form.category.errors }}
             </div>
 
             <div class="col-md-3">
-                <label class="form-label">Unit</label>
+                <label class="form-label">Unit *</label>
                 {{ form.unit }}
+                <small style="color:var(--text-muted); font-size:11px;">e.g. liter, pcs, kg, box</small>
             </div>
             <div class="col-md-3">
                 <label class="form-label">Quantity</label>
@@ -34,7 +38,7 @@
                 {{ form.reorder_level }}
             </div>
             <div class="col-md-3">
-                <label class="form-label">Unit Price</label>
+                <label class="form-label">Unit Price (PKR)</label>
                 {{ form.unit_price }}
             </div>
 
@@ -48,15 +52,284 @@
             </div>
         </div>
 
-        <hr style="border-color:var(--coal-line); margin:25px 0;">
+        <hr style="border-color:var(--border-light); margin:25px 0;">
 
-        <button type="submit" class="btn btn-amber">
-            <i class="bi bi-check-lg"></i> Save Item
-        </button>
-        <a href="{% url 'inventory_list' %}" class="btn btn-outline-amber">
-            <i class="bi bi-x-lg"></i> Cancel
-        </a>
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-amber" style="padding: 12px 26px;">
+                <i class="bi bi-check-lg"></i> Save Item
+            </button>
+            <a href="{% url 'inventory_list' %}" class="btn btn-outline-amber" style="padding: 12px 26px;">
+                <i class="bi bi-x-lg"></i> Cancel
+            </a>
+        </div>
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    // ========== FIELD REFERENCES ==========
+    var form = document.getElementById('inventoryForm');
+    if (!form) { console.warn('inventoryForm not found'); return; }
+
+    var nameField = document.getElementById('id_name');
+    var categoryField = document.getElementById('id_category');
+    var unitField = document.getElementById('id_unit');
+
+    if (!nameField || !categoryField || !unitField) {
+        console.warn('Form fields not found. IDs may have changed.');
+        console.log('Name field:', nameField);
+        console.log('Category field:', categoryField);
+        console.log('Unit field:', unitField);
+        return;
+    }
+
+    // ========== SMART UNIT SUGGESTION ==========
+    // ORDER MATTERS — more specific keywords must come first.
+    // E.g. "oil filter" must match before "oil" (which is a liquid).
+    var keywordUnits = [
+        // ---------- SPECIFIC COMPOUND TERMS (must come first) ----------
+        { keywords: ['oil filter', 'air filter', 'fuel filter', 'hydraulic filter', 'water filter'], unit: 'pcs' },
+
+        // ---------- SPARE PARTS (most common) ----------
+        { keywords: [
+            'filter', 'belt', 'v-belt', 'gasket', 'seal', 'o-ring', 'oring',
+            'bearing', 'bushing', 'bolt', 'nut', 'screw', 'washer', 'rivet', 'pin',
+            'spark plug', 'glow plug', 'injector', 'nozzle', 'valve', 'piston',
+            'ring', 'liner', 'sleeve', 'shaft', 'gear', 'sprocket', 'pulley',
+            'coupling', 'clutch', 'brake pad', 'brake shoe', 'pad', 'lining',
+            'hose clamp', 'clamp', 'bracket', 'mount', 'bush', 'roller',
+            'tyre', 'tire', 'tube', 'wheel', 'rim', 'hub', 'spindle',
+            'switch', 'relay', 'fuse', 'contactor', 'breaker', 'sensor',
+            'gauge', 'meter', 'indicator', 'lamp', 'bulb', 'light', 'led',
+            'battery', 'cell', 'charger', 'alternator', 'starter',
+            'pump', 'motor', 'compressor', 'cylinder', 'actuator', 'solenoid',
+            'terminal', 'connector', 'plug', 'socket', 'adapter', 'cap',
+            'bit', 'drill bit', 'blade', 'cutter', 'tool',
+            'chain link', 'link', 'hook', 'shackle', 'clamp'
+        ], unit: 'pcs' },
+
+        // ---------- LENGTH-BASED (by meter) ----------
+        { keywords: ['wire', 'cable', 'rope', 'chain', 'hose', 'pipe', 'tube', 'conduit'], unit: 'meter' },
+
+        // ---------- FUEL & LUBRICANTS (by liter) ----------
+        { keywords: [
+            'diesel', 'petrol', 'kerosene', 'fuel',
+            'grease', 'lubricant', 'coolant', 'antifreeze',
+            'hydraulic oil', 'engine oil', 'gear oil', 'transmission oil',
+            'brake fluid', 'oil'
+        ], unit: 'liter' },
+
+        // ---------- SAFETY GEAR (by piece) ----------
+        { keywords: [
+            'helmet', 'glove', 'boot', 'shoe', 'jacket', 'vest',
+            'mask', 'goggle', 'goggles', 'cap', 'suit', 'belt',
+            'harness', 'earmuff', 'earplug', 'respirator', 'safety'
+        ], unit: 'pcs' },
+
+        // ---------- EXPLOSIVES (by box) ----------
+        { keywords: [
+            'explosive', 'dynamite', 'detonator', 'ammonium',
+            'gelatin', 'emulsion', 'anfo', 'fuse', 'blasting cap', 'primer'
+        ], unit: 'box' },
+
+        // ---------- CONSTRUCTION MATERIALS (by bag) ----------
+        { keywords: ['cement', 'sand', 'gravel', 'aggregate', 'gypsum', 'lime'], unit: 'bag' },
+
+        // ---------- WEIGHT-BASED (by kg) ----------
+        { keywords: [
+            'coal', 'limestone', 'iron', 'steel', 'scrap',
+            'oxide', 'powder', 'chemical', 'salt', 'soda', 'carbon'
+        ], unit: 'kg' },
+
+        // ---------- TIMBER / SHEETS (by piece) ----------
+        { keywords: ['timber', 'wood', 'plank', 'beam', 'sheet', 'panel', 'plywood'], unit: 'pcs' }
+    ];
+    // ========== SMART CATEGORY SUGGESTION ==========
+    // Order matters: specific keywords must come first.
+    var keywordCategories = [
+        // ---------- SPECIFIC COMPOUND TERMS FIRST ----------
+        { keywords: ['oil filter', 'air filter', 'fuel filter', 'hydraulic filter', 'water filter'], category: 'Spare Part' },
+
+        // ---------- SAFETY GEAR ----------
+        { keywords: [
+            'helmet', 'glove', 'boot', 'shoe', 'jacket', 'vest', 'mask',
+            'goggle', 'goggles', 'cap', 'suit', 'safety belt', 'harness',
+            'earmuff', 'earplug', 'respirator'
+        ], category: 'Safety Gear' },
+
+        // ---------- EXPLOSIVES ----------
+        { keywords: [
+            'explosive', 'dynamite', 'detonator', 'ammonium', 'gelatin',
+            'emulsion', 'anfo', 'blasting cap', 'primer', 'fuse'
+        ], category: 'Explosive' },
+
+        // ---------- FUEL ----------
+        { keywords: [
+            'diesel', 'petrol', 'kerosene', 'fuel', 'grease',
+            'lubricant', 'coolant', 'antifreeze',
+            'hydraulic oil', 'engine oil', 'gear oil', 'transmission oil',
+            'brake fluid', 'oil'
+        ], category: 'Fuel' },
+
+        // ---------- SPARE PARTS (long list) ----------
+        { keywords: [
+            'filter', 'belt', 'v-belt', 'gasket', 'seal', 'o-ring', 'oring',
+            'bearing', 'bushing', 'bolt', 'nut', 'screw', 'washer', 'rivet', 'pin',
+            'spark plug', 'glow plug', 'injector', 'nozzle', 'valve', 'piston',
+            'liner', 'sleeve', 'shaft', 'gear', 'sprocket', 'pulley',
+            'coupling', 'clutch', 'brake pad', 'brake shoe', 'lining',
+            'clamp', 'bracket', 'mount', 'bush', 'roller',
+            'tyre', 'tire', 'tube', 'wheel', 'rim', 'hub', 'spindle',
+            'switch', 'relay', 'contactor', 'breaker', 'sensor',
+            'gauge', 'meter', 'indicator', 'lamp', 'bulb', 'led',
+            'battery', 'cell', 'charger', 'alternator', 'starter',
+            'pump', 'motor', 'compressor', 'cylinder', 'actuator', 'solenoid',
+            'terminal', 'connector', 'plug', 'socket', 'adapter',
+            'bit', 'drill bit', 'blade', 'cutter', 'tool',
+            'hook', 'shackle'
+        ], category: 'Spare Part' },
+
+        // ---------- CONSUMABLES ----------
+        { keywords: [
+            'wire', 'cable', 'rope', 'chain', 'hose', 'pipe', 'tube', 'conduit',
+            'cement', 'sand', 'gravel', 'aggregate', 'gypsum', 'lime',
+            'timber', 'wood', 'plank', 'beam', 'sheet', 'panel', 'plywood',
+            'paint', 'thinner', 'solvent', 'glue', 'tape', 'sealant',
+            'welding rod', 'electrode', 'solder'
+        ], category: 'Consumable' },
+
+        // ---------- RAW MATERIALS ----------
+        { keywords: [
+            'coal', 'limestone', 'iron', 'steel', 'scrap',
+            'oxide', 'powder', 'chemical', 'salt', 'soda', 'carbon'
+        ], category: 'Consumable' }
+    ];
+    var categoryDefaults = {
+        'Fuel': 'liter',
+        'Safety Gear': 'pcs',
+        'Explosive': 'box',
+        'Spare Part': 'pcs',
+        'Consumable': 'pcs',
+        'Other': 'pcs'
+    };
+
+    var userTouchedUnit = false;
+
+    unitField.addEventListener('input', function () {
+        userTouchedUnit = true;
+    });
+
+    function findUnitByName(name) {
+        if (!name) return null;
+        var lower = name.toLowerCase();
+        for (var i = 0; i < keywordUnits.length; i++) {
+            for (var j = 0; j < keywordUnits[i].keywords.length; j++) {
+                if (lower.indexOf(keywordUnits[i].keywords[j]) !== -1) {
+                    return keywordUnits[i].unit;
+                }
+            }
+        }
+        return null;
+    }
+
+    function findCategoryByName(name) {
+        if (!name) return null;
+        var lower = name.toLowerCase();
+        for (var i = 0; i < keywordCategories.length; i++) {
+            for (var j = 0; j < keywordCategories[i].keywords.length; j++) {
+                if (lower.indexOf(keywordCategories[i].keywords[j]) !== -1) {
+                    return keywordCategories[i].category;
+                }
+            }
+        }
+        return null;
+    }
+
+    var userTouchedCategory = false;
+    categoryField.addEventListener('change', function () {
+        userTouchedCategory = true;
+    });
+
+    function suggestCategory() {
+        if (userTouchedCategory) return;
+
+        var name = nameField.value.trim();
+        var keywordCategory = findCategoryByName(name);
+        if (keywordCategory) {
+            categoryField.value = keywordCategory;
+        }
+    }
+
+    function suggestUnit() {
+        // If the user manually typed a unit, don't override
+        if (userTouchedUnit && unitField.value) return;
+
+        var name = nameField.value.trim();
+        var category = categoryField.value;
+
+        // 1. Keyword match
+        var keywordUnit = findUnitByName(name);
+        if (keywordUnit) {
+            unitField.value = keywordUnit;
+            return;
+        }
+
+        // 2. Fallback: category default (only when unit is empty)
+        if (!unitField.value && categoryDefaults[category]) {
+            unitField.value = categoryDefaults[category];
+        }
+    }
+
+    nameField.addEventListener('input', function () {
+        suggestCategory();
+        suggestUnit();
+    });
+
+    categoryField.addEventListener('change', function () {
+        userTouchedUnit = false;
+        if (findUnitByName(nameField.value.trim())) {
+            suggestUnit();
+        } else {
+            unitField.value = categoryDefaults[categoryField.value] || '';
+        }
+    });
+
+    // Pre-fill on page load
+    if (!unitField.value) {
+        suggestUnit();
+    }
+
+    // ========== ENTER = NEXT FIELD (not submit) ==========
+    var focusableFields = form.querySelectorAll(
+        'input:not([type="hidden"]):not([type="submit"]):not([disabled]), select:not([disabled]), textarea:not([disabled])'
+    );
+
+    form.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+
+        var target = e.target;
+
+        // Let textareas use Enter normally (new line)
+        if (target.tagName === 'TEXTAREA') return;
+
+        // Prevent form submit
+        e.preventDefault();
+
+        // Find this field's index
+        var fields = Array.prototype.slice.call(focusableFields);
+        var idx = fields.indexOf(target);
+
+        if (idx > -1 && idx < fields.length - 1) {
+            // Focus the next field
+            fields[idx + 1].focus();
+        } else {
+            // Last field — submit the form
+            form.submit();
+        }
+    });
+
+});
+</script>
 
 {% endblock %}

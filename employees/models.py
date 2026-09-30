@@ -193,13 +193,35 @@ class StockTransaction(models.Model):
         ('OUT', 'Stock Out'),
     ]
 
+    ISSUED_TO_CHOICES = [
+        ('General', 'General / Not specified'),
+        ('Equipment', 'Equipment / Machine'),
+        ('Employee', 'Employee'),
+        ('Mine', 'Mine site'),
+        ('Sold', 'Sold'),
+        ('Damaged', 'Damaged / Lost'),
+    ]
+
     item = models.ForeignKey(InventoryItem, on_delete=models.CASCADE, related_name='transactions')
     date = models.DateField()
     transaction_type = models.CharField(max_length=5, choices=TYPE_CHOICES, default='IN')
     quantity = models.DecimalField(max_digits=12, decimal_places=2)
-    reason = models.CharField(max_length=200, blank=True, help_text="e.g. purchase, issued to mine, damaged")
+    reason = models.CharField(max_length=200, blank=True,
+                              help_text="e.g. purchase, issued to mine, damaged")
+
+    # Where the stock went (only used when type = OUT)
+    issued_to_type = models.CharField(max_length=20, choices=ISSUED_TO_CHOICES, default='General')
+    issued_to_equipment = models.ForeignKey('Equipment', on_delete=models.SET_NULL,
+                                            null=True, blank=True, related_name='stock_issues')
+    issued_to_employee = models.ForeignKey('Employee', on_delete=models.SET_NULL,
+                                           null=True, blank=True, related_name='stock_received')
+    issued_to_mine = models.ForeignKey('Mine', on_delete=models.SET_NULL,
+                                       null=True, blank=True, related_name='stock_received')
+
     handled_by = models.CharField(max_length=100, blank=True)
     notes = models.TextField(blank=True)
+    created_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL,
+                                   null=True, blank=True, related_name='stock_transactions_created')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -208,6 +230,18 @@ class StockTransaction(models.Model):
     def __str__(self):
         return f"{self.item.name} - {self.transaction_type} {self.quantity}"
 
+    @property
+    def issued_to_display(self):
+        """Human-readable 'issued to' value."""
+        if self.transaction_type == 'IN':
+            return '—'
+        if self.issued_to_type == 'Equipment' and self.issued_to_equipment:
+            return self.issued_to_equipment.name
+        if self.issued_to_type == 'Employee' and self.issued_to_employee:
+            return f'{self.issued_to_employee.first_name} {self.issued_to_employee.last_name}'
+        if self.issued_to_type == 'Mine' and self.issued_to_mine:
+            return self.issued_to_mine.name
+        return self.issued_to_type
 
 class Payroll(models.Model):
     STATUS_CHOICES = [

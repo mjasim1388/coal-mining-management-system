@@ -94,12 +94,20 @@ class InventoryItemForm(forms.ModelForm):
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'category': forms.Select(attrs={'class': 'form-control'}),
             'unit': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'pcs, kg, liter...'}),
-            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'reorder_level': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'unit_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0'}),
+            'reorder_level': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0'}),
+            'unit_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0'}),
             'location': forms.TextInput(attrs={'class': 'form-control'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Remove the default "0" from number fields — show empty placeholders instead
+        if not self.instance.pk:
+            self.initial['quantity'] = ''
+            self.initial['reorder_level'] = ''
+            self.initial['unit_price'] = ''
 
 
 class StockTransactionForm(forms.ModelForm):
