@@ -346,7 +346,7 @@ class Sale(models.Model):
         ('Lignite', 'Lignite'),
     ]
 
-    invoice_no = models.CharField(max_length=30, unique=True)
+    invoice_no = models.CharField(max_length=30, unique=True, blank=True)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='sales')
     mine = models.ForeignKey(Mine, on_delete=models.SET_NULL, null=True, blank=True, related_name='sales')
     date = models.DateField()
@@ -363,6 +363,8 @@ class Sale(models.Model):
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # Dispatch system
     dispatch_no = models.CharField(max_length=30, unique=True, blank=True)
     is_locked = models.BooleanField(default=False)
     voided = models.BooleanField(default=False)
@@ -378,10 +380,6 @@ class Sale(models.Model):
 
     def __str__(self):
         return f"{self.invoice_no} - {self.customer.name}"
-
-    @property
-    def balance(self):
-        return (self.total_amount or 0) - (self.amount_paid or 0)
 
     def save(self, *args, **kwargs):
         from django.utils import timezone
@@ -409,6 +407,10 @@ class Sale(models.Model):
             self.invoice_no = self.dispatch_no
 
         super().save(*args, **kwargs)
+
+    @property
+    def balance(self):
+        return (self.total_amount or 0) - (self.amount_paid or 0)
 
 
 class Notification(models.Model):
@@ -516,10 +518,6 @@ class Equipment(models.Model):
     def __str__(self):
         return f"{self.equipment_code} - {self.name}"
 
-    @property
-    def total_maintenance_cost(self):
-        return sum(m.cost for m in self.maintenance_logs.all())
-
     def save(self, *args, **kwargs):
         if not self.equipment_code:
             letters = ''.join(c for c in self.name.upper() if c.isalpha())
@@ -535,6 +533,9 @@ class Equipment(models.Model):
             self.equipment_code = f'{prefix}-{max_num + 1:03d}'
         super().save(*args, **kwargs)
 
+    @property
+    def total_maintenance_cost(self):
+        return sum(m.cost for m in self.maintenance_logs.all())
 
 class MaintenanceLog(models.Model):
     TYPE_CHOICES = [

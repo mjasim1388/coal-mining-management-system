@@ -587,7 +587,6 @@ def payroll_generate(request):
 
             emp_salary = emp.salary or Decimal('0')
             daily_rate = emp_salary / Decimal('30') if emp_salary else Decimal('0')
-            earned = (present * daily_rate) + (half * daily_rate * Decimal('0.5'))
             overtime_amount = (overtime_hours * (daily_rate / Decimal('8')) * Decimal('1.5')) if daily_rate else Decimal('0')
 
             is_manager_user = request.user.is_superuser or request.user.groups.filter(name='Manager').exists()
@@ -1528,7 +1527,7 @@ def maintenance_list(request):
     logs = MaintenanceLog.objects.select_related('equipment').all()
     if type_filter:
         logs = logs.filter(maintenance_type=type_filter)
-    total_cost = sum(l.cost for l in logs)
+    total_cost = sum(log.cost for log in logs)
     return render(request, 'equipment/maintenance_list.html', {
         'logs': logs,
         'type_filter': type_filter,

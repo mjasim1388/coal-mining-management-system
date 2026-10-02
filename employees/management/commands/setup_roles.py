@@ -12,7 +12,7 @@ class Command(BaseCommand):
     help = 'Create default user roles (Manager, Accountant, Viewer)'
 
     def handle(self, *args, **options):
-        for role_name, description in ROLES.items():
+        for role_name, _description in ROLES.items():
             group, created = Group.objects.get_or_create(name=role_name)
             if created:
                 self.stdout.write(self.style.SUCCESS(f'Created role: {role_name}'))
