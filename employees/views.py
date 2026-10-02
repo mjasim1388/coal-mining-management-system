@@ -1472,13 +1472,50 @@ def equipment_list(request):
 
 @role_required('Manager', 'Accountant', 'Viewer')
 def equipment_detail(request, pk):
+    from datetime import date, timedelta
+    from django.db.models import Sum
+
     equipment = get_object_or_404(Equipment, pk=pk)
     logs = equipment.maintenance_logs.all()
-    total_cost = sum(m.cost for m in logs)
+    total_cost = sum(log.cost for log in logs)
+
+    # ---------- FUEL USAGE ----------
+    fuel_issues = equipment.stock_issues.filter(
+        transaction_type='OUT',
+        item__category='Fuel',
+    ).select_related('item', 'created_by').order_by('-date', '-created_at')
+
+    today = date.today()
+    month_start = today.replace(day=1)
+
+    # This month
+    this_month_qs = fuel_issues.filter(date__gte=month_start)
+    this_month_liters = this_month_qs.aggregate(t=Sum('quantity'))['t'] or 0
+    this_month_cost = sum(float(f.quantity) * float(f.item.unit_price) for f in this_month_qs)
+
+    # Last month
+    last_month_end = month_start - timedelta(days=1)
+    last_month_start = last_month_end.replace(day=1)
+    last_month_qs = fuel_issues.filter(date__gte=last_month_start, date__lte=last_month_end)
+    last_month_liters = last_month_qs.aggregate(t=Sum('quantity'))['t'] or 0
+    last_month_cost = sum(float(f.quantity) * float(f.item.unit_price) for f in last_month_qs)
+
+    # All time
+    total_liters = fuel_issues.aggregate(t=Sum('quantity'))['t'] or 0
+    total_fuel_cost = sum(float(f.quantity) * float(f.item.unit_price) for f in fuel_issues)
+
     return render(request, 'equipment/detail.html', {
         'equipment': equipment,
         'logs': logs,
         'total_cost': total_cost,
+        # Fuel stats
+        'fuel_issues': fuel_issues[:20],  # last 20 records
+        'this_month_liters': this_month_liters,
+        'this_month_cost': this_month_cost,
+        'last_month_liters': last_month_liters,
+        'last_month_cost': last_month_cost,
+        'total_liters': total_liters,
+        'total_fuel_cost': total_fuel_cost,
     })
 
 

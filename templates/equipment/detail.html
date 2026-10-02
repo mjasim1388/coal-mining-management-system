@@ -117,7 +117,93 @@
         </div>
     </div>
 </div>
+<!-- ============ FUEL USAGE PANEL ============ -->
+{% if equipment.fuel_type != 'None' and equipment.fuel_type != 'Electric' %}
+<div class="panel mb-3">
+    <div class="panel-title">
+        <i class="bi bi-fuel-pump-fill"></i> Fuel Consumption
+    </div>
 
+    <div class="row g-3 mb-3">
+        <div class="col-md-3">
+            <div class="stat-card stat-amber">
+                <i class="bi bi-droplet-fill icon"></i>
+                <h2>{{ this_month_liters|floatformat:0 }}</h2>
+                <p>This Month (L)</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card stat-blue">
+                <i class="bi bi-droplet icon"></i>
+                <h2>{{ last_month_liters|floatformat:0 }}</h2>
+                <p>Last Month (L)</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card stat-green">
+                <i class="bi bi-cash-stack icon"></i>
+                <h2>{{ this_month_cost|floatformat:0 }}</h2>
+                <p>Cost This Month (PKR)</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card stat-red">
+                <i class="bi bi-cash icon"></i>
+                <h2>{{ total_fuel_cost|floatformat:0 }}</h2>
+                <p>Total Cost (PKR)</p>
+            </div>
+        </div>
+    </div>
+
+    {% if fuel_issues %}
+    <div style="overflow-x:auto;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Fuel Type</th>
+                    <th style="text-align:right;">Quantity</th>
+                    <th style="text-align:right;">Unit Price</th>
+                    <th style="text-align:right;">Total Cost</th>
+                    <th>Issued By</th>
+                    <th>Reason</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in fuel_issues %}
+                <tr>
+                    <td>{{ f.date }}</td>
+                    <td><strong>{{ f.item.name }}</strong></td>
+                    <td style="text-align:right;">
+                        <strong style="color:var(--accent);">{{ f.quantity }}</strong>
+                        <small style="color:var(--text-muted);">{{ f.item.unit }}</small>
+                    </td>
+                    <td style="text-align:right;">{{ f.item.unit_price }}</td>
+                    <td style="text-align:right;">
+                        <strong>{{ f.quantity|floatformat:2 }}</strong>
+                    </td>
+                    <td>{{ f.created_by.username|default:"—" }}</td>
+                    <td style="max-width:180px;">{{ f.reason|default:"—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if fuel_issues|length >= 20 %}
+        <p style="text-align:center; color:var(--text-muted); font-size:12px; margin-top:10px;">
+            Showing last 20 fuel issues. <a href="{% url 'stock_transaction_list' %}?item=&type=OUT" style="color:var(--accent);">View all movements</a>.
+        </p>
+        {% endif %}
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted); text-align:center; padding:20px; margin:0;">
+        <i class="bi bi-droplet" style="font-size:36px; display:block; margin-bottom:8px; opacity:0.5;"></i>
+        No fuel issued to this machine yet.
+        <br>
+        <small>Issue fuel via <a href="{% url 'inventory_list' %}" style="color:var(--accent);">Inventory → Diesel → Out</a> and select this equipment.</small>
+    </p>
+    {% endif %}
+</div>
+{% endif %}
 <!-- Maintenance History -->
 <div class="panel">
     <div class="d-flex justify-content-between align-items-center mb-3">
