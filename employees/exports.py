@@ -1,6 +1,6 @@
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment
 from django.http import HttpResponse
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font, PatternFill
 
 
 def make_excel_response(filename, headers, rows):

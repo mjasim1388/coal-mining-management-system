@@ -1,9 +1,46 @@
 from django import forms
-from .models import (Employee, Mine, ProductionRecord, Attendance,
-                     InventoryItem, StockTransaction, Payroll,
-                     Customer, Sale, Equipment, MaintenanceLog)
+
+from .models import (
+    Attendance,
+    Customer,
+    Employee,
+    Equipment,
+    InventoryItem,
+    MaintenanceLog,
+    Mine,
+    Payroll,
+    ProductionRecord,
+    Sale,
+    StockTransaction,
+)
+
+
+def clear_zeros(form, field_names):
+    """For new records, show empty fields instead of '0' defaults.
+
+    Django stores model field defaults in form.fields[name].initial,
+    not form.initial — so we need to clear BOTH.
+    """
+    if form.instance.pk:
+        return  # Don't touch when editing existing records
+    for name in field_names:
+        if name in form.fields:
+            # Clear the field's own initial (this is where model defaults land)
+            form.fields[name].initial = ''
+        # Also clear form.initial for consistency
+        form.initial[name] = ''
+
 
 class EmployeeForm(forms.ModelForm):
+    employee_code = forms.CharField(
+        required=False,
+        max_length=20,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Leave blank to auto-generate',
+        })
+    )
+
     class Meta:
         model = Employee
         fields = [
@@ -13,23 +50,42 @@ class EmployeeForm(forms.ModelForm):
             'date_of_joining', 'salary', 'status', 'photo', 'notes',
         ]
         widgets = {
-            'employee_code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. EMP001'}),
-            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'father_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'cnic': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '12345-1234567-1'}),
+            'first_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'First name'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Last name'}),
+            'father_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "Father's name"}),
+            'cnic': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': '12345-1234567-1',
+                'maxlength': '15',
+                'inputmode': 'numeric',
+                'id': 'id_cnic',
+            }),
             'date_of_birth': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'phone': forms.TextInput(attrs={'class': 'form-control'}),
+            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. 03001234567'}),
             'address': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
-            'designation': forms.TextInput(attrs={'class': 'form-control'}),
-            'department': forms.TextInput(attrs={'class': 'form-control'}),
+            'designation': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Operator'}),
+            'department': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Mining'}),
             'shift': forms.Select(attrs={'class': 'form-control'}),
             'date_of_joining': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'salary': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'salary': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': 'e.g. 35000'}),
             'status': forms.Select(attrs={'class': 'form-control'}),
             'photo': forms.ClearableFileInput(attrs={'class': 'form-control'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['salary'].required = False
+        self.fields['shift'].required = False
+        self.fields['status'].required = False
+        self.fields['date_of_birth'].required = False
+        self.fields['father_name'].required = False
+        self.fields['phone'].required = False
+        self.fields['address'].required = False
+        self.fields['notes'].required = False
+        self.fields['photo'].required = False
+        self.fields['cnic'].help_text = 'Format: 12345-1234567-1 (dashes added automatically)'
+        clear_zeros(self, ['salary'])
 
 
 class MineForm(forms.ModelForm):
@@ -42,10 +98,15 @@ class MineForm(forms.ModelForm):
             'location': forms.TextInput(attrs={'class': 'form-control'}),
             'license_no': forms.TextInput(attrs={'class': 'form-control'}),
             'manager_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'reserves_tons': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'reserves_tons': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': 'e.g. 500000'}),
             'status': forms.Select(attrs={'class': 'form-control'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['reserves_tons'].required = False
+        clear_zeros(self, ['reserves_tons'])
 
 
 class ProductionForm(forms.ModelForm):
@@ -58,12 +119,19 @@ class ProductionForm(forms.ModelForm):
             'date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'shift': forms.Select(attrs={'class': 'form-control'}),
             'coal_type': forms.Select(attrs={'class': 'form-control'}),
-            'quantity_tons': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'overburden_removed': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'quantity_tons': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': 'e.g. 250'}),
+            'overburden_removed': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': 'e.g. 100'}),
             'supervisor': forms.TextInput(attrs={'class': 'form-control'}),
-            'workers_count': forms.NumberInput(attrs={'class': 'form-control'}),
+            'workers_count': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'e.g. 15'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['overburden_removed'].required = False
+        self.fields['workers_count'].required = False
+        clear_zeros(self, ['quantity_tons', 'overburden_removed', 'workers_count'])
+
 
 class AttendanceForm(forms.ModelForm):
     class Meta:
@@ -78,11 +146,15 @@ class AttendanceForm(forms.ModelForm):
             'status': forms.Select(attrs={'class': 'form-control', 'id': 'id_status'}),
             'check_in': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
             'check_out': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
-            'overtime_hours': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'overtime_hours': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0'}),
             'leave_reason': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'id': 'id_leave_reason'}),
             'photo': forms.ClearableFileInput(attrs={'class': 'form-control', 'id': 'id_photo'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        clear_zeros(self, ['overtime_hours'])
 
 
 class InventoryItemForm(forms.ModelForm):
@@ -103,11 +175,7 @@ class InventoryItemForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Remove the default "0" from number fields — show empty placeholders instead
-        if not self.instance.pk:
-            self.initial['quantity'] = ''
-            self.initial['reorder_level'] = ''
-            self.initial['unit_price'] = ''
+        clear_zeros(self, ['quantity', 'reorder_level', 'unit_price'])
 
 
 class StockTransactionForm(forms.ModelForm):
@@ -119,11 +187,15 @@ class StockTransactionForm(forms.ModelForm):
             'item': forms.Select(attrs={'class': 'form-control'}),
             'date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'transaction_type': forms.Select(attrs={'class': 'form-control'}),
-            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0'}),
             'reason': forms.TextInput(attrs={'class': 'form-control'}),
             'handled_by': forms.TextInput(attrs={'class': 'form-control'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        clear_zeros(self, ['quantity'])
 
 
 class PayrollForm(forms.ModelForm):
@@ -136,20 +208,28 @@ class PayrollForm(forms.ModelForm):
         widgets = {
             'employee': forms.Select(attrs={'class': 'form-control'}),
             'month': forms.Select(attrs={'class': 'form-control'}),
-            'year': forms.NumberInput(attrs={'class': 'form-control'}),
-            'basic_salary': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'present_days': forms.NumberInput(attrs={'class': 'form-control'}),
-            'absent_days': forms.NumberInput(attrs={'class': 'form-control'}),
-            'leave_days': forms.NumberInput(attrs={'class': 'form-control'}),
-            'half_days': forms.NumberInput(attrs={'class': 'form-control'}),
-            'overtime_hours': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'overtime_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'allowances': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'deductions': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'year': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'e.g. 2026'}),
+            'basic_salary': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0'}),
+            'present_days': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '0'}),
+            'absent_days': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '0'}),
+            'leave_days': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '0'}),
+            'half_days': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '0'}),
+            'overtime_hours': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0'}),
+            'overtime_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0'}),
+            'allowances': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0'}),
+            'deductions': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0'}),
             'status': forms.Select(attrs={'class': 'form-control'}),
             'payment_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        clear_zeros(self, [
+            'basic_salary', 'present_days', 'absent_days', 'leave_days',
+            'half_days', 'overtime_hours', 'overtime_amount',
+            'allowances', 'deductions',
+        ])
 
 
 class CustomerForm(forms.ModelForm):
@@ -183,23 +263,32 @@ class SaleForm(forms.ModelForm):
             'driver_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Driver full name'}),
             'driver_phone': forms.TextInput(attrs={'class': 'form-control'}),
             'payment_status': forms.Select(attrs={'class': 'form-control'}),
-            'amount_paid': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'amount_paid': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Only show customers that are approved (not needed — customers have no approval)
         self.fields['customer'].empty_label = 'Select Customer...'
+        clear_zeros(self, ['amount_paid'])
+
 
 class EquipmentForm(forms.ModelForm):
+    equipment_code = forms.CharField(
+        required=False,
+        max_length=30,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Leave blank to auto-generate',
+        })
+    )
+
     class Meta:
         model = Equipment
         fields = ['equipment_code', 'name', 'equipment_type', 'model_number',
                   'serial_number', 'mine', 'status', 'fuel_type',
                   'purchase_date', 'purchase_cost', 'notes']
         widgets = {
-            'equipment_code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Leave blank to auto-generate'}),
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Excavator 1'}),
             'equipment_type': forms.Select(attrs={'class': 'form-control'}),
             'model_number': forms.TextInput(attrs={'class': 'form-control'}),
@@ -208,9 +297,15 @@ class EquipmentForm(forms.ModelForm):
             'status': forms.Select(attrs={'class': 'form-control'}),
             'fuel_type': forms.Select(attrs={'class': 'form-control'}),
             'purchase_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'purchase_cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'purchase_cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': 'e.g. 15000000'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['purchase_cost'].required = False
+        clear_zeros(self, ['purchase_cost'])
+
 
 class MaintenanceLogForm(forms.ModelForm):
     class Meta:
@@ -222,9 +317,13 @@ class MaintenanceLogForm(forms.ModelForm):
             'date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'maintenance_type': forms.Select(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0'}),
             'performed_by': forms.TextInput(attrs={'class': 'form-control'}),
             'status': forms.Select(attrs={'class': 'form-control'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
-        
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['cost'].required = False
+        clear_zeros(self, ['cost'])

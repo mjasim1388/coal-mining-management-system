@@ -1,8 +1,21 @@
 from django.contrib import admin
-from .models import (Employee, Mine, ProductionRecord, Attendance,
-                     InventoryItem, StockTransaction, Payroll,
-                     Customer, Sale, Notification, ApprovalLog,
-                     Equipment, MaintenanceLog)
+
+from .models import (
+    ApprovalLog,
+    Attendance,
+    Customer,
+    Employee,
+    Equipment,
+    InventoryItem,
+    MaintenanceLog,
+    Mine,
+    Notification,
+    Payroll,
+    ProductionRecord,
+    Sale,
+    StockTransaction,
+)
+
 
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):

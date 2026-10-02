@@ -1,17 +1,41 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.db.models import Sum
-from .decorators import role_required
-from .models import (Employee, Mine, ProductionRecord, Attendance,
-                     InventoryItem, StockTransaction, Payroll,
-                     Customer, Sale, Notification, ApprovalLog,
-                     Equipment, MaintenanceLog)
-from .forms import (EmployeeForm, MineForm, ProductionForm, AttendanceForm,
-                    InventoryItemForm, StockTransactionForm, PayrollForm,
-                    CustomerForm, SaleForm, EquipmentForm, MaintenanceLogForm)
-from .exports import make_excel_response
 from datetime import date
+
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.db.models import Sum
+from django.shortcuts import get_object_or_404, redirect, render
+
+from .decorators import role_required
+from .exports import make_excel_response
+from .forms import (
+    AttendanceForm,
+    CustomerForm,
+    EmployeeForm,
+    EquipmentForm,
+    InventoryItemForm,
+    MaintenanceLogForm,
+    MineForm,
+    PayrollForm,
+    ProductionForm,
+    SaleForm,
+    StockTransactionForm,
+)
+from .models import (
+    ApprovalLog,
+    Attendance,
+    Customer,
+    Employee,
+    Equipment,
+    InventoryItem,
+    MaintenanceLog,
+    Mine,
+    Notification,
+    Payroll,
+    ProductionRecord,
+    Sale,
+    StockTransaction,
+)
+
 
 # ---------- DASHBOARD ----------
 @role_required('Manager', 'Accountant', 'Viewer')
@@ -134,6 +158,8 @@ def employee_detail(request, pk):
 
 @role_required('Manager', 'Accountant')
 def employee_add(request):
+    from datetime import date as date_today
+
     if request.method == 'POST':
         form = EmployeeForm(request.POST, request.FILES)
         if form.is_valid():
@@ -146,7 +172,7 @@ def employee_add(request):
                     f'New employee {emp.first_name} {emp.last_name} added by {request.user.username}.',
                     link=f'/employees/{emp.pk}/'
                 )
-                messages.success(request, 'Employee added.')
+                messages.success(request, f'Employee {emp.employee_code} added — {emp.first_name} {emp.last_name}.')
             else:
                 emp.approval_status = 'Pending'
                 emp.save()
@@ -157,12 +183,22 @@ def employee_add(request):
                     object_type='Employee',
                     object_id=emp.pk,
                 )
-                messages.info(request, 'Employee submitted for manager approval.')
+                messages.info(request, f'Employee submitted for manager approval — {emp.employee_code}.')
             return redirect('employee_list')
     else:
-        form = EmployeeForm()
+        # Smart defaults: remember last employee's settings
+        initial = {}
+        last = Employee.objects.order_by('-created_at').first()
+        if last:
+            initial['shift'] = last.shift
+            initial['department'] = last.department
+            initial['designation'] = last.designation
+            initial['status'] = 'Active'
+        initial['date_of_joining'] = date_today.today()  # Auto-set today
+        initial['status'] = 'Active'
+        initial['shift'] = initial.get('shift', 'Morning')
+        form = EmployeeForm(initial=initial)
     return render(request, 'employees/form.html', {'form': form, 'title': 'Add Employee'})
-
 
 @role_required('Manager')
 def employee_edit(request, pk):
@@ -1163,9 +1199,10 @@ def attendance_punch(request):
 
 @role_required('Manager', 'Accountant')
 def attendance_punch_save(request, pk):
-    from django.utils import timezone
     from datetime import date
+
     from django.http import JsonResponse
+    from django.utils import timezone
 
     if request.method != 'POST':
         return JsonResponse({'status': 'error', 'message': 'POST required'}, status=400)
@@ -1214,9 +1251,10 @@ def attendance_punch_save(request, pk):
 # ---------- BACKUP ----------
 @role_required('Manager', 'Accountant')
 def backup_now(request):
-    import subprocess
     import os
     import shutil
+    import subprocess
+
     from django.conf import settings
     from django.utils import timezone
 
@@ -1277,6 +1315,7 @@ def backup_now(request):
 @role_required('Manager', 'Accountant')
 def backup_list(request):
     import os
+
     from django.conf import settings
     from django.utils import timezone
 
@@ -1311,6 +1350,7 @@ def backup_list(request):
 @role_required('Manager', 'Accountant')
 def backup_download(request, filename):
     import os
+
     from django.conf import settings
     from django.http import FileResponse, Http404
 
@@ -1332,6 +1372,7 @@ def backup_download(request, filename):
 @role_required('Manager')
 def backup_delete(request, filename):
     import os
+
     from django.conf import settings
 
     if request.method == 'POST':
@@ -1359,8 +1400,9 @@ def payroll_pay_confirm(request, pk):
 @role_required('Manager', 'Accountant')
 def payroll_pay_save(request, pk):
     """Handle the confirm payment POST."""
-    from django.utils import timezone
     from decimal import Decimal
+
+    from django.utils import timezone
 
     payroll = get_object_or_404(Payroll, pk=pk)
 
@@ -1431,7 +1473,6 @@ def equipment_list(request):
 
 @role_required('Manager', 'Accountant', 'Viewer')
 def equipment_detail(request, pk):
-    from datetime import date
     equipment = get_object_or_404(Equipment, pk=pk)
     logs = equipment.maintenance_logs.all()
     total_cost = sum(m.cost for m in logs)
@@ -1553,8 +1594,9 @@ def maintenance_delete(request, pk):
 @role_required('Manager', 'Accountant', 'Viewer')
 def sales_live_api(request):
     """Returns recent dispatches as JSON for live polling."""
-    from django.http import JsonResponse
     from datetime import date, timedelta
+
+    from django.http import JsonResponse
 
     # Show dispatches from the last 24 hours + today
     today = date.today()

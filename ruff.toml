@@ -1,0 +1,41 @@
+# Ruff configuration for Coal Mining Management System
+
+target-version = "py314"
+line-length = 120
+
+include = ["employees/**/*.py", "coalmining/**/*.py", "manage.py"]
+
+exclude = [
+    ".git",
+    "__pycache__",
+    "migrations",
+    "venv",
+    ".venv",
+    "backups",
+    "media",
+    "staticfiles",
+]
+
+[lint]
+select = [
+    "E",
+    "W",
+    "F",
+    "I",
+    "UP",
+    "B",
+    "C4",
+    "DJ",
+    "SIM",
+]
+
+ignore = [
+    "E501",
+    "B008",
+    "DJ001",
+]
+
+[lint.per-file-ignores]
+"manage.py" = ["E402"]
+"coalmining/settings.py" = ["F403", "F405"]
+"employees/migrations/*" = ["E", "W", "F", "I", "UP", "B", "C4", "DJ", "SIM"]

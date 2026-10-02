@@ -14,7 +14,8 @@ class Employee(models.Model):
         ('Night', 'Night'),
     ]
 
-    employee_code = models.CharField(max_length=20, unique=True)
+    employee_code = models.CharField(max_length=20, unique=True, blank=True,
+                                     help_text="Leave blank to auto-generate")
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     father_name = models.CharField(max_length=100, blank=True)
@@ -42,6 +43,18 @@ class Employee(models.Model):
     def __str__(self):
         return f"{self.employee_code} - {self.first_name} {self.last_name}"
 
+    def save(self, *args, **kwargs):
+        if not self.employee_code:
+            last = Employee.objects.filter(employee_code__startswith='EMP-').order_by('-employee_code').first()
+            if last:
+                try:
+                    last_num = int(last.employee_code.split('-')[-1])
+                except (ValueError, IndexError):
+                    last_num = 0
+            else:
+                last_num = 0
+            self.employee_code = f'EMP-{last_num + 1:04d}'
+        super().save(*args, **kwargs)
 
 class Mine(models.Model):
     STATUS_CHOICES = [

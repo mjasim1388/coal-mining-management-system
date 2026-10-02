@@ -8,15 +8,35 @@
 <div class="panel">
     <div class="panel-title"><i class="bi bi-person-vcard"></i> {{ title }}</div>
 
+    <div class="alert alert-info-custom mb-3" id="prefillNotice" style="border-radius: 8px;">
+        <i class="bi bi-info-circle-fill"></i>
+        <span>Employee code auto-generates. Date of joining is today. Shift, department, and designation are pre-filled from the last employee. Press <strong>Enter</strong> to jump to the next field.</span>
+    </div>
+
     <form method="post" enctype="multipart/form-data" id="employeeForm">
         {% csrf_token %}
 
-        <div class="row g-3">
-            <div class="col-md-4">
-                <label class="form-label">Employee Code *</label>
-                {{ form.employee_code }}
-                {{ form.employee_code.errors }}
+        {% if form.errors %}
+            <div class="alert alert-error-custom mb-3" style="border-radius: 8px;">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <div>
+                    <strong>Please fix these errors:</strong>
+                    <ul style="margin: 8px 0 0; padding-left: 20px;">
+                        {% for field in form %}
+                            {% if field.errors %}
+                                <li><strong>{{ field.label }}:</strong> {{ field.errors|join:", " }}</li>
+                            {% endif %}
+                        {% endfor %}
+                        {% for error in form.non_field_errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
             </div>
+        {% endif %}
+
+        <div class="row g-3">
+            <!-- ===== BASIC INFO ===== -->
             <div class="col-md-4">
                 <label class="form-label">First Name *</label>
                 {{ form.first_name }}
@@ -27,25 +47,28 @@
                 {{ form.last_name }}
                 {{ form.last_name.errors }}
             </div>
-
             <div class="col-md-4">
                 <label class="form-label">Father Name</label>
                 {{ form.father_name }}
             </div>
+
+            <!-- ===== IDENTITY ===== -->
             <div class="col-md-4">
                 <label class="form-label">CNIC *</label>
                 {{ form.cnic }}
                 {{ form.cnic.errors }}
+                <small style="color:var(--text-muted); font-size:11px;">{{ form.cnic.help_text }}</small>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Phone</label>
+                {{ form.phone }}
             </div>
             <div class="col-md-4">
                 <label class="form-label">Date of Birth</label>
                 {{ form.date_of_birth }}
             </div>
 
-            <div class="col-md-4">
-                <label class="form-label">Phone</label>
-                {{ form.phone }}
-            </div>
+            <!-- ===== JOB DETAILS ===== -->
             <div class="col-md-4">
                 <label class="form-label">Designation *</label>
                 {{ form.designation }}
@@ -56,81 +79,93 @@
                 {{ form.department }}
                 {{ form.department.errors }}
             </div>
-
             <div class="col-md-4">
                 <label class="form-label">Shift</label>
                 {{ form.shift }}
             </div>
+
             <div class="col-md-4">
                 <label class="form-label">Date of Joining *</label>
                 {{ form.date_of_joining }}
                 {{ form.date_of_joining.errors }}
+                <small style="color:var(--text-muted); font-size:11px;">Defaults to today.</small>
             </div>
             <div class="col-md-4">
-                <label class="form-label">Salary</label>
+                <label class="form-label">Monthly Salary (PKR)</label>
                 {{ form.salary }}
             </div>
-
             <div class="col-md-4">
                 <label class="form-label">Status</label>
                 {{ form.status }}
             </div>
 
-            <!-- PHOTO SECTION WITH CAMERA -->
+            <!-- ===== CODE (auto-generates) ===== -->
+            <div class="col-md-4">
+                <label class="form-label">Employee Code</label>
+                {{ form.employee_code }}
+                <small style="color:var(--text-muted); font-size:11px;">Leave blank — system assigns EMP-0001, EMP-0002...</small>
+            </div>
             <div class="col-md-8">
+                <label class="form-label">Address</label>
+                {{ form.address }}
+            </div>
+
+            <!-- ===== PHOTO ===== -->
+            <div class="col-md-12">
                 <label class="form-label">Photo</label>
                 <div class="d-flex align-items-start gap-3">
-                    <div id="photoPreviewBox" style="width:120px; height:120px; border:2px dashed var(--border-strong); border-radius:10px; display:flex; align-items:center; justify-content:center; overflow:hidden; background:var(--bg-elevated);">
+                    <div id="photoPreviewBox" style="width:120px; height:120px; border:2px dashed var(--border-medium); border-radius:10px; display:flex; align-items:center; justify-content:center; overflow:hidden; background:var(--bg-app);">
                         {% if form.instance.photo %}
                             <img id="photoPreview" src="{{ form.instance.photo.url }}" style="width:100%; height:100%; object-fit:cover;">
                         {% else %}
-                            <i class="bi bi-person-fill" id="photoPlaceholder" style="font-size:50px; color:var(--border-strong);"></i>
+                            <i class="bi bi-person-fill" id="photoPlaceholder" style="font-size:50px; color:var(--border-medium);"></i>
                             <img id="photoPreview" style="width:100%; height:100%; object-fit:cover; display:none;">
                         {% endif %}
                     </div>
                     <div class="flex-grow-1">
                         <div style="display:none;">{{ form.photo }}</div>
-                        <button type="button" class="btn btn-outline-amber mb-2" onclick="document.getElementById('id_photo').click();">
-                            <i class="bi bi-upload"></i> Upload File
-                        </button>
                         <button type="button" class="btn btn-amber mb-2" onclick="openCamera();">
                             <i class="bi bi-camera-fill"></i> Take Photo
                         </button>
+                        <button type="button" class="btn btn-outline-amber mb-2" onclick="document.getElementById('id_photo').click();">
+                            <i class="bi bi-upload"></i> Upload File
+                        </button>
                         <small style="color:var(--text-muted); display:block; margin-top:4px;">
-                            JPG or PNG. Or use your webcam.
+                            JPG or PNG. Or use webcam.
                         </small>
                     </div>
                 </div>
             </div>
 
-            <div class="col-md-8">
-                <label class="form-label">Address</label>
-                {{ form.address }}
-            </div>
-            <div class="col-md-4">
+            <div class="col-md-12">
                 <label class="form-label">Notes</label>
                 {{ form.notes }}
             </div>
         </div>
 
-        <hr style="border-color:var(--border-subtle); margin:25px 0;">
+        <hr style="border-color:var(--border-light); margin:25px 0;">
 
-        <button type="submit" class="btn btn-amber">
-            <i class="bi bi-check-lg"></i> Save Employee
-        </button>
-        <a href="{% url 'employee_list' %}" class="btn btn-outline-amber">
-            <i class="bi bi-x-lg"></i> Cancel
-        </a>
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-amber" style="padding: 12px 26px;">
+                <i class="bi bi-check-lg"></i> Save Employee
+            </button>
+            <button type="button" class="btn btn-outline-amber" style="padding: 12px 26px;" onclick="clearForm()">
+                <i class="bi bi-eraser"></i> Clear Form
+            </button>
+            <a href="{% url 'employee_list' %}" class="btn btn-outline-amber" style="padding: 12px 26px;">
+                <i class="bi bi-x-lg"></i> Cancel
+            </a>
+        </div>
     </form>
 </div>
 
 <!-- CAMERA MODAL -->
 <div class="modal fade" id="cameraModal" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="background:var(--bg-panel); border:1px solid var(--border-subtle); color:var(--text-primary);">
-            <div class="modal-header" style="border-bottom:1px solid var(--border-subtle);">
+        <div class="modal-content" style="background:var(--bg-panel); border:1px solid var(--border-light); color:var(--text-primary);">
+            <div class="modal-header" style="border-bottom:1px solid var(--border-light);">
                 <h5 class="modal-title"><i class="bi bi-camera-video-fill" style="color:var(--accent);"></i> Take Photo</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="stopCamera();"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="stopCamera();"></button>
             </div>
             <div class="modal-body text-center">
                 <div style="position:relative; background:#000; border-radius:10px; overflow:hidden;">
@@ -139,10 +174,8 @@
                 <canvas id="cameraCanvas" style="display:none;"></canvas>
                 <div id="cameraError" style="color:#f87171; display:none; margin-top:12px;"></div>
             </div>
-            <div class="modal-footer" style="border-top:1px solid var(--border-subtle);">
-                <button type="button" class="btn btn-outline-amber" data-bs-dismiss="modal" onclick="stopCamera();">
-                    <i class="bi bi-x-lg"></i> Cancel
-                </button>
+            <div class="modal-footer" style="border-top:1px solid var(--border-light);">
+                <button type="button" class="btn btn-outline-amber" data-bs-dismiss="modal" onclick="stopCamera();">Cancel</button>
                 <button type="button" class="btn btn-amber" onclick="capturePhoto();">
                     <i class="bi bi-camera-fill"></i> Capture
                 </button>
@@ -156,25 +189,71 @@
     let cameraModal = null;
 
     document.addEventListener('DOMContentLoaded', function() {
-        const modalEl = document.getElementById('cameraModal');
-        cameraModal = new bootstrap.Modal(modalEl);
+        cameraModal = new bootstrap.Modal(document.getElementById('cameraModal'));
 
-        // Show preview when user selects a file manually
-        const fileInput = document.getElementById('id_photo');
+        // ==================== CNIC AUTO-FORMAT ====================
+        var cnicField = document.getElementById('id_cnic');
+        if (cnicField) {
+            cnicField.addEventListener('input', function(e) {
+                // Strip non-digits
+                var digits = e.target.value.replace(/\D/g, '').slice(0, 13);
+                var formatted = digits;
+                if (digits.length > 5) {
+                    formatted = digits.slice(0, 5) + '-' + digits.slice(5);
+                }
+                if (digits.length > 12) {
+                    formatted = digits.slice(0, 5) + '-' + digits.slice(5, 12) + '-' + digits.slice(12);
+                }
+                e.target.value = formatted;
+            });
+        }
+
+        // ==================== PHONE AUTO-FORMAT ====================
+        var phoneField = document.getElementById('id_phone');
+        if (phoneField) {
+            phoneField.addEventListener('input', function(e) {
+                // Allow digits, +, -, spaces only
+                e.target.value = e.target.value.replace(/[^\d\+\-\s]/g, '');
+            });
+        }
+
+        // ==================== PHOTO INPUT PREVIEW ====================
+        var fileInput = document.getElementById('id_photo');
         if (fileInput) {
             fileInput.addEventListener('change', function(e) {
-                const file = e.target.files[0];
+                var file = e.target.files[0];
                 if (file) {
-                    const preview = document.getElementById('photoPreview');
-                    const placeholder = document.getElementById('photoPlaceholder');
+                    var preview = document.getElementById('photoPreview');
+                    var placeholder = document.getElementById('photoPlaceholder');
                     preview.src = URL.createObjectURL(file);
                     preview.style.display = 'block';
                     if (placeholder) placeholder.style.display = 'none';
                 }
             });
         }
+
+        // ==================== ENTER = NEXT FIELD ====================
+        var form = document.getElementById('employeeForm');
+        var focusable = form.querySelectorAll(
+            'input:not([type="hidden"]):not([type="file"]):not([type="submit"]):not([disabled]), select:not([disabled]), textarea:not([disabled])'
+        );
+
+        form.addEventListener('keydown', function(e) {
+            if (e.key !== 'Enter') return;
+            var target = e.target;
+            if (target.tagName === 'TEXTAREA') return; // allow newline in textareas
+            e.preventDefault();
+            var fields = Array.prototype.slice.call(focusable);
+            var idx = fields.indexOf(target);
+            if (idx > -1 && idx < fields.length - 1) {
+                fields[idx + 1].focus();
+            } else {
+                form.submit();
+            }
+        });
     });
 
+    // ==================== CAMERA ====================
     async function openCamera() {
         if (!cameraModal) {
             cameraModal = new bootstrap.Modal(document.getElementById('cameraModal'));
@@ -188,9 +267,9 @@
             });
             document.getElementById('cameraVideo').srcObject = cameraStream;
         } catch (err) {
-            const errBox = document.getElementById('cameraError');
+            var errBox = document.getElementById('cameraError');
             errBox.style.display = 'block';
-            errBox.textContent = 'Cannot access camera: ' + err.message + '. Please allow camera access in your browser.';
+            errBox.textContent = 'Cannot access camera: ' + err.message;
         }
     }
 
@@ -202,25 +281,23 @@
     }
 
     function capturePhoto() {
-        const video = document.getElementById('cameraVideo');
-        const canvas = document.getElementById('cameraCanvas');
+        var video = document.getElementById('cameraVideo');
+        var canvas = document.getElementById('cameraCanvas');
         if (!video.videoWidth) return;
 
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
 
         canvas.toBlob(function(blob) {
-            const file = new File([blob], 'camera_photo.jpg', { type: 'image/jpeg' });
+            var file = new File([blob], 'camera_photo.jpg', { type: 'image/jpeg' });
+            var fileInput = document.getElementById('id_photo');
+            var dt = new DataTransfer();
+            dt.items.add(file);
+            fileInput.files = dt.files;
 
-            const fileInput = document.getElementById('id_photo');
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(file);
-            fileInput.files = dataTransfer.files;
-
-            const preview = document.getElementById('photoPreview');
-            const placeholder = document.getElementById('photoPlaceholder');
+            var preview = document.getElementById('photoPreview');
+            var placeholder = document.getElementById('photoPlaceholder');
             preview.src = URL.createObjectURL(blob);
             preview.style.display = 'block';
             if (placeholder) placeholder.style.display = 'none';
@@ -228,6 +305,32 @@
             stopCamera();
             cameraModal.hide();
         }, 'image/jpeg', 0.92);
+    }
+
+    // ==================== CLEAR FORM ====================
+    function clearForm() {
+        var form = document.getElementById('employeeForm');
+        form.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], textarea').forEach(function(el) {
+            if (el.id === 'id_date_of_joining') return; // keep today's date
+            el.value = '';
+        });
+        form.querySelectorAll('select').forEach(function(el) {
+            // Reset status/shift to defaults
+            if (el.id === 'id_status') { el.value = 'Active'; return; }
+            if (el.id === 'id_shift') { el.value = 'Morning'; return; }
+            el.selectedIndex = 0;
+        });
+
+        var preview = document.getElementById('photoPreview');
+        var placeholder = document.getElementById('photoPlaceholder');
+        if (preview) { preview.style.display = 'none'; preview.src = ''; }
+        if (placeholder) placeholder.style.display = 'block';
+
+        var notice = document.getElementById('prefillNotice');
+        if (notice) notice.style.display = 'none';
+
+        var first = document.getElementById('id_first_name');
+        if (first) first.focus();
     }
 </script>
 
