@@ -5,247 +5,630 @@
 
 {% block content %}
 
-<!-- Top stat cards -->
-<div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <a href="{% url 'employee_list' %}" class="stat-link">
-            <div class="stat-card stat-amber">
-                <i class="bi bi-people-fill icon"></i>
-                <h2>{{ total }}</h2>
-                <p>Total Employees</p>
-            </div>
-        </a>
-    </div>
-    <div class="col-md-3">
-        <a href="{% url 'employee_list' %}?status=Active" class="stat-link">
-            <div class="stat-card stat-green">
-                <i class="bi bi-person-check-fill icon"></i>
-                <h2>{{ active }}</h2>
-                <p>Active Employees</p>
-            </div>
-        </a>
-    </div>
-    <div class="col-md-3">
-        <a href="{% url 'mine_list' %}" class="stat-link">
-            <div class="stat-card stat-blue">
-                <i class="bi bi-geo-alt-fill icon"></i>
-                <h2>{{ mine_count }}</h2>
-                <p>Mines</p>
-            </div>
-        </a>
-    </div>
-    <div class="col-md-3">
-        <a href="{% url 'inventory_list' %}?low=1" class="stat-link">
-            <div class="stat-card stat-red">
-                <i class="bi bi-exclamation-triangle-fill icon"></i>
-                <h2>{{ low_stock_items|length }}</h2>
-                <p>Low Stock Items</p>
-            </div>
-        </a>
-    </div>
-</div>
+<style>
+    .kpi-card {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-light);
+        border-radius: 12px;
+        padding: 18px 20px;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+    .kpi-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: var(--accent);
+    }
+    .kpi-card.kpi-green::before { background: var(--success); }
+    .kpi-card.kpi-red::before   { background: var(--danger); }
+    .kpi-card.kpi-blue::before  { background: var(--info); }
+    .kpi-card.kpi-purple::before { background: #8b5cf6; }
 
-<!-- Money cards -->
-<div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <a href="{% url 'production_list' %}" class="stat-link">
-            <div class="stat-card stat-amber">
-                <i class="bi bi-truck icon"></i>
-                <h2>{{ total_production }}</h2>
-                <p>Tons Produced</p>
-            </div>
-        </a>
-    </div>
+    .kpi-label {
+        font-size: 11px;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+    .kpi-value {
+        font-size: 26px;
+        font-weight: 800;
+        color: var(--text-primary);
+        letter-spacing: -0.5px;
+        line-height: 1.1;
+    }
+    .kpi-sub {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-top: 6px;
+    }
+    .kpi-trend {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 12px;
+        margin-top: 8px;
+    }
+    .trend-up   { background: rgba(47, 182, 124, 0.15); color: #4ade80; }
+    .trend-down { background: rgba(239, 91, 91, 0.15); color: #f87171; }
+    .trend-flat { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
+
+    .kpi-icon {
+        position: absolute;
+        top: 16px; right: 16px;
+        width: 38px; height: 38px;
+        border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 19px;
+        color: var(--accent);
+        background: var(--accent-soft);
+        opacity: 0.9;
+    }
+    .kpi-card.kpi-green .kpi-icon { color: var(--success); background: rgba(47,182,124,0.15); }
+    .kpi-card.kpi-red   .kpi-icon { color: var(--danger);  background: rgba(239,91,91,0.15); }
+    .kpi-card.kpi-blue  .kpi-icon { color: var(--info);    background: rgba(76,154,255,0.15); }
+    .kpi-card.kpi-purple .kpi-icon { color: #8b5cf6; background: rgba(139,92,246,0.15); }
+
+    .section-title {
+        font-size: 12px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        font-weight: 700;
+        margin: 24px 0 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .section-title::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--border-light);
+    }
+
+    .mini-panel {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-light);
+        border-radius: 12px;
+        padding: 18px 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        height: 100%;
+    }
+    .mini-panel-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--border-light);
+    }
+    .mini-panel-title i { color: var(--accent); }
+
+    .alert-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border-light);
+        font-size: 13.5px;
+    }
+    .alert-row:last-child { border-bottom: none; }
+
+    .chart-wrap { position: relative; height: 260px; }
+    .chart-wrap-sm { position: relative; height: 220px; }
+</style>
+
+<!-- ============================================================ -->
+<!-- SECTION 1: PRIMARY KPIs                                       -->
+<!-- ============================================================ -->
+<div class="section-title"><i class="bi bi-bar-chart-fill" style="color:var(--accent);"></i> Key Metrics — This Month</div>
+
+<div class="row g-3">
     <div class="col-md-3">
         <a href="{% url 'sale_list' %}" class="stat-link">
-            <div class="stat-card stat-green">
-                <i class="bi bi-cash-stack icon"></i>
-                <h2>{{ total_sales }}</h2>
-                <p>Total Sales</p>
+            <div class="kpi-card kpi-green">
+                <i class="bi bi-cash-stack kpi-icon"></i>
+                <div class="kpi-label">Sales This Month</div>
+                <div class="kpi-value">PKR {{ tm_sales|floatformat:0 }}</div>
+                {% if sales_trend_pct is not None %}
+                    <span class="kpi-trend {% if sales_trend_pct > 0 %}trend-up{% elif sales_trend_pct < 0 %}trend-down{% else %}trend-flat{% endif %}">
+                        <i class="bi bi-arrow-{% if sales_trend_pct > 0 %}up{% elif sales_trend_pct < 0 %}down{% else %}right{% endif %}"></i>
+                        {{ sales_trend_pct }}% vs last month
+                    </span>
+                {% else %}
+                    <div class="kpi-sub">No previous month data</div>
+                {% endif %}
             </div>
         </a>
     </div>
+
+    <div class="col-md-3">
+        <a href="{% url 'production_list' %}" class="stat-link">
+            <div class="kpi-card">
+                <i class="bi bi-truck kpi-icon"></i>
+                <div class="kpi-label">Coal Produced</div>
+                <div class="kpi-value">{{ tm_tons|floatformat:0 }} <small style="font-size:14px; color:var(--text-muted);">tons</small></div>
+                {% if production_trend_pct is not None %}
+                    <span class="kpi-trend {% if production_trend_pct > 0 %}trend-up{% elif production_trend_pct < 0 %}trend-down{% else %}trend-flat{% endif %}">
+                        <i class="bi bi-arrow-{% if production_trend_pct > 0 %}up{% elif production_trend_pct < 0 %}down{% else %}right{% endif %}"></i>
+                        {{ production_trend_pct }}% vs last month
+                    </span>
+                {% else %}
+                    <div class="kpi-sub">No previous month data</div>
+                {% endif %}
+            </div>
+        </a>
+    </div>
+
     <div class="col-md-3">
         <a href="{% url 'sale_list' %}?status=Paid" class="stat-link">
-            <div class="stat-card stat-blue">
-                <i class="bi bi-check-circle-fill icon"></i>
-                <h2>{{ total_received }}</h2>
-                <p>Amount Received</p>
+            <div class="kpi-card kpi-blue">
+                <i class="bi bi-wallet2 kpi-icon"></i>
+                <div class="kpi-label">Cash Received</div>
+                <div class="kpi-value">PKR {{ tm_received|floatformat:0 }}</div>
+                {% if received_trend_pct is not None %}
+                    <span class="kpi-trend {% if received_trend_pct > 0 %}trend-up{% elif received_trend_pct < 0 %}trend-down{% else %}trend-flat{% endif %}">
+                        <i class="bi bi-arrow-{% if received_trend_pct > 0 %}up{% elif received_trend_pct < 0 %}down{% else %}right{% endif %}"></i>
+                        {{ received_trend_pct }}% vs last month
+                    </span>
+                {% else %}
+                    <div class="kpi-sub">No previous month data</div>
+                {% endif %}
             </div>
         </a>
     </div>
+
     <div class="col-md-3">
         <a href="{% url 'sale_list' %}?status=Unpaid" class="stat-link">
-            <div class="stat-card stat-red">
-                <i class="bi bi-hourglass-split icon"></i>
-                <h2>{{ total_outstanding }}</h2>
-                <p>Outstanding</p>
+            <div class="kpi-card kpi-red">
+                <i class="bi bi-hourglass-split kpi-icon"></i>
+                <div class="kpi-label">Outstanding Receivables</div>
+                <div class="kpi-value">PKR {{ total_outstanding|floatformat:0 }}</div>
+                <div class="kpi-sub">Across all unpaid / partial invoices</div>
             </div>
         </a>
     </div>
 </div>
 
-<!-- Charts -->
-<div class="row g-3 mb-4">
-    <div class="col-md-8">
-        <div class="panel">
-            <div class="panel-title"><i class="bi bi-graph-up"></i> Production Trend (Last 7 Days)</div>
-            <canvas id="trendChart" height="90"></canvas>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="panel">
-            <div class="panel-title"><i class="bi bi-pie-chart"></i> Production by Mine</div>
-            <canvas id="mineChart" height="180"></canvas>
-        </div>
-    </div>
-</div>
+<!-- ============================================================ -->
+<!-- SECTION 2: SECONDARY KPIs                                     -->
+<!-- ============================================================ -->
+<div class="section-title"><i class="bi bi-people-fill" style="color:var(--accent);"></i> Operations Snapshot</div>
 
-<!-- Bottom widgets -->
 <div class="row g-3">
+    <div class="col-md-3">
+        <a href="{% url 'employee_list' %}?status=Active" class="stat-link">
+            <div class="kpi-card kpi-purple">
+                <i class="bi bi-person-check-fill kpi-icon"></i>
+                <div class="kpi-label">Active Employees</div>
+                <div class="kpi-value">{{ active_employees }} <small style="font-size:13px; color:var(--text-muted);">/ {{ total_employees }}</small></div>
+                <div class="kpi-sub">{{ total_employees }} total employees on record</div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-3">
+        <a href="{% url 'mine_list' %}" class="stat-link">
+            <div class="kpi-card">
+                <i class="bi bi-geo-alt-fill kpi-icon"></i>
+                <div class="kpi-label">Active Mines</div>
+                <div class="kpi-value">{{ mine_count }}</div>
+                <div class="kpi-sub">Operating sites</div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-3">
+        <a href="{% url 'payroll_list' %}" class="stat-link">
+            <div class="kpi-card kpi-blue">
+                <i class="bi bi-cash-coin kpi-icon"></i>
+                <div class="kpi-label">Payroll This Month</div>
+                <div class="kpi-value">PKR {{ tm_payroll_total|floatformat:0 }}</div>
+                <div class="kpi-sub">{{ tm_payroll|length }} payslips generated</div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-3">
+        <a href="{% url 'inventory_list' %}?low=1" class="stat-link">
+            <div class="kpi-card kpi-red">
+                <i class="bi bi-exclamation-triangle-fill kpi-icon"></i>
+                <div class="kpi-label">Low Stock Alerts</div>
+                <div class="kpi-value">{{ low_stock_count }}</div>
+                <div class="kpi-sub">Items at or below reorder level</div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 3: PENDING APPROVALS (highlighted if > 0)             -->
+<!-- ============================================================ -->
+{% if pending_approvals > 0 %}
+<div class="row g-3 mt-1">
+    <div class="col-12">
+        <a href="{% url 'approval_list' %}" class="stat-link">
+            <div class="kpi-card" style="border-left:4px solid var(--accent);">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="kpi-label" style="color:var(--accent);">
+                            <i class="bi bi-shield-exclamation"></i> Pending Your Approval
+                        </div>
+                        <div class="kpi-value" style="font-size:22px;">
+                            {{ pending_approvals }} record{{ pending_approvals|pluralize }} waiting
+                        </div>
+                    </div>
+                    <div style="font-size:24px; color:var(--accent);">
+                        Review Now <i class="bi bi-arrow-right"></i>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<!-- ============================================================ -->
+<!-- SECTION 4: CHARTS                                             -->
+<!-- ============================================================ -->
+<div class="section-title"><i class="bi bi-graph-up-arrow" style="color:var(--accent);"></i> Trends &amp; Analytics</div>
+
+<div class="row g-3">
+    <!-- 6-month comparison chart -->
+    <div class="col-md-8">
+        <div class="mini-panel">
+            <div class="mini-panel-title">
+                <i class="bi bi-bar-chart-line-fill"></i> 6-Month Performance
+                <span style="margin-left:auto; font-size:11px; color:var(--text-muted); font-weight:400;">Production (tons) · Sales (PKR)</span>
+            </div>
+            <div class="chart-wrap">
+                <canvas id="monthlyChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- 30-day sales trend -->
     <div class="col-md-4">
-        <div class="panel">
-            <div class="panel-title"><i class="bi bi-exclamation-triangle-fill" style="color:#f87171;"></i> Low Stock Alerts</div>
+        <div class="mini-panel">
+            <div class="mini-panel-title">
+                <i class="bi bi-activity"></i> Sales — Last 30 Days
+            </div>
+            <div class="chart-wrap">
+                <canvas id="salesTrendChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 5: TOP CUSTOMERS · MINE PERFORMANCE · LOW STOCK       -->
+<!-- ============================================================ -->
+<div class="section-title"><i class="bi bi-list-check" style="color:var(--accent);"></i> Detailed Breakdown</div>
+
+<div class="row g-3">
+    <!-- Top Customers -->
+    <div class="col-md-4">
+        <div class="mini-panel">
+            <div class="mini-panel-title">
+                <i class="bi bi-trophy-fill"></i> Top Customers (This Month)
+            </div>
+            {% if top_customers %}
+                {% for name, amount in top_customers %}
+                <div class="alert-row">
+                    <div style="min-width:0;">
+                        <div style="color:var(--text-primary); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                            {% if forloop.counter == 1 %}<i class="bi bi-trophy-fill" style="color:#fbbf24;"></i>
+                            {% elif forloop.counter == 2 %}<i class="bi bi-trophy-fill" style="color:#cbd5e1;"></i>
+                            {% elif forloop.counter == 3 %}<i class="bi bi-trophy-fill" style="color:#d97706;"></i>
+                            {% else %}<span style="color:var(--text-muted);">{{ forloop.counter }}.</span>{% endif %}
+                            {{ name }}
+                        </div>
+                    </div>
+                    <div style="color:var(--accent); font-weight:700; font-size:13px; white-space:nowrap;">
+                        PKR {{ amount|floatformat:0 }}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="color:var(--text-muted); margin:0; font-size:13px;">No sales this month.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Mine Performance -->
+    <div class="col-md-5">
+        <div class="mini-panel">
+            <div class="mini-panel-title">
+                <i class="bi bi-geo-alt-fill"></i> Mine Performance (This Month)
+            </div>
+            {% if mine_performance %}
+                {% for mp in mine_performance %}
+                <div class="alert-row">
+                    <div>
+                        <div style="color:var(--text-primary); font-weight:600;">{{ mp.mine.name }}</div>
+                        <small style="color:var(--text-muted);">{{ mp.mine.location }}</small>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="color:var(--accent); font-weight:700;">{{ mp.tons|floatformat:0 }} tons</div>
+                        <small style="color:var(--text-muted);">PKR {{ mp.revenue|floatformat:0 }} revenue</small>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="color:var(--text-muted); margin:0; font-size:13px;">No mines on record.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Low Stock -->
+    <div class="col-md-3">
+        <div class="mini-panel">
+            <div class="mini-panel-title">
+                <i class="bi bi-exclamation-triangle-fill" style="color:var(--danger);"></i> Low Stock Alerts
+            </div>
             {% if low_stock_items %}
-                {% for item in low_stock_items|slice:":5" %}
-                <div style="padding:10px 0; border-bottom:1px solid var(--coal-line);">
-                    <div class="d-flex justify-content-between">
-                        <strong style="color:var(--amber-glow);">{{ item.name }}</strong>
-                        <span class="badge-status badge-inactive">LOW</span>
+                {% for item in low_stock_items|slice:":6" %}
+                <div class="alert-row">
+                    <div>
+                        <div style="color:var(--text-primary); font-weight:600;">{{ item.name }}</div>
+                        <small style="color:var(--text-muted);">Reorder at {{ item.reorder_level }} {{ item.unit }}</small>
                     </div>
-                    <small style="color:var(--text-dim);">
-                        {{ item.quantity }} {{ item.unit }} left · reorder at {{ item.reorder_level }}
-                    </small>
-                </div>
-                {% endfor %}
-            {% else %}
-                <p style="color:var(--text-dim); margin:0;">All stock levels are OK.</p>
-            {% endif %}
-        </div>
-    </div>
-
-    <div class="col-md-4">
-        <div class="panel">
-            <div class="panel-title"><i class="bi bi-receipt"></i> Unpaid Invoices</div>
-            {% if unpaid_sales %}
-                {% for s in unpaid_sales %}
-                <div style="padding:10px 0; border-bottom:1px solid var(--coal-line);">
-                    <div class="d-flex justify-content-between">
-                        <a href="{% url 'sale_detail' s.pk %}" style="color:var(--amber-glow); text-decoration:none;">
-                            {{ s.invoice_no }}
-                        </a>
-                        <strong>{{ s.balance }}</strong>
+                    <div style="text-align:right;">
+                        <span class="badge-status badge-inactive">{{ item.quantity }} {{ item.unit }}</span>
                     </div>
-                    <small style="color:var(--text-dim);">{{ s.customer.name }} · {{ s.date }}</small>
                 </div>
                 {% endfor %}
-            {% else %}
-                <p style="color:var(--text-dim); margin:0;">No outstanding invoices. </p>
-            {% endif %}
-        </div>
-    </div>
-
-    <div class="col-md-4">
-        <div class="panel">
-            <div class="panel-title"><i class="bi bi-clock-history"></i> Recently Added Employees</div>
-            {% if recent %}
-                {% for emp in recent %}
-                <div style="padding:10px 0; border-bottom:1px solid var(--coal-line);">
-                    <div class="d-flex justify-content-between">
-    <a href="{% url 'employee_detail' emp.pk %}" style="color:var(--text-main); text-decoration:none;">
-        {{ emp.first_name }} {{ emp.last_name }}
-    </a>
-    <a href="{% url 'employee_detail' emp.pk %}" style="color:var(--amber-glow); text-decoration:none;">
-        <small>{{ emp.employee_code }}</small>
-    </a>
-</div>
-                    <small style="color:var(--text-dim);">{{ emp.designation }}</small>
+                {% if low_stock_items|length > 6 %}
+                <div style="text-align:center; padding-top:10px;">
+                    <a href="{% url 'inventory_list' %}?low=1" style="color:var(--accent); font-size:12px;">
+                        + {{ low_stock_items|length|add:"-6" }} more
+                    </a>
                 </div>
-                {% endfor %}
+                {% endif %}
             {% else %}
-                <p style="color:var(--text-dim); margin:0;">No employees yet.</p>
+                <p style="color:var(--text-muted); margin:0; font-size:13px;">
+                    <i class="bi bi-check-circle-fill" style="color:var(--success);"></i>
+                    All stock levels are healthy.
+                </p>
             {% endif %}
         </div>
     </div>
 </div>
 
-<!-- Chart data (safe JSON) -->
+<!-- ============================================================ -->
+<!-- SECTION 6: RECENT SALES                                       -->
+<!-- ============================================================ -->
+<div class="section-title"><i class="bi bi-clock-history" style="color:var(--accent);"></i> Recent Activity</div>
+
+<div class="mini-panel">
+    {% if recent_sales %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Dispatch</th>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Mine</th>
+                <th style="text-align:right;">Tons</th>
+                <th style="text-align:right;">Total</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in recent_sales %}
+            <tr>
+                <td><span style="color:var(--accent); font-family:monospace; font-size:12.5px;">{{ s.dispatch_no|default:s.invoice_no }}</span></td>
+                <td>{{ s.date }}</td>
+                <td>{{ s.customer.name }}</td>
+                <td>{{ s.mine.name|default:"—" }}</td>
+                <td style="text-align:right;">{{ s.quantity_tons }}</td>
+                <td style="text-align:right; font-weight:700; color:var(--accent);">{{ s.total_amount }}</td>
+                <td>
+                    {% if s.payment_status == 'Paid' %}
+                        <span class="badge-status badge-active">PAID</span>
+                    {% elif s.payment_status == 'Partial' %}
+                        <span class="badge-status badge-leave">PARTIAL</span>
+                    {% else %}
+                        <span class="badge-status badge-inactive">UNPAID</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'sale_detail' s.pk %}" class="btn btn-sm btn-outline-amber">
+                        <i class="bi bi-eye"></i>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div style="text-align:center; padding-top:12px;">
+        <a href="{% url 'sale_list' %}" class="btn btn-outline-amber btn-sm">
+            <i class="bi bi-list-ul"></i> View All Sales
+        </a>
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted); text-align:center; padding:24px; margin:0;">
+        No sales recorded yet.
+    </p>
+    {% endif %}
+</div>
+
+<!-- ============================================================ -->
+<!-- CHART DATA + SCRIPTS                                          -->
+<!-- ============================================================ -->
+{{ monthly_labels|json_script:"monthly_labels" }}
+{{ monthly_production|json_script:"monthly_production" }}
+{{ monthly_sales|json_script:"monthly_sales" }}
 {{ trend_labels|json_script:"trend_labels" }}
 {{ trend_data|json_script:"trend_data" }}
-{{ mine_labels|json_script:"mine_labels" }}
-{{ mine_data|json_script:"mine_data" }}
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-    const trendLabels = JSON.parse(document.getElementById('trend_labels').textContent);
-    const trendData   = JSON.parse(document.getElementById('trend_data').textContent);
-    const mineLabels  = JSON.parse(document.getElementById('mine_labels').textContent);
-    const mineData    = JSON.parse(document.getElementById('mine_data').textContent);
+    (function () {
+        const style = getComputedStyle(document.documentElement);
+        const accent = style.getPropertyValue('--accent').trim();
+        const success = style.getPropertyValue('--success').trim();
+        const info = style.getPropertyValue('--info').trim();
+        const borderLight = style.getPropertyValue('--border-light').trim();
+        const textMuted = style.getPropertyValue('--text-muted').trim();
 
-    const amber = '#f59e0b';
-    const amberGlow = '#fbbf24';
-    const textDim = '#9ca3af';
-    const lineColor = '#2a2f3a';
+        // ---------- 6-MONTH COMPARISON (dual-axis) ----------
+        const monthlyLabels = JSON.parse(document.getElementById('monthly_labels').textContent);
+        const monthlyProduction = JSON.parse(document.getElementById('monthly_production').textContent);
+        const monthlySales = JSON.parse(document.getElementById('monthly_sales').textContent);
 
-    // Trend chart
-    const trendCtx = document.getElementById('trendChart').getContext('2d');
-    const trendGradient = trendCtx.createLinearGradient(0, 0, 0, 300);
-    trendGradient.addColorStop(0, 'rgba(245, 158, 11, 0.55)');
-    trendGradient.addColorStop(1, 'rgba(245, 158, 11, 0.02)');
-
-    new Chart(trendCtx, {
-        type: 'line',
-        data: {
-            labels: trendLabels,
-            datasets: [{
-                label: 'Tons Produced',
-                data: trendData,
-                borderColor: amberGlow,
-                backgroundColor: trendGradient,
-                borderWidth: 2,
-                fill: true,
-                tension: 0.35,
-                pointBackgroundColor: amber,
-                pointBorderColor: '#fff',
-                pointRadius: 4,
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { labels: { color: textDim } },
-            },
-            scales: {
-                x: { ticks: { color: textDim }, grid: { color: lineColor } },
-                y: { ticks: { color: textDim }, grid: { color: lineColor }, beginAtZero: true },
-            }
-        }
-    });
-
-    // Mine chart
-    if (mineLabels.length > 0) {
-        new Chart(document.getElementById('mineChart'), {
-            type: 'doughnut',
+        new Chart(document.getElementById('monthlyChart'), {
+            type: 'bar',
             data: {
-                labels: mineLabels,
+                labels: monthlyLabels,
+                datasets: [
+                    {
+                        label: 'Production (tons)',
+                        data: monthlyProduction,
+                        backgroundColor: accent,
+                        borderRadius: 6,
+                        yAxisID: 'y',
+                        order: 1,
+                    },
+                    {
+                        label: 'Sales (PKR)',
+                        data: monthlySales,
+                        type: 'line',
+                        borderColor: success,
+                        backgroundColor: 'rgba(47,182,124,0.1)',
+                        borderWidth: 2.5,
+                        fill: true,
+                        tension: 0.35,
+                        pointBackgroundColor: success,
+                        pointRadius: 4,
+                        yAxisID: 'y1',
+                        order: 0,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { labels: { color: textMuted, boxWidth: 12, padding: 14 } },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.85)',
+                        padding: 12,
+                        titleColor: '#fff',
+                        bodyColor: '#fff',
+                        callbacks: {
+                            label: function (ctx) {
+                                if (ctx.datasetIndex === 1) {
+                                    return 'Sales: PKR ' + Number(ctx.parsed.y).toLocaleString();
+                                }
+                                return 'Production: ' + Number(ctx.parsed.y).toLocaleString() + ' tons';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: textMuted, font: { size: 11 } }, grid: { display: false } },
+                    y: {
+                        position: 'left',
+                        beginAtZero: true,
+                        ticks: { color: textMuted, font: { size: 10 } },
+                        grid: { color: borderLight, drawBorder: false },
+                        title: { display: true, text: 'Tons', color: textMuted, font: { size: 10 } }
+                    },
+                    y1: {
+                        position: 'right',
+                        beginAtZero: true,
+                        ticks: {
+                            color: textMuted, font: { size: 10 },
+                            callback: function (v) {
+                                if (v >= 1000000) return (v / 1000000).toFixed(1) + 'M';
+                                if (v >= 1000) return (v / 1000).toFixed(0) + 'K';
+                                return v;
+                            }
+                        },
+                        grid: { display: false },
+                        title: { display: true, text: 'PKR', color: textMuted, font: { size: 10 } }
+                    }
+                }
+            }
+        });
+
+        // ---------- 30-DAY SALES TREND ----------
+        const trendLabels = JSON.parse(document.getElementById('trend_labels').textContent);
+        const trendData = JSON.parse(document.getElementById('trend_data').textContent);
+
+        const ctx2 = document.getElementById('salesTrendChart').getContext('2d');
+        const g2 = ctx2.createLinearGradient(0, 0, 0, 260);
+        g2.addColorStop(0, 'rgba(76, 154, 255, 0.4)');
+        g2.addColorStop(1, 'rgba(76, 154, 255, 0.02)');
+
+        new Chart(ctx2, {
+            type: 'line',
+            data: {
+                labels: trendLabels,
                 datasets: [{
-                    data: mineData,
-                    backgroundColor: ['#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#8b5cf6'],
-                    borderColor: '#15181d',
-                    borderWidth: 3,
+                    label: 'Sales',
+                    data: trendData,
+                    borderColor: info,
+                    backgroundColor: g2,
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 2,
+                    pointHoverRadius: 5,
                 }]
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'bottom', labels: { color: textDim, padding: 12 } },
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.85)',
+                        padding: 10,
+                        callbacks: {
+                            label: function (ctx) {
+                                return 'PKR ' + Number(ctx.parsed.y).toLocaleString();
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: textMuted, font: { size: 9 }, maxRotation: 0, autoSkipPadding: 20 },
+                        grid: { display: false }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: textMuted, font: { size: 9 },
+                            callback: function (v) {
+                                if (v >= 1000000) return (v / 1000000).toFixed(1) + 'M';
+                                if (v >= 1000) return (v / 1000).toFixed(0) + 'K';
+                                return v;
+                            }
+                        },
+                        grid: { color: borderLight, drawBorder: false }
+                    }
                 }
             }
         });
-    } else {
-        document.getElementById('mineChart').outerHTML =
-            '<p style="color:var(--text-dim); text-align:center; padding:40px 0;">No production data yet.</p>';
-    }
+    })();
 </script>
 
 {% endblock %}

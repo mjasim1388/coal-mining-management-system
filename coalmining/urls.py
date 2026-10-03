@@ -1,8 +1,8 @@
+from django.contrib import admin
+from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.contrib import admin
 from django.contrib.auth import views as auth_views
-from django.urls import include, path
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -11,5 +11,7 @@ urlpatterns = [
     path('', include('employees.urls')),
 ]
 
-if settings.DEBUG:
+# Serve media files (employee photos, receipts, signed slips)
+# Required because we're on a local network without nginx/CDN
+if getattr(settings, 'SERVE_MEDIA_IN_PRODUCTION', False) or settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

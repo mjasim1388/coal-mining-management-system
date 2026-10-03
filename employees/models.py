@@ -35,7 +35,16 @@ class Employee(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     approval_status = models.CharField(max_length=20, default='Approved')
     added_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
-                                 related_name='employees_added')
+    related_name='employees_added')
+    approved_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+    related_name='employees_approved')
+    approved_at = models.DateTimeField(null=True, blank=True)
+        # Void (soft-delete) fields
+    voided = models.BooleanField(default=False)
+    voided_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='employees_voided')
+    voided_at = models.DateTimeField(null=True, blank=True)
+    voided_reason = models.TextField(blank=True)
 
     class Meta:
         ordering = ['employee_code']
@@ -71,6 +80,12 @@ class Mine(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Active')
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+        # Void (soft-delete) fields
+    voided = models.BooleanField(default=False)
+    voided_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='mines_voided')
+    voided_at = models.DateTimeField(null=True, blank=True)
+    voided_reason = models.TextField(blank=True)
 
     class Meta:
         ordering = ['name']
@@ -104,6 +119,12 @@ class ProductionRecord(models.Model):
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+        # Void (soft-delete) fields
+    voided = models.BooleanField(default=False)
+    voided_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='production_voided')
+    voided_at = models.DateTimeField(null=True, blank=True)
+    voided_reason = models.TextField(blank=True)
 
     class Meta:
         ordering = ['-date', 'shift']
@@ -140,6 +161,12 @@ class Attendance(models.Model):
     photo_out = models.ImageField(upload_to='attendance/out/', blank=True, null=True, help_text="Photo at check-out")
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+        # Void (soft-delete) fields
+    voided = models.BooleanField(default=False)
+    voided_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='attendance_voided')
+    voided_at = models.DateTimeField(null=True, blank=True)
+    voided_reason = models.TextField(blank=True)
 
     class Meta:
         ordering = ['-date', 'employee__employee_code']
@@ -188,6 +215,18 @@ class InventoryItem(models.Model):
     approval_status = models.CharField(max_length=20, default='Approved')
     added_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
                                  related_name='inventory_added')
+    approved_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='employees_approved')
+    approved_at = models.DateTimeField(null=True, blank=True)
+    approved_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='inventory_approved')
+    approved_at = models.DateTimeField(null=True, blank=True)
+        # Void (soft-delete) fields
+    voided = models.BooleanField(default=False)
+    voided_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='inventory_voided')
+    voided_at = models.DateTimeField(null=True, blank=True)
+    voided_reason = models.TextField(blank=True)
 
     class Meta:
         ordering = ['name']
@@ -198,7 +237,6 @@ class InventoryItem(models.Model):
     @property
     def is_low_stock(self):
         return self.quantity <= self.reorder_level
-
 
 class StockTransaction(models.Model):
     TYPE_CHOICES = [
@@ -298,7 +336,15 @@ class Payroll(models.Model):
                                           help_text="Photo of signed/thumbprinted salary slip")
     paid_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
                                 related_name='payrolls_paid')
+    payment_method = models.CharField(max_length=20, default='Cash')
+    paid_from_ip = models.GenericIPAddressField(null=True, blank=True)
     confirmation_notes = models.TextField(blank=True)
+        # Void (soft-delete) fields
+    voided = models.BooleanField(default=False)
+    voided_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='payrolls_voided')
+    voided_at = models.DateTimeField(null=True, blank=True)
+    voided_reason = models.TextField(blank=True)
 
     class Meta:
         ordering = ['-year', '-month', 'employee__employee_code']
@@ -324,6 +370,12 @@ class Customer(models.Model):
     ntn = models.CharField(max_length=30, blank=True, help_text="Tax number")
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+        # Void (soft-delete) fields
+    voided = models.BooleanField(default=False)
+    voided_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='customers_voided')
+    voided_at = models.DateTimeField(null=True, blank=True)
+    voided_reason = models.TextField(blank=True)
 
     class Meta:
         ordering = ['name']
@@ -510,6 +562,12 @@ class Equipment(models.Model):
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+        # Void (soft-delete) fields
+    voided = models.BooleanField(default=False)
+    voided_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='equipment_voided')
+    voided_at = models.DateTimeField(null=True, blank=True)
+    voided_reason = models.TextField(blank=True)
 
     class Meta:
         ordering = ['equipment_code']
@@ -562,9 +620,35 @@ class MaintenanceLog(models.Model):
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='Completed')
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+        # Void (soft-delete) fields
+    voided = models.BooleanField(default=False)
+    voided_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='maintenance_voided')
+    voided_at = models.DateTimeField(null=True, blank=True)
+    voided_reason = models.TextField(blank=True)
 
     class Meta:
         ordering = ['-date', '-created_at']
 
     def __str__(self):
         return f"{self.equipment.equipment_code} - {self.maintenance_type} on {self.date}"
+
+class VoidLog(models.Model):
+    """Central audit log for every void action. Never deletable — even by superuser."""
+
+    object_type = models.CharField(max_length=50)
+    object_id = models.IntegerField()
+    object_label = models.CharField(max_length=200, blank=True)
+    voided_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='void_logs')
+    voided_at = models.DateTimeField(auto_now_add=True)
+    reason = models.TextField()
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-voided_at']
+        verbose_name = 'Void Log'
+        verbose_name_plural = 'Void Logs'
+
+    def __str__(self):
+        return f"{self.object_type} #{self.object_id} voided by {self.voided_by}"

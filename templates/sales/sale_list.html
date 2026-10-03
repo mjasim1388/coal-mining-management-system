@@ -1,132 +1,80 @@
 {% extends 'base.html' %}
 
-{% block title %}Sales - Coal Mine{% endblock %}
-{% block page_title %}SALES & DISPATCH{% endblock %}
+{% block title %}Customers - Coal Mine{% endblock %}
+{% block page_title %}CUSTOMERS{% endblock %}
 
 {% block content %}
 
 <div class="panel mb-3">
     <form method="get" class="row g-2 align-items-end">
-        <div class="col-md-4">
-            <label class="form-label">Customer</label>
-            <select name="customer" class="form-select">
-                <option value="">All Customers</option>
-                {% for c in customers %}
-                <option value="{{ c.pk }}" {% if customer_filter == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
-                {% endfor %}
+        <div class="col-md-6">
+            <label class="form-label">Search</label>
+            <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Name, company, or phone...">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Show Voided</label>
+            <select name="show_voided" class="form-select">
+                <option value="">Hide</option>
+                <option value="1" {% if show_voided %}selected{% endif %}>Show</option>
             </select>
         </div>
-        <div class="col-md-4">
-            <label class="form-label">Payment Status</label>
-            <select name="status" class="form-select">
-                <option value="">All</option>
-                <option value="Unpaid" {% if status_filter == 'Unpaid' %}selected{% endif %}>Unpaid</option>
-                <option value="Partial" {% if status_filter == 'Partial' %}selected{% endif %}>Partial</option>
-                <option value="Paid" {% if status_filter == 'Paid' %}selected{% endif %}>Paid</option>
-            </select>
-        </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <button type="submit" class="btn btn-amber w-100">
-                <i class="bi bi-funnel"></i> Filter
+                <i class="bi bi-search"></i> Search
             </button>
         </div>
     </form>
 </div>
 
-<div class="row g-3 mb-3">
-    <div class="col-md-4">
-        <div class="stat-card stat-amber">
-            <i class="bi bi-cash-stack icon"></i>
-            <h2>{{ total_amount }}</h2>
-            <p>Total Sales</p>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="stat-card stat-green">
-            <i class="bi bi-check-circle-fill icon"></i>
-            <h2>{{ total_paid }}</h2>
-            <p>Total Received</p>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="stat-card stat-red">
-            <i class="bi bi-exclamation-circle-fill icon"></i>
-            <h2>{{ total_balance }}</h2>
-            <p>Outstanding Balance</p>
-        </div>
-    </div>
-</div>
-
 <div class="panel">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="panel-title mb-0">
-            <i class="bi bi-receipt"></i> Invoices ({{ sales|length }})
+            <i class="bi bi-people-fill"></i> Customers ({{ customers|length }})
         </div>
-                <div>
-            <a href="{% url 'export_sales' %}" class="btn btn-outline-amber">
-                <i class="bi bi-file-earmark-excel"></i> Export
+        <div>
+            <a href="{% url 'sale_list' %}" class="btn btn-outline-amber">
+                <i class="bi bi-receipt"></i> Sales
             </a>
-            <a href="{% url 'customer_list' %}" class="btn btn-outline-amber">
-                <i class="bi bi-people"></i> Customers
+            {% if is_manager or is_accountant %}
+            <a href="{% url 'customer_add' %}" class="btn btn-amber">
+                <i class="bi bi-plus-lg"></i> Add Customer
             </a>
-            <a href="{% url 'sale_add' %}" class="btn btn-amber">
-                <i class="bi bi-plus-lg"></i> New Sale
-            </a>
+            {% endif %}
         </div>
     </div>
 
-    {% if sales %}
+    {% if customers %}
     <table class="table">
         <thead>
             <tr>
-                <th>Invoice</th>
-                <th>Date</th>
-                <th>Customer</th>
-                <th>Mine</th>
-                <th>Tons</th>
-                <th>Rate</th>
-                <th>Total</th>
-                <th>Paid</th>
-                <th>Balance</th>
-                <th>Status</th>
+                <th>Name</th>
+                <th>Company</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>NTN</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody>
-            {% for s in sales %}
-            <tr>
+            {% for c in customers %}
+            <tr {% if c.voided %}style="opacity:0.5;"{% endif %}>
                 <td>
-                    <a href="{% url 'sale_detail' s.pk %}" style="color:var(--amber-glow); text-decoration:none;">
-                        {{ s.invoice_no }}
-                    </a>
-                </td>
-                <td>{{ s.date }}</td>
-                <td>{{ s.customer.name }}</td>
-                <td>{{ s.mine.name|default:"—" }}</td>
-                <td>{{ s.quantity_tons }}</td>
-                <td>{{ s.price_per_ton }}</td>
-                <td>{{ s.total_amount }}</td>
-                <td>{{ s.amount_paid }}</td>
-                <td><strong>{{ s.balance }}</strong></td>
-                <td>
-                    {% if s.payment_status == 'Paid' %}
-                        <span class="badge-status badge-active">PAID</span>
-                    {% elif s.payment_status == 'Partial' %}
-                        <span class="badge-status badge-leave">PARTIAL</span>
-                    {% else %}
-                        <span class="badge-status badge-inactive">UNPAID</span>
+                    <span style="color:var(--accent);">{{ c.name }}</span>
+                    {% if c.voided %}
+                        <span class="badge-status badge-inactive" style="margin-left:4px;">VOIDED</span>
                     {% endif %}
                 </td>
-                <td style="white-space: nowrap;">
-                    <a href="{% url 'sale_detail' s.pk %}" class="btn btn-sm btn-outline-amber" title="View Invoice">
-                        <i class="bi bi-eye"></i>
+                <td>{{ c.company|default:"—" }}</td>
+                <td>{{ c.phone|default:"—" }}</td>
+                <td>{{ c.email|default:"—" }}</td>
+                <td>{{ c.ntn|default:"—" }}</td>
+                <td>
+                    {% if is_manager and not c.voided %}
+                    <a href="{% url 'customer_edit' c.pk %}" class="btn btn-sm btn-outline-amber" title="Edit">
+                        <i class="bi bi-pencil"></i>
                     </a>
-                    <a href="{% url 'sale_slip' s.pk %}" target="_blank" class="btn btn-sm btn-amber" title="Print Dispatch Slip">
-                        <i class="bi bi-printer"></i> Slip
-                    </a>
-                    {% if is_manager %}
-                    <a href="{% url 'sale_delete' s.pk %}" class="btn btn-sm btn-outline-danger" title="Void Dispatch">
-                        <i class="bi bi-x-circle"></i>
+                    <a href="{% url 'customer_void' c.pk %}" class="btn btn-sm btn-outline-danger" title="Void">
+                        <i class="bi bi-slash-circle"></i>
                     </a>
                     {% endif %}
                 </td>
@@ -135,26 +83,11 @@
         </tbody>
     </table>
     {% else %}
-    <p style="color:var(--text-dim); text-align:center; padding:30px;">
-        <i class="bi bi-receipt" style="font-size:40px; display:block; margin-bottom:10px;"></i>
-        No sales yet. <a href="{% url 'sale_add' %}" style="color:var(--amber);">Add the first sale</a>.
+    <p style="color:var(--text-muted); text-align:center; padding:30px;">
+        <i class="bi bi-person-plus" style="font-size:40px; display:block; margin-bottom:10px; opacity:0.5;"></i>
+        No customers yet. <a href="{% url 'customer_add' %}" style="color:var(--accent);">Add the first one</a>.
     </p>
     {% endif %}
 </div>
-<script>
-    (function() {
-        // Save scroll position when leaving the page
-        window.addEventListener('beforeunload', function() {
-            sessionStorage.setItem('salesListScroll', window.scrollY);
-        });
 
-        // Restore scroll position when returning
-        window.addEventListener('load', function() {
-            var saved = sessionStorage.getItem('salesListScroll');
-            if (saved) {
-                window.scrollTo(0, parseInt(saved));
-            }
-        });
-    })();
-</script>
 {% endblock %}

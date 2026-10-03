@@ -91,8 +91,10 @@
                 <small style="color:var(--text-muted); font-size:11px;">Defaults to today.</small>
             </div>
             <div class="col-md-4">
-                <label class="form-label">Monthly Salary (PKR)</label>
+                <label class="form-label">Monthly Salary (PKR) *</label>
                 {{ form.salary }}
+                {{ form.salary.errors }}
+                <small style="color:var(--text-muted); font-size:11px;">Required — enter employee's monthly salary.</small>
             </div>
             <div class="col-md-4">
                 <label class="form-label">Status</label>

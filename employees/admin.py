@@ -20,10 +20,12 @@ from .models import (
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
     list_display = ('employee_code', 'first_name', 'last_name', 'designation',
-                    'department', 'shift', 'status', 'date_of_joining')
-    list_filter = ('status', 'shift', 'department')
+                    'department', 'shift', 'status', 'date_of_joining',
+                    'added_by', 'approved_by', 'approved_at')
+    list_filter = ('status', 'shift', 'department', 'approval_status')
     search_fields = ('employee_code', 'first_name', 'last_name', 'cnic', 'phone')
     list_per_page = 25
+    readonly_fields = ('created_at', 'updated_at', 'added_by', 'approved_by', 'approved_at')
 
 
 @admin.register(Mine)

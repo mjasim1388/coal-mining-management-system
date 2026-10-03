@@ -47,9 +47,11 @@
             <a href="{% url 'export_inventory' %}" class="btn btn-outline-amber btn-sm">
                 <i class="bi bi-file-earmark-excel"></i> Export
             </a>
+            {% if is_manager or is_accountant %}
             <a href="{% url 'inventory_add' %}" class="btn btn-amber btn-sm">
                 <i class="bi bi-plus-lg"></i> Add New Item
             </a>
+            {% endif %}
         </div>
     </div>
 
@@ -57,10 +59,10 @@
     <div id="tab-items">
         <form method="get" class="row g-2 mb-3">
             <input type="hidden" name="tab" value="items">
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <input type="text" name="q" value="{{ search_query }}" class="form-control" placeholder="Search items by name or category...">
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <select name="category" class="form-select">
                     <option value="">All Categories</option>
                     <option value="Spare Part" {% if category_filter == 'Spare Part' %}selected{% endif %}>Spare Part</option>
@@ -72,6 +74,12 @@
                 </select>
             </div>
             <div class="col-md-2">
+                <select name="show_voided" class="form-select">
+                    <option value="">Hide Voided</option>
+                    <option value="1" {% if show_voided %}selected{% endif %}>Show Voided</option>
+                </select>
+            </div>
+            <div class="col-md-3">
                 <button type="submit" class="btn btn-outline-amber w-100">
                     <i class="bi bi-funnel"></i> Filter
                 </button>
@@ -92,13 +100,20 @@
             </thead>
             <tbody>
                 {% for item in items %}
-                <tr>
+                <tr {% if item.voided %}style="opacity:0.5;"{% endif %}>
                     <td>
                         <strong style="color:var(--text-primary);">{{ item.name }}</strong>
-                        {% if item.approval_status == 'Pending' %}
-                            <span class="badge-status badge-leave" style="margin-left:6px;">PENDING</span>
-                        {% elif item.approval_status == 'Rejected' %}
-                            <span class="badge-status badge-inactive" style="margin-left:6px;">REJECTED</span>
+                        {% if item.voided %}
+                            <span class="badge-status badge-inactive" style="margin-left:6px;">VOIDED</span>
+                        {% else %}
+                            {% if item.approval_status == 'Pending' %}
+                                <span class="badge-status badge-leave" style="margin-left:6px;">PENDING</span>
+                            {% elif item.approval_status == 'Rejected' %}
+                                <span class="badge-status badge-inactive" style="margin-left:6px;">REJECTED</span>
+                            {% endif %}
+                            {% if item.is_low_stock %}
+                                <span class="badge-status badge-inactive" style="margin-left:6px;">LOW</span>
+                            {% endif %}
                         {% endif %}
                     </td>
                     <td>{{ item.category }}</td>
@@ -116,6 +131,7 @@
                     </td>
                     <td style="text-align:right;">{{ item.unit_price }}</td>
                     <td style="text-align:right; white-space:nowrap;">
+                        {% if not item.voided %}
                         <button type="button"
                                 class="btn btn-sm btn-amber stock-btn-in"
                                 data-pk="{{ item.pk }}"
@@ -137,9 +153,10 @@
                         <a href="{% url 'inventory_edit' item.pk %}" class="btn btn-sm btn-outline-amber" title="Edit">
                             <i class="bi bi-pencil"></i>
                         </a>
-                        {% if is_manager %}
-                        <a href="{% url 'inventory_delete' item.pk %}" class="btn btn-sm btn-outline-danger" title="Delete">
-                            <i class="bi bi-trash"></i>
+                        {% endif %}
+                        {% if is_manager and not item.voided %}
+                        <a href="{% url 'inventory_void' item.pk %}" class="btn btn-sm btn-outline-danger" title="Void">
+                            <i class="bi bi-slash-circle"></i>
                         </a>
                         {% endif %}
                     </td>
@@ -349,59 +366,33 @@
         align-items: center;
         gap: 6px;
     }
-    .inv-tab:hover {
-        color: var(--text-primary);
-    }
-    .inv-tab.active {
-        color: var(--accent);
-        border-bottom-color: var(--accent);
-    }
+    .inv-tab:hover { color: var(--text-primary); }
+    .inv-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-    /* ---------- STOCK LEVEL BAR ---------- */
-    .stock-bar-wrap {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
+    /* Stock level bar */
+    .stock-bar-wrap { display: flex; align-items: center; gap: 10px; }
     .stock-bar-track {
-        flex: 1;
-        height: 8px;
-        background: var(--bg-raised);
-        border-radius: 4px;
-        overflow: hidden;
-        border: 1px solid var(--border-light);
-        min-width: 100px;
+        flex: 1; height: 8px; background: var(--bg-raised);
+        border-radius: 4px; overflow: hidden;
+        border: 1px solid var(--border-light); min-width: 100px;
     }
     .stock-bar-fill {
-        height: 100%;
-        border-radius: 4px;
-        transition: width 0.3s ease, background-color 0.3s ease;
-        width: 0%;
+        height: 100%; border-radius: 4px;
+        transition: width 0.3s ease; width: 0%;
     }
     .stock-bar-label {
-        font-size: 11px;
-        font-weight: 700;
-        color: var(--text-muted);
-        min-width: 42px;
-        text-align: right;
-        font-variant-numeric: tabular-nums;
+        font-size: 11px; font-weight: 700; color: var(--text-muted);
+        min-width: 42px; text-align: right; font-variant-numeric: tabular-nums;
     }
-
-    /* Fill colors based on level */
     .stock-bar-wrap.level-green .stock-bar-fill { background: linear-gradient(90deg, #2fb67c, #4ade80); }
     .stock-bar-wrap.level-green .stock-bar-label { color: #4ade80; }
-
     .stock-bar-wrap.level-yellow .stock-bar-fill { background: linear-gradient(90deg, #d97706, #fbbf24); }
     .stock-bar-wrap.level-yellow .stock-bar-label { color: #fbbf24; }
-
     .stock-bar-wrap.level-red .stock-bar-fill { background: linear-gradient(90deg, #dc2626, #ef5b5b); }
     .stock-bar-wrap.level-red .stock-bar-label { color: #ef5b5b; }
-
-
 </style>
 
 <script>
-    // Tab switching
     function switchTab(tab) {
         document.getElementById('tab-items').style.display = tab === 'items' ? '' : 'none';
         document.getElementById('tab-movements').style.display = tab === 'movements' ? '' : 'none';
@@ -424,51 +415,39 @@
             });
         });
 
-        // Safe event listeners for stock buttons (avoids HTML escaping issues)
+        // Stock buttons
         document.querySelectorAll('.stock-btn-in').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 openStockIn(this.dataset.pk, this.dataset.name, this.dataset.unit, this.dataset.qty);
             });
         });
-
         document.querySelectorAll('.stock-btn-out').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 openStockOut(this.dataset.pk, this.dataset.name, this.dataset.unit, this.dataset.qty);
             });
         });
-                // ---------- STOCK LEVEL BARS ----------
+
+        // Stock level bars
         document.querySelectorAll('.stock-bar-wrap').forEach(function (wrap) {
             var qty = parseFloat(wrap.dataset.qty) || 0;
             var reorder = parseFloat(wrap.dataset.reorder) || 0;
-
-            // Reference max: 3× reorder level, or 100 if no reorder set
             var referenceMax = reorder > 0 ? reorder * 3 : 100;
-
             var fillPercent = 0;
             var level = 'green';
             var labelText = '';
 
             if (qty === 0) {
-                fillPercent = 0;
-                level = 'red';
-                labelText = 'EMPTY';
+                fillPercent = 0; level = 'red'; labelText = 'EMPTY';
             } else if (reorder > 0 && qty <= reorder) {
-                // Below or at reorder level
                 fillPercent = Math.max(8, (qty / referenceMax) * 100);
-                level = 'red';
-                labelText = 'LOW';
+                level = 'red'; labelText = 'LOW';
             } else if (reorder > 0 && qty <= reorder * 1.5) {
-                // Between reorder and 1.5× reorder
                 fillPercent = (qty / referenceMax) * 100;
-                level = 'yellow';
-                labelText = 'WATCH';
+                level = 'yellow'; labelText = 'WATCH';
             } else {
-                // Healthy
                 fillPercent = Math.min(100, (qty / referenceMax) * 100);
-                level = 'green';
-                labelText = 'OK';
+                level = 'green'; labelText = 'OK';
             }
-
             wrap.classList.add('level-' + level);
             wrap.querySelector('.stock-bar-fill').style.width = fillPercent + '%';
             wrap.querySelector('.stock-bar-label').textContent = labelText;

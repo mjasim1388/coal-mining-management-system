@@ -760,6 +760,9 @@
             <a href="{% url 'equipment_list' %}" class="{% if 'equipment' in request.resolver_match.url_name or 'maintenance' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-tools"></i> Equipment
             </a>
+            <a href="{% url 'fuel_report' %}" class="{% if 'fuel_report' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="bi bi-fuel-pump-fill"></i> Fuel Report
+            </a>
             <a href="{% url 'inventory_list' %}" class="{% if 'inventory' in request.resolver_match.url_name or 'stock' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-box-seam-fill"></i> Inventory
             </a>

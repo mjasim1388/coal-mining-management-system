@@ -16,7 +16,14 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-3">
+            <label class="form-label">Show Voided</label>
+            <select name="show_voided" class="form-select">
+                <option value="">Hide</option>
+                <option value="1" {% if show_voided %}selected{% endif %}>Show</option>
+            </select>
+        </div>
+        <div class="col-md-3">
             <button type="submit" class="btn btn-amber w-100">
                 <i class="bi bi-funnel"></i> Filter
             </button>
@@ -74,8 +81,13 @@
         </thead>
         <tbody>
             {% for log in logs %}
-            <tr>
-                <td>{{ log.date }}</td>
+            <tr {% if log.voided %}style="opacity:0.5;"{% endif %}>
+                <td>
+                    {{ log.date }}
+                    {% if log.voided %}
+                        <span class="badge-status badge-inactive" style="margin-left:4px;">VOIDED</span>
+                    {% endif %}
+                </td>
                 <td>
                     <a href="{% url 'equipment_detail' log.equipment.pk %}" style="color:var(--accent); text-decoration:none;">
                         {{ log.equipment.name }}
@@ -104,12 +116,12 @@
                     {% endif %}
                 </td>
                 <td>
-                    {% if is_manager %}
+                    {% if is_manager and not log.voided %}
                     <a href="{% url 'maintenance_edit' log.pk %}" class="btn btn-sm btn-outline-amber" title="Edit">
                         <i class="bi bi-pencil"></i>
                     </a>
-                    <a href="{% url 'maintenance_delete' log.pk %}" class="btn btn-sm btn-outline-danger" title="Delete">
-                        <i class="bi bi-trash"></i>
+                    <a href="{% url 'maintenance_void' log.pk %}" class="btn btn-sm btn-outline-danger" title="Void">
+                        <i class="bi bi-slash-circle"></i>
                     </a>
                     {% else %}
                     <span style="color:var(--text-muted); font-size:12px;">—</span>

@@ -8,13 +8,38 @@
 <div class="panel">
     <div class="panel-title"><i class="bi bi-cash-coin"></i> {{ title }}</div>
 
-    <form method="post">
+    <div class="alert alert-info-custom mb-3" style="border-radius: 8px;">
+        <i class="bi bi-info-circle-fill"></i>
+        <span>Pick an employee and month — salary and attendance counts auto-fill from their record. Change anything if needed.</span>
+    </div>
+
+    <form method="post" id="payrollForm">
         {% csrf_token %}
+
+        {% if form.errors %}
+            <div class="alert alert-error-custom mb-3" style="border-radius: 8px;">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <div>
+                    <strong>Please fix these errors:</strong>
+                    <ul style="margin: 8px 0 0; padding-left: 20px;">
+                        {% for field in form %}
+                            {% if field.errors %}
+                                <li><strong>{{ field.label }}:</strong> {{ field.errors|join:", " }}</li>
+                            {% endif %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        {% endif %}
+
         <div class="row g-3">
+            <!-- Row 1: Employee + Month + Year -->
             <div class="col-md-6">
                 <label class="form-label">Employee *</label>
                 {{ form.employee }}
                 {{ form.employee.errors }}
+                <small id="empInfo" style="color:var(--text-muted); font-size:11px;"></small>
+                <div id="joiningNotice" style="display:none; margin-top:6px; padding:8px 12px; background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.35); border-radius:6px; color:#fbbf24; font-size:11.5px;"></div>
             </div>
             <div class="col-md-3">
                 <label class="form-label">Month *</label>
@@ -23,76 +48,196 @@
             <div class="col-md-3">
                 <label class="form-label">Year *</label>
                 {{ form.year }}
-                {{ form.year.errors }}
             </div>
 
+            <div class="col-12" id="loadingMsg" style="display:none; color:var(--accent); font-size:13px;">
+                <i class="bi bi-arrow-repeat"></i> Loading employee data...
+            </div>
+
+            <!-- Row 2: Basic + Overtime -->
             <div class="col-md-4">
-                <label class="form-label">Basic Salary *</label>
+                <label class="form-label">Basic Salary (PKR)</label>
                 {{ form.basic_salary }}
             </div>
-            <div class="col-md-2">
-                <label class="form-label">Present Days</label>
-                {{ form.present_days }}
+            <div class="col-md-4">
+                <label class="form-label">Overtime Amount (PKR)</label>
+                {{ form.overtime_amount }}
             </div>
-            <div class="col-md-2">
-                <label class="form-label">Absent Days</label>
-                {{ form.absent_days }}
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Leave Days</label>
-                {{ form.leave_days }}
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Half Days</label>
-                {{ form.half_days }}
-            </div>
-
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <label class="form-label">Overtime Hours</label>
                 {{ form.overtime_hours }}
             </div>
-            <div class="col-md-3">
-                <label class="form-label">Overtime Amount</label>
-                {{ form.overtime_amount }}
+
+            <!-- Row 3: Attendance -->
+            <div class="col-12">
+                <div style="padding:12px 16px; background:var(--bg-raised); border-radius:8px; border:1px solid var(--border-light); margin-top:6px;">
+                    <div style="font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:10px;">
+                        <i class="bi bi-calendar-check"></i> Attendance — auto-calculated from records
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Present Days</label>
+                            {{ form.present_days }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Absent Days</label>
+                            {{ form.absent_days }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Leave Days</label>
+                            {{ form.leave_days }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Half Days</label>
+                            {{ form.half_days }}
+                        </div>
+                    </div>
+                </div>
             </div>
+
+            <!-- Row 4: Allowances + Deductions + Status -->
             <div class="col-md-3">
-                <label class="form-label">Allowances</label>
+                <label class="form-label">Allowances (PKR)</label>
                 {{ form.allowances }}
             </div>
             <div class="col-md-3">
-                <label class="form-label">Deductions</label>
+                <label class="form-label">Deductions (PKR)</label>
                 {{ form.deductions }}
             </div>
-
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label class="form-label">Status</label>
                 {{ form.status }}
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label class="form-label">Payment Date</label>
                 {{ form.payment_date }}
             </div>
-            <div class="col-md-4">
+
+            <div class="col-md-12">
                 <label class="form-label">Notes</label>
                 {{ form.notes }}
             </div>
         </div>
 
-        <div class="alert" style="background:rgba(245,158,11,0.08); border:1px solid var(--coal-line); color:var(--text-dim); margin-top:20px;">
-            <i class="bi bi-calculator"></i>
-            Net salary is calculated automatically:
-            <strong>Basic + Overtime + Allowances − Deductions</strong>.
+        <!-- Live Net Salary Preview -->
+        <div id="totalPreview" style="margin-top:22px; padding:18px 24px; background:var(--bg-raised); border:2px solid var(--accent); border-radius:10px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <div style="font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Net Salary Payable</div>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">Basic + Overtime + Allowances − Deductions</div>
+            </div>
+            <div style="font-size:30px; font-weight:800; color:var(--accent);" id="netPreview">PKR 0</div>
         </div>
 
-        <hr style="border-color:var(--coal-line); margin:25px 0;">
+        <hr style="border-color:var(--border-light); margin:25px 0;">
 
-        <button type="submit" class="btn btn-amber">
-            <i class="bi bi-check-lg"></i> Save Payroll
-        </button>
-        <a href="{% url 'payroll_list' %}" class="btn btn-outline-amber">
-            <i class="bi bi-x-lg"></i> Cancel
-        </a>
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-amber" style="padding: 12px 26px;">
+                <i class="bi bi-check-lg"></i> Save Payroll
+            </button>
+            <a href="{% url 'payroll_list' %}" class="btn btn-outline-amber" style="padding: 12px 26px;">
+                <i class="bi bi-x-lg"></i> Cancel
+            </a>
+        </div>
     </form>
 </div>
+
+<script>
+    (function() {
+        var form = document.getElementById('payrollForm');
+        var empField = document.getElementById('id_employee');
+        var monthField = document.getElementById('id_month');
+        var yearField = document.getElementById('id_year');
+        var salaryField = document.getElementById('id_basic_salary');
+        var overtimeAmountField = document.getElementById('id_overtime_amount');
+        var overtimeHoursField = document.getElementById('id_overtime_hours');
+        var presentField = document.getElementById('id_present_days');
+        var absentField = document.getElementById('id_absent_days');
+        var leaveField = document.getElementById('id_leave_days');
+        var halfField = document.getElementById('id_half_days');
+        var allowancesField = document.getElementById('id_allowances');
+        var deductionsField = document.getElementById('id_deductions');
+        var loadingMsg = document.getElementById('loadingMsg');
+        var empInfo = document.getElementById('empInfo');
+        var netPreview = document.getElementById('netPreview');
+
+        // ---------- LIVE NET SALARY PREVIEW ----------
+        function updateNet() {
+            var basic = parseFloat(salaryField.value) || 0;
+            var ot = parseFloat(overtimeAmountField.value) || 0;
+            var allow = parseFloat(allowancesField.value) || 0;
+            var deduct = parseFloat(deductionsField.value) || 0;
+            var net = basic + ot + allow - deduct;
+            netPreview.textContent = 'PKR ' + net.toLocaleString();
+        }
+        [salaryField, overtimeAmountField, allowancesField, deductionsField].forEach(function(el) {
+            el.addEventListener('input', updateNet);
+        });
+        updateNet();
+
+        // ---------- AUTO-FILL FROM EMPLOYEE + MONTH ----------
+        function fetchAutofill() {
+            var empId = empField.value;
+            var month = monthField.value;
+            var year = yearField.value;
+
+            if (!empId || !month || !year) return;
+
+            loadingMsg.style.display = 'block';
+
+            var url = '{% url "payroll_autofill_api" %}?employee=' + empId + '&month=' + month + '&year=' + year;
+
+            fetch(url)
+                .then(r => r.json())
+                .then(data => {
+                    loadingMsg.style.display = 'none';
+
+                    if (data.error) {
+                        empInfo.textContent = 'Error: ' + data.error;
+                        return;
+                    }
+
+                    // Basic salary
+                    salaryField.value = data.basic_salary || 0;
+
+                    // Attendance counts
+                    presentField.value = data.present_days || 0;
+                    absentField.value = data.absent_days || 0;
+                    leaveField.value = data.leave_days || 0;
+                    halfField.value = data.half_days || 0;
+
+                    // Overtime hours
+                    overtimeHoursField.value = data.overtime_hours || 0;
+
+                    // Auto-calculate overtime amount (1.5× hourly rate)
+                    var dailyRate = data.basic_salary / 30;
+                    var hourlyRate = dailyRate / 8;
+                    var otAmount = (data.overtime_hours || 0) * hourlyRate * 1.5;
+                    overtimeAmountField.value = Math.round(otAmount * 100) / 100;
+
+                    empInfo.textContent = data.employee_code + ' — ' + data.employee_name;
+
+                    // Show joining-date notice if they joined this month
+                    var notice = document.getElementById('joiningNotice');
+                    if (data.joined_this_month && data.joining_date) {
+                        notice.style.display = 'block';
+                        notice.innerHTML = '<i class="bi bi-info-circle-fill"></i> Joined on <strong>' + data.joining_date + '</strong> — only <strong>' + data.eligible_days + '</strong> days counted for this month.';
+                    } else {
+                        notice.style.display = 'none';
+                    }
+
+                    updateNet();
+                })
+                .catch(err => {
+                    loadingMsg.style.display = 'none';
+                    empInfo.textContent = 'Could not load data.';
+                    console.error(err);
+                });
+        }
+
+        empField.addEventListener('change', fetchAutofill);
+        monthField.addEventListener('change', fetchAutofill);
+        yearField.addEventListener('change', fetchAutofill);
+    })();
+</script>
 
 {% endblock %}

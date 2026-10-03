@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block title %}Mines - Coal Mine{% endblock %}
-{% block page_title %}MINES & SITES{% endblock %}
+{% block page_title %}MINES &amp; SITES{% endblock %}
 
 {% block content %}
 
@@ -9,7 +9,8 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="panel-title mb-0">
             <i class="bi bi-geo-alt-fill"></i> All Mines ({{ mines|length }})
-                <div>
+        </div>
+        <div>
             <a href="{% url 'export_mines' %}" class="btn btn-outline-amber">
                 <i class="bi bi-file-earmark-excel"></i> Export
             </a>
@@ -17,6 +18,7 @@
                 <i class="bi bi-plus-lg"></i> Add Mine
             </a>
         </div>
+    </div>
 
     {% if mines %}
     <table class="table">
@@ -32,8 +34,13 @@
         </thead>
         <tbody>
             {% for mine in mines %}
-            <tr>
-                <td><span style="color:var(--amber-glow);">{{ mine.name }}</span></td>
+            <tr {% if mine.voided %}style="opacity:0.5;"{% endif %}>
+                <td>
+                    <span style="color:var(--accent);">{{ mine.name }}</span>
+                    {% if mine.voided %}
+                        <span class="badge-status badge-inactive" style="margin-left:4px;">VOIDED</span>
+                    {% endif %}
+                </td>
                 <td>{{ mine.location }}</td>
                 <td>{{ mine.manager_name|default:"—" }}</td>
                 <td>{{ mine.reserves_tons }}</td>
@@ -47,21 +54,23 @@
                     {% endif %}
                 </td>
                 <td>
-                    <a href="{% url 'mine_edit' mine.pk %}" class="btn btn-sm btn-outline-amber">
+                    {% if is_manager and not mine.voided %}
+                    <a href="{% url 'mine_edit' mine.pk %}" class="btn btn-sm btn-outline-amber" title="Edit">
                         <i class="bi bi-pencil"></i>
                     </a>
-                    <a href="{% url 'mine_delete' mine.pk %}" class="btn btn-sm btn-outline-danger">
-                        <i class="bi bi-trash"></i>
+                    <a href="{% url 'mine_void' mine.pk %}" class="btn btn-sm btn-outline-danger" title="Void">
+                        <i class="bi bi-slash-circle"></i>
                     </a>
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
     {% else %}
-    <p style="color:var(--text-dim); text-align:center; padding:30px;">
-        <i class="bi bi-geo" style="font-size:40px; display:block; margin-bottom:10px;"></i>
-        No mines added yet. <a href="{% url 'mine_add' %}" style="color:var(--amber);">Add the first mine</a>.
+    <p style="color:var(--text-muted); text-align:center; padding:30px;">
+        <i class="bi bi-geo" style="font-size:40px; display:block; margin-bottom:10px; opacity:0.5;"></i>
+        No mines added yet. <a href="{% url 'mine_add' %}" style="color:var(--accent);">Add the first mine</a>.
     </p>
     {% endif %}
 </div>

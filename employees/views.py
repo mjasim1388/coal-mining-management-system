@@ -20,60 +20,90 @@ from .forms import (
     SaleForm,
     StockTransactionForm,
 )
-from .models import (
-    ApprovalLog,
-    Attendance,
-    Customer,
-    Employee,
-    Equipment,
-    InventoryItem,
-    MaintenanceLog,
-    Mine,
-    Notification,
-    Payroll,
-    ProductionRecord,
-    Sale,
-    StockTransaction,
-)
+from .models import (Employee, Mine, ProductionRecord, Attendance,
+                     InventoryItem, StockTransaction, Payroll,
+                     Customer, Sale, Notification, ApprovalLog,
+                     Equipment, MaintenanceLog, VoidLog)
+# ---------- VOID HELPER ----------
+def void_record(record, user, reason, request, object_label=''):
+    """Void a record: sets void fields + creates VoidLog entry.
 
+    Returns True if successful, False if already voided.
+    """
+    from django.utils import timezone
+
+    # Already voided?
+    if getattr(record, 'voided', False):
+        return False
+
+    # Get client IP
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0].strip()
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+
+    # Set void fields on the record
+    record.voided = True
+    record.voided_by = user
+    record.voided_at = timezone.now()
+    record.voided_reason = reason
+    record.save()
+
+    # Create central audit log entry
+    VoidLog.objects.create(
+        object_type=record.__class__.__name__,
+        object_id=record.pk,
+        object_label=object_label or str(record),
+        voided_by=user,
+        reason=reason,
+        ip_address=ip,
+    )
+
+    return True
 
 # ---------- DASHBOARD ----------
 @role_required('Manager', 'Accountant', 'Viewer')
 def dashboard(request):
     from datetime import date, timedelta
+    from decimal import Decimal
 
     # Check role
     user_roles = set(request.user.groups.values_list('name', flat=True))
     is_viewer_only = (user_roles == {'Viewer'}) and not request.user.is_superuser
 
-    # ---------- VIEWER-ONLY DASHBOARD (SALES ONLY) ----------
+    today = date.today()
+    this_month_start = today.replace(day=1)
+    last_month_end = this_month_start - timedelta(days=1)
+    last_month_start = last_month_end.replace(day=1)
+
+    # ---------- VIEWER DASHBOARD (SALES ONLY) ----------
     if is_viewer_only:
-        sales = Sale.objects.select_related('customer').all()
+        sales = Sale.objects.filter(voided=False)
+        this_month_sales = sales.filter(date__gte=this_month_start)
+        last_month_sales = sales.filter(date__gte=last_month_start, date__lte=last_month_end)
 
         total_sales = sum(s.total_amount for s in sales)
         total_received = sum(s.amount_paid for s in sales)
         total_outstanding = total_sales - total_received
         total_tons_sold = sum(s.quantity_tons for s in sales)
 
+        tm_sales = sum(s.total_amount for s in this_month_sales)
+        lm_sales = sum(s.total_amount for s in last_month_sales)
+        tm_tons = sum(s.quantity_tons for s in this_month_sales)
+
         recent_sales = sales.order_by('-date')[:10]
 
-        # Sales trend (last 30 days)
-        today = date.today()
-        trend_labels = []
-        trend_data = []
+        trend_labels, trend_data = [], []
         for i in range(29, -1, -1):
             d = today - timedelta(days=i)
-            amount = sum(
-                s.total_amount for s in Sale.objects.filter(date=d)
-            )
+            amount = sum(s.total_amount for s in Sale.objects.filter(date=d, voided=False))
             trend_labels.append(d.strftime('%d %b'))
             trend_data.append(float(amount))
 
-        # Top customers
         customer_totals = {}
         for s in sales:
-            name = s.customer.name
-            customer_totals[name] = customer_totals.get(name, 0) + float(s.total_amount)
+            customer_totals[s.customer.name] = customer_totals.get(s.customer.name, 0) + float(s.total_amount)
         top_customers = sorted(customer_totals.items(), key=lambda x: x[1], reverse=True)[:5]
 
         return render(request, 'viewer_dashboard.html', {
@@ -81,6 +111,9 @@ def dashboard(request):
             'total_received': total_received,
             'total_outstanding': total_outstanding,
             'total_tons_sold': total_tons_sold,
+            'tm_sales': tm_sales,
+            'lm_sales': lm_sales,
+            'tm_tons': tm_tons,
             'recent_sales': recent_sales,
             'trend_labels': trend_labels,
             'trend_data': trend_data,
@@ -88,56 +121,181 @@ def dashboard(request):
         })
 
     # ---------- FULL DASHBOARD (MANAGER / ACCOUNTANT) ----------
-    total = Employee.objects.count()
-    active = Employee.objects.filter(status='Active').count()
-    on_leave = Employee.objects.filter(status='On Leave').count()
-    inactive = Employee.objects.filter(status='Inactive').count()
-    recent = Employee.objects.order_by('-created_at')[:5]
-    total_production = ProductionRecord.objects.aggregate(t=Sum('quantity_tons'))['t'] or 0
-    mine_count = Mine.objects.count()
 
-    total_sales = sum(s.total_amount for s in Sale.objects.all())
-    total_received = sum(s.amount_paid for s in Sale.objects.all())
-    total_outstanding = total_sales - total_received
+    # Current counts
+    total_employees = Employee.objects.filter(voided=False).count()
+    active_employees = Employee.objects.filter(status='Active', voided=False).count()
+    mine_count = Mine.objects.filter(voided=False, status='Active').count()
 
-    total_payroll = sum(p.net_salary for p in Payroll.objects.all())
+    # Sales (this month vs last month)
+    all_sales = Sale.objects.filter(voided=False)
+    tm_sales_qs = all_sales.filter(date__gte=this_month_start)
+    lm_sales_qs = all_sales.filter(date__gte=last_month_start, date__lte=last_month_end)
 
-    low_stock_items = [i for i in InventoryItem.objects.all() if i.is_low_stock]
-    unpaid_sales = Sale.objects.exclude(payment_status='Paid')[:5]
+    tm_sales = sum(s.total_amount for s in tm_sales_qs)
+    lm_sales = sum(s.total_amount for s in lm_sales_qs)
 
-    today = date.today()
+    tm_received = sum(s.amount_paid for s in tm_sales_qs)
+    lm_received = sum(s.amount_paid for s in lm_sales_qs)
+
+    tm_tons_sold = sum(s.quantity_tons for s in tm_sales_qs)
+    lm_tons_sold = sum(s.quantity_tons for s in lm_sales_qs)
+
+    total_outstanding = sum(s.balance for s in all_sales.filter(payment_status__in=['Unpaid', 'Partial']))
+
+    # Production (this month vs last month)
+    all_prod = ProductionRecord.objects.filter(voided=False)
+    tm_prod = all_prod.filter(date__gte=this_month_start)
+    lm_prod = all_prod.filter(date__gte=last_month_start, date__lte=last_month_end)
+
+    tm_tons = sum(p.quantity_tons for p in tm_prod)
+    lm_tons = sum(p.quantity_tons for p in lm_prod)
+
+    # Payroll (this month vs last month) — use net_salary for the selected period
+    tm_payroll = Payroll.objects.filter(voided=False, year=today.year, month=today.month)
+    lm_payroll = Payroll.objects.filter(voided=False, year=last_month_start.year, month=last_month_start.month)
+
+    tm_payroll_total = sum(p.net_salary for p in tm_payroll)
+    lm_payroll_total = sum(p.net_salary for p in lm_payroll)
+
+    # Alerts
+    low_stock_items = [i for i in InventoryItem.objects.filter(voided=False) if i.is_low_stock]
+    pending_approvals = (
+        Employee.objects.filter(approval_status='Pending', voided=False).count() +
+        InventoryItem.objects.filter(approval_status='Pending', voided=False).count() +
+        Payroll.objects.filter(status='Pending', voided=False).count()
+    )
+
+    # Monthly comparison (last 6 months) — Production + Sales + Payroll
+    monthly_labels = []
+    monthly_production = []
+    monthly_sales = []
+    monthly_payroll = []
+    from calendar import month_abbr
+    for i in range(5, -1, -1):
+        # Compute month start/end for i months ago
+        y = today.year
+        m = today.month - i
+        while m <= 0:
+            m += 12
+            y -= 1
+        monthly_labels.append(f'{month_abbr[m]} {str(y)[-2:]}')
+
+        prod = sum(p.quantity_tons for p in ProductionRecord.objects.filter(
+            voided=False, date__year=y, date__month=m
+        ))
+        monthly_production.append(float(prod))
+
+        sales = sum(s.total_amount for s in Sale.objects.filter(
+            voided=False, date__year=y, date__month=m
+        ))
+        monthly_sales.append(float(sales))
+
+        payroll = sum(p.net_salary for p in Payroll.objects.filter(
+            voided=False, year=y, month=m
+        ))
+        monthly_payroll.append(float(payroll))
+
+    # Sales trend — last 30 days
     trend_labels = []
     trend_data = []
-    for i in range(6, -1, -1):
+    for i in range(29, -1, -1):
         d = today - timedelta(days=i)
+        amount = sum(s.total_amount for s in Sale.objects.filter(date=d, voided=False))
         trend_labels.append(d.strftime('%d %b'))
-        qty = ProductionRecord.objects.filter(date=d).aggregate(t=Sum('quantity_tons'))['t'] or 0
-        trend_data.append(float(qty))
+        trend_data.append(float(amount))
 
-    mine_labels = []
-    mine_data = []
-    for m in Mine.objects.all()[:5]:
-        mine_labels.append(m.name)
-        q = m.productions.aggregate(t=Sum('quantity_tons'))['t'] or 0
-        mine_data.append(float(q))
+    # Top customers (this month)
+    customer_totals = {}
+    for s in tm_sales_qs:
+        name = s.customer.name
+        customer_totals[name] = customer_totals.get(name, 0) + float(s.total_amount)
+    top_customers = sorted(customer_totals.items(), key=lambda x: x[1], reverse=True)[:5]
+
+    # Mine performance (this month)
+    mine_performance = []
+    for m in Mine.objects.filter(voided=False):
+        tons = sum(p.quantity_tons for p in ProductionRecord.objects.filter(
+            mine=m, voided=False, date__gte=this_month_start
+        ))
+        revenue = sum(s.total_amount for s in Sale.objects.filter(
+            mine=m, voided=False, date__gte=this_month_start
+        ))
+        mine_performance.append({
+            'mine': m,
+            'tons': tons,
+            'revenue': revenue,
+        })
+    mine_performance.sort(key=lambda x: float(x['tons']), reverse=True)
+
+    # Recent sales (last 5)
+    recent_sales = all_sales.order_by('-created_at')[:5]
+
+    # Compute trend % helpers
+    def pct(current, previous):
+        if not previous:
+            return None
+        return round(((float(current) - float(previous)) / float(previous)) * 100, 1)
+
+    sales_trend_pct = pct(tm_sales, lm_sales)
+    production_trend_pct = pct(tm_tons, lm_tons)
+    received_trend_pct = pct(tm_received, lm_received)
 
     context = {
-        'total': total, 'active': active, 'on_leave': on_leave, 'inactive': inactive,
-        'recent': recent, 'total_production': total_production, 'mine_count': mine_count,
-        'total_sales': total_sales, 'total_received': total_received,
-        'total_outstanding': total_outstanding, 'total_payroll': total_payroll,
-        'low_stock_items': low_stock_items, 'unpaid_sales': unpaid_sales,
-        'trend_labels': trend_labels, 'trend_data': trend_data,
-        'mine_labels': mine_labels, 'mine_data': mine_data,
+        # Counts
+        'total_employees': total_employees,
+        'active_employees': active_employees,
+        'mine_count': mine_count,
+
+        # Sales
+        'tm_sales': tm_sales,
+        'tm_received': tm_received,
+        'tm_tons_sold': tm_tons_sold,
+        'total_outstanding': total_outstanding,
+
+        # Production
+        'tm_tons': tm_tons,
+
+        # Payroll
+        'tm_payroll_total': tm_payroll_total,
+
+        # Alerts
+        'low_stock_items': low_stock_items,
+        'pending_approvals': pending_approvals,
+        'low_stock_count': len(low_stock_items),
+
+        # Trends
+        'sales_trend_pct': sales_trend_pct,
+        'production_trend_pct': production_trend_pct,
+        'received_trend_pct': received_trend_pct,
+
+        # Monthly chart data
+        'monthly_labels': monthly_labels,
+        'monthly_production': monthly_production,
+        'monthly_sales': monthly_sales,
+        'monthly_payroll': monthly_payroll,
+
+        # 30-day chart
+        'trend_labels': trend_labels,
+        'trend_data': trend_data,
+
+        # Tables
+        'top_customers': top_customers,
+        'mine_performance': mine_performance,
+        'recent_sales': recent_sales,
     }
     return render(request, 'dashboard.html', context)
-
 # ---------- EMPLOYEES ----------
 @role_required('Manager', 'Accountant')
 def employee_list(request):
     query = request.GET.get('q', '')
     status_filter = request.GET.get('status', '')
+    show_voided = request.GET.get('show_voided', '')
+
     employees = Employee.objects.all()
+    if not show_voided:
+        employees = employees.filter(voided=False)
+
     if query:
         employees = employees.filter(first_name__icontains=query) | \
                     employees.filter(last_name__icontains=query) | \
@@ -145,10 +303,13 @@ def employee_list(request):
                     employees.filter(cnic__icontains=query)
     if status_filter:
         employees = employees.filter(status=status_filter)
-    return render(request, 'employees/list.html', {
-        'employees': employees, 'query': query, 'status_filter': status_filter,
-    })
 
+    return render(request, 'employees/list.html', {
+        'employees': employees,
+        'query': query,
+        'status_filter': status_filter,
+        'show_voided': show_voided,
+    })
 
 @role_required('Manager')
 def employee_detail(request, pk):
@@ -215,13 +376,35 @@ def employee_edit(request, pk):
 
 
 @role_required('Manager')
-def employee_delete(request, pk):
+def employee_void(request, pk):
     employee = get_object_or_404(Employee, pk=pk)
-    if request.method == 'POST':
-        employee.delete()
-        messages.success(request, 'Employee deleted.')
+    if employee.voided:
+        messages.warning(request, 'This employee is already voided.')
         return redirect('employee_list')
-    return render(request, 'employees/delete.html', {'employee': employee})
+
+    if request.method == 'POST':
+        reason = request.POST.get('void_reason', '').strip()
+        if not reason:
+            messages.error(request, 'Please provide a reason for voiding.')
+            return redirect('employee_void', pk=employee.pk)
+
+        label = f'{employee.employee_code} — {employee.first_name} {employee.last_name}'
+        if void_record(employee, request.user, reason, request, label):
+            messages.success(request, f'Employee {label} has been voided.')
+        return redirect('employee_list')
+
+    return render(request, 'shared/void_confirm.html', {
+        'title': 'Void Employee',
+        'object_label': f'{employee.employee_code} — {employee.first_name} {employee.last_name}',
+        'object_type': 'Employee',
+        'details': [
+            ('Designation', employee.designation),
+            ('Department', employee.department),
+            ('Status', employee.status),
+            ('Joining Date', employee.date_of_joining),
+        ],
+        'cancel_url': 'employee_list',
+    })
 
 
 # ---------- MINES ----------
@@ -259,26 +442,55 @@ def mine_edit(request, pk):
 
 
 @role_required('Manager')
-def mine_delete(request, pk):
+def mine_void(request, pk):
     mine = get_object_or_404(Mine, pk=pk)
-    if request.method == 'POST':
-        mine.delete()
-        messages.success(request, 'Mine deleted.')
+    if mine.voided:
+        messages.warning(request, 'This mine is already voided.')
         return redirect('mine_list')
-    return render(request, 'mines/delete.html', {'mine': mine})
+
+    if request.method == 'POST':
+        reason = request.POST.get('void_reason', '').strip()
+        if not reason:
+            messages.error(request, 'Please provide a reason for voiding.')
+            return redirect('mine_void', pk=mine.pk)
+
+        if void_record(mine, request.user, reason, request, mine.name):
+            messages.success(request, f'Mine "{mine.name}" has been voided.')
+        return redirect('mine_list')
+
+    return render(request, 'shared/void_confirm.html', {
+        'title': 'Void Mine',
+        'object_label': mine.name,
+        'object_type': 'Mine',
+        'details': [
+            ('Location', mine.location),
+            ('Manager', mine.manager_name or '—'),
+            ('Status', mine.status),
+        ],
+        'cancel_url': 'mine_list',
+    })
 
 
 # ---------- PRODUCTION ----------
 @role_required('Manager', 'Accountant')
 def production_list(request):
     mine_filter = request.GET.get('mine', '')
+    show_voided = request.GET.get('show_voided', '')
+
     records = ProductionRecord.objects.select_related('mine').all()
+    if not show_voided:
+        records = records.filter(voided=False)
     if mine_filter:
         records = records.filter(mine_id=mine_filter)
+
     total = records.aggregate(t=Sum('quantity_tons'))['t'] or 0
+
     return render(request, 'production/list.html', {
-        'records': records, 'mines': Mine.objects.all(),
-        'mine_filter': mine_filter, 'total': total,
+        'records': records,
+        'mines': Mine.objects.filter(voided=False),
+        'mine_filter': mine_filter,
+        'show_voided': show_voided,
+        'total': total,
     })
 
 
@@ -320,14 +532,37 @@ def production_edit(request, pk):
     return render(request, 'production/form.html', {'form': form, 'title': 'Edit Production Record'})
 
 
-@role_required('Manager', 'Accountant')
-def production_delete(request, pk):
+@role_required('Manager')
+def production_void(request, pk):
     record = get_object_or_404(ProductionRecord, pk=pk)
-    if request.method == 'POST':
-        record.delete()
-        messages.success(request, 'Production record deleted.')
+    if record.voided:
+        messages.warning(request, 'This production record is already voided.')
         return redirect('production_list')
-    return render(request, 'production/delete.html', {'record': record})
+
+    if request.method == 'POST':
+        reason = request.POST.get('void_reason', '').strip()
+        if not reason:
+            messages.error(request, 'Please provide a reason for voiding.')
+            return redirect('production_void', pk=record.pk)
+
+        label = f'{record.mine.name} — {record.date} ({record.quantity_tons} tons)'
+        if void_record(record, request.user, reason, request, label):
+            messages.success(request, f'Production record voided: {label}')
+        return redirect('production_list')
+
+    return render(request, 'shared/void_confirm.html', {
+        'title': 'Void Production Record',
+        'object_label': f'{record.mine.name} — {record.date}',
+        'object_type': 'Production Record',
+        'details': [
+            ('Mine', record.mine.name),
+            ('Date', record.date),
+            ('Shift', record.shift),
+            ('Quantity', f'{record.quantity_tons} tons'),
+            ('Coal Type', record.coal_type),
+        ],
+        'cancel_url': 'production_list',
+    })
 
 
 # ---------- ATTENDANCE ----------
@@ -335,15 +570,21 @@ def production_delete(request, pk):
 def attendance_list(request):
     date_filter = request.GET.get('date', '')
     status_filter = request.GET.get('status', '')
+    show_voided = request.GET.get('show_voided', '')
+
     records = Attendance.objects.select_related('employee').all()
+    if not show_voided:
+        records = records.filter(voided=False)
     if date_filter:
         records = records.filter(date=date_filter)
     if status_filter:
         records = records.filter(status=status_filter)
+
     return render(request, 'attendance/list.html', {
         'records': records,
         'date_filter': date_filter,
         'status_filter': status_filter,
+        'show_voided': show_voided,
     })
 
 
@@ -382,13 +623,24 @@ def attendance_edit(request, pk):
 
 
 @role_required('Manager')
-def attendance_delete(request, pk):
+def attendance_void(request, pk):
     record = get_object_or_404(Attendance, pk=pk)
-    if request.method == 'POST':
-        record.delete()
-        messages.success(request, 'Attendance record deleted.')
+    if record.voided:
+        messages.warning(request, 'This attendance record is already voided.')
         return redirect('attendance_list')
-    return render(request, 'attendance/delete.html', {'record': record})
+
+    if request.method == 'POST':
+        reason = request.POST.get('void_reason', '').strip()
+        if not reason:
+            messages.error(request, 'Please provide a reason for voiding.')
+            return redirect('attendance_void', pk=record.pk)
+
+        label = f'{record.employee.employee_code} — {record.date}'
+        if void_record(record, request.user, reason, request, label):
+            messages.success(request, f'Attendance voided: {label}')
+        return redirect('attendance_list')
+
+    return render(request, 'attendance/void.html', {'record': record})
 
 # ---------- INVENTORY ----------
 @role_required('Manager', 'Accountant')
@@ -396,8 +648,11 @@ def inventory_list(request):
     category_filter = request.GET.get('category', '')
     low_filter = request.GET.get('low', '')
     search_query = request.GET.get('q', '')
+    show_voided = request.GET.get('show_voided', '')
 
     items = list(InventoryItem.objects.all())
+    if not show_voided:
+        items = [i for i in items if not i.voided]
 
     if search_query:
         q = search_query.lower()
@@ -407,13 +662,11 @@ def inventory_list(request):
     if low_filter:
         items = [i for i in items if i.is_low_stock]
 
-    # Summary stats
-    all_items = list(InventoryItem.objects.all())
+    all_items = list(InventoryItem.objects.filter(voided=False))
     total_items = len(all_items)
     total_value = sum(float(i.quantity) * float(i.unit_price) for i in all_items)
     low_stock_count = sum(1 for i in all_items if i.is_low_stock)
 
-    # Recent movements (last 30)
     recent_movements = StockTransaction.objects.select_related(
         'item', 'issued_to_equipment', 'issued_to_employee', 'issued_to_mine'
     ).all()[:30]
@@ -423,13 +676,14 @@ def inventory_list(request):
         'category_filter': category_filter,
         'low_filter': low_filter,
         'search_query': search_query,
+        'show_voided': show_voided,
         'low_stock_count': low_stock_count,
         'total_items': total_items,
         'total_value': total_value,
         'recent_movements': recent_movements,
-        'equipment_list': Equipment.objects.all(),
-        'employee_list': Employee.objects.filter(status='Active'),
-        'mine_list': Mine.objects.all(),
+        'equipment_list': Equipment.objects.filter(voided=False),
+        'employee_list': Employee.objects.filter(status='Active', voided=False),
+        'mine_list': Mine.objects.filter(voided=False),
     })
 
 @role_required('Manager', 'Accountant')
@@ -478,14 +732,35 @@ def inventory_edit(request, pk):
     return render(request, 'inventory/form.html', {'form': form, 'title': 'Edit Inventory Item'})
 
 
-@role_required('Manager', 'Accountant')
-def inventory_delete(request, pk):
+@role_required('Manager')
+def inventory_void(request, pk):
     item = get_object_or_404(InventoryItem, pk=pk)
-    if request.method == 'POST':
-        item.delete()
-        messages.success(request, 'Item deleted.')
+    if item.voided:
+        messages.warning(request, 'This item is already voided.')
         return redirect('inventory_list')
-    return render(request, 'inventory/delete.html', {'item': item})
+
+    if request.method == 'POST':
+        reason = request.POST.get('void_reason', '').strip()
+        if not reason:
+            messages.error(request, 'Please provide a reason for voiding.')
+            return redirect('inventory_void', pk=item.pk)
+
+        if void_record(item, request.user, reason, request, item.name):
+            messages.success(request, f'Inventory item "{item.name}" has been voided.')
+        return redirect('inventory_list')
+
+    return render(request, 'shared/void_confirm.html', {
+        'title': 'Void Inventory Item',
+        'object_label': item.name,
+        'object_type': 'Inventory Item',
+        'details': [
+            ('Category', item.category),
+            ('Quantity', f'{item.quantity} {item.unit}'),
+            ('Unit Price', f'PKR {item.unit_price}'),
+            ('Location', item.location or '—'),
+        ],
+        'cancel_url': 'inventory_list',
+    })
 
 
 @role_required('Manager', 'Accountant')
@@ -627,19 +902,26 @@ def payroll_list(request):
     month_filter = request.GET.get('month', '')
     year_filter = request.GET.get('year', '')
     status_filter = request.GET.get('status', '')
+    show_voided = request.GET.get('show_voided', '')
+
     payrolls = Payroll.objects.select_related('employee').all()
+    if not show_voided:
+        payrolls = payrolls.filter(voided=False)
     if month_filter:
         payrolls = payrolls.filter(month=month_filter)
     if year_filter:
         payrolls = payrolls.filter(year=year_filter)
     if status_filter:
         payrolls = payrolls.filter(status=status_filter)
+
     total = sum(p.net_salary for p in payrolls)
+
     return render(request, 'payroll/list.html', {
         'payrolls': payrolls,
         'month_filter': month_filter,
         'year_filter': year_filter,
         'status_filter': status_filter,
+        'show_voided': show_voided,
         'total': total,
         'months': Payroll.MONTH_CHOICES,
     })
@@ -693,14 +975,40 @@ def payroll_edit(request, pk):
     return render(request, 'payroll/form.html', {'form': form, 'title': 'Edit Payroll'})
 
 
-@role_required('Manager', 'Accountant')
-def payroll_delete(request, pk):
+@role_required('Manager')
+def payroll_void(request, pk):
     payroll = get_object_or_404(Payroll, pk=pk)
-    if request.method == 'POST':
-        payroll.delete()
-        messages.success(request, 'Payroll deleted.')
+    if payroll.voided:
+        messages.warning(request, 'This payroll record is already voided.')
         return redirect('payroll_list')
-    return render(request, 'payroll/delete.html', {'payroll': payroll})
+
+    if payroll.status == 'Paid':
+        messages.error(request, 'Paid payroll records cannot be voided. Contact the superuser if correction is needed.')
+        return redirect('payroll_list')
+
+    if request.method == 'POST':
+        reason = request.POST.get('void_reason', '').strip()
+        if not reason:
+            messages.error(request, 'Please provide a reason for voiding.')
+            return redirect('payroll_void', pk=payroll.pk)
+
+        label = f'{payroll.employee.first_name} {payroll.employee.last_name} — {payroll.get_month_display()} {payroll.year}'
+        if void_record(payroll, request.user, reason, request, label):
+            messages.success(request, f'Payroll voided: {label}')
+        return redirect('payroll_list')
+
+    return render(request, 'shared/void_confirm.html', {
+        'title': 'Void Payroll',
+        'object_label': f'{payroll.employee.first_name} {payroll.employee.last_name} — {payroll.get_month_display()} {payroll.year}',
+        'object_type': 'Payroll',
+        'details': [
+            ('Employee', f'{payroll.employee.employee_code} — {payroll.employee.first_name} {payroll.employee.last_name}'),
+            ('Period', f'{payroll.get_month_display()} {payroll.year}'),
+            ('Net Salary', f'PKR {payroll.net_salary}'),
+            ('Status', payroll.status),
+        ],
+        'cancel_url': 'payroll_list',
+    })
 
 
 @role_required('Manager', 'Accountant')
@@ -709,16 +1017,24 @@ def payroll_detail(request, pk):
     return render(request, 'payroll/detail.html', {'payroll': payroll})
 
 # ---------- CUSTOMERS ----------
-@role_required('Manager', 'Accountant')
+@role_required('Manager', 'Accountant', 'Viewer')
 def customer_list(request):
     query = request.GET.get('q', '')
+    show_voided = request.GET.get('show_voided', '')
+
     customers = Customer.objects.all()
+    if not show_voided:
+        customers = customers.filter(voided=False)
+
     if query:
         customers = customers.filter(name__icontains=query) | \
                     customers.filter(company__icontains=query) | \
                     customers.filter(phone__icontains=query)
+
     return render(request, 'sales/customer_list.html', {
-        'customers': customers, 'query': query,
+        'customers': customers,
+        'query': query,
+        'show_voided': show_voided,
     })
 
 
@@ -749,14 +1065,24 @@ def customer_edit(request, pk):
     return render(request, 'sales/customer_form.html', {'form': form, 'title': 'Edit Customer'})
 
 
-@role_required('Manager', 'Accountant')
-def customer_delete(request, pk):
+@role_required('Manager')
+def customer_void(request, pk):
     customer = get_object_or_404(Customer, pk=pk)
-    if request.method == 'POST':
-        customer.delete()
-        messages.success(request, 'Customer deleted.')
+    if customer.voided:
+        messages.warning(request, 'This customer is already voided.')
         return redirect('customer_list')
-    return render(request, 'sales/customer_delete.html', {'customer': customer})
+
+    if request.method == 'POST':
+        reason = request.POST.get('void_reason', '').strip()
+        if not reason:
+            messages.error(request, 'Please provide a reason for voiding.')
+            return redirect('customer_void', pk=customer.pk)
+
+        if void_record(customer, request.user, reason, request, customer.name):
+            messages.success(request, f'Customer "{customer.name}" has been voided.')
+        return redirect('customer_list')
+
+    return render(request, 'sales/customer_void.html', {'customer': customer})
 
 
 # ---------- SALES ----------
@@ -1008,9 +1334,12 @@ def approval_list(request):
 
 @role_required('Manager')
 def approve_employee(request, pk):
+    from django.utils import timezone
     emp = get_object_or_404(Employee, pk=pk)
     if request.method == 'POST':
         emp.approval_status = 'Approved'
+        emp.approved_by = request.user              # ← auto-record who
+        emp.approved_at = timezone.now()            # ← auto-record when
         emp.save()
         if emp.added_by:
             create_notification(
@@ -1036,7 +1365,6 @@ def approve_employee(request, pk):
         )
         messages.success(request, f'Employee {emp.first_name} {emp.last_name} approved.')
     return redirect('approval_list')
-
 
 @role_required('Manager')
 def reject_employee(request, pk):
@@ -1065,9 +1393,12 @@ def reject_employee(request, pk):
 
 @role_required('Manager')
 def approve_inventory(request, pk):
+    from django.utils import timezone
     item = get_object_or_404(InventoryItem, pk=pk)
     if request.method == 'POST':
         item.approval_status = 'Approved'
+        item.approved_by = request.user             # ← auto-record who
+        item.approved_at = timezone.now()           # ← auto-record when
         item.save()
         if item.added_by:
             create_notification(
@@ -1075,7 +1406,7 @@ def approve_inventory(request, pk):
                 f'Inventory item "{item.name}" has been approved by {request.user.username}.',
                 link=f'/inventory/{item.pk}/edit/'
             )
-            Notification.objects.filter(
+        Notification.objects.filter(
             user=request.user,
             object_type='InventoryItem',
             object_id=item.pk,
@@ -1087,7 +1418,6 @@ def approve_inventory(request, pk):
         )
         messages.success(request, f'Inventory item "{item.name}" approved.')
     return redirect('approval_list')
-
 
 @role_required('Manager')
 def reject_inventory(request, pk):
@@ -1146,9 +1476,13 @@ def approve_payroll(request, pk):
 
 @role_required('Manager')
 def approve_payroll_paid(request, pk):
+    from django.utils import timezone
     payroll = get_object_or_404(Payroll, pk=pk)
     if request.method == 'POST':
         payroll.status = 'Paid'
+        payroll.payment_date = timezone.now().date()   # ← Auto-fill today
+        payroll.paid_by = request.user                 # ← Auto-record
+        payroll.confirmed_at = timezone.now()          # ← Auto-record time
         payroll.save()
         if payroll.paid_requested_by:
             create_notification(
@@ -1159,36 +1493,81 @@ def approve_payroll_paid(request, pk):
             )
         messages.success(request, 'Payment marked as PAID.')
     return redirect('approval_list')
-
 @role_required('Manager', 'Accountant')
 def payroll_mark_paid(request, pk):
     from django.utils import timezone
+    from decimal import Decimal
+
     payroll = get_object_or_404(Payroll, pk=pk)
-    if request.method == 'POST':
-        is_manager_user = request.user.is_superuser or request.user.groups.filter(name='Manager').exists()
-        if is_manager_user:
-            payroll.status = 'Paid'
-            payroll.payment_date = timezone.now().date()
-            payroll.save()
-            if payroll.created_by and payroll.created_by != request.user:
-                create_notification(
-                    payroll.created_by,
-                    f'Payroll for {payroll.employee.first_name} {payroll.employee.last_name} '
-                    f'({payroll.get_month_display()} {payroll.year}) has been marked as PAID by {request.user.username}.',
-                    link=f'/payroll/{payroll.pk}/'
-                )
-            messages.success(request, 'Payroll marked as PAID.')
-        else:
-            payroll.status = 'Paid Pending'
-            payroll.paid_requested_by = request.user
-            payroll.save()
-            notify_managers(
-                f'Payroll for {payroll.employee.first_name} {payroll.employee.last_name} '
-                f'({payroll.get_month_display()} {payroll.year}) marked as PAID by {request.user.username} — awaiting your approval.',
-                link='/approvals/'
+
+    if request.method != 'POST':
+        return redirect('payroll_list')
+
+    # Get client IP
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0].strip()
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+
+    is_manager_user = request.user.is_superuser or request.user.groups.filter(name='Manager').exists()
+
+    # Check if already paid
+    if payroll.status == 'Paid':
+        messages.warning(request, 'This payroll is already marked as Paid.')
+        return redirect('payroll_list')
+
+    # Get amount from form (default = net salary)
+    try:
+        amount = Decimal(request.POST.get('received_amount') or payroll.net_salary)
+    except Exception:
+        amount = payroll.net_salary
+
+    note = request.POST.get('confirmation_notes', '').strip()
+
+    if is_manager_user:
+        # Manager pays directly
+        payroll.status = 'Paid'
+        payroll.received_amount = amount
+        payroll.payment_date = timezone.now().date()
+        payroll.paid_by = request.user
+        payroll.paid_from_ip = ip
+        payroll.payment_method = 'Cash'
+        payroll.confirmed_at = timezone.now()
+        payroll.employee_confirmed = True
+        payroll.confirmation_notes = note
+        payroll.save()
+
+        if payroll.created_by and payroll.created_by != request.user:
+            create_notification(
+                payroll.created_by,
+                f'Salary for {payroll.employee.first_name} {payroll.employee.last_name} '
+                f'({payroll.get_month_display()} {payroll.year}) has been PAID by {request.user.username}.',
+                link=f'/payroll/{payroll.pk}/'
             )
-            messages.info(request, 'Payment submitted for manager approval.')
+
+        messages.success(
+            request,
+            f'✅ Salary paid to {payroll.employee.first_name} {payroll.employee.last_name}. '
+            f'Amount: PKR {amount}'
+        )
+    else:
+        # Accountant requests approval
+        payroll.status = 'Paid Pending'
+        payroll.received_amount = amount
+        payroll.paid_requested_by = request.user
+        payroll.confirmation_notes = note
+        payroll.save()
+        notify_managers(
+            f'Payroll for {payroll.employee.first_name} {payroll.employee.last_name} '
+            f'({payroll.get_month_display()} {payroll.year}) marked as PAID by {request.user.username} — awaiting your approval.',
+            link='/approvals/'
+        )
+        messages.info(request, 'Payment submitted for manager approval.')
+
     return redirect('payroll_list')
+
+
 # ---------- PUNCH IN / OUT ----------
 @role_required('Manager', 'Accountant')
 def attendance_punch(request):
@@ -1398,10 +1777,9 @@ def payroll_pay_confirm(request, pk):
 
 @role_required('Manager', 'Accountant')
 def payroll_pay_save(request, pk):
-    """Handle the confirm payment POST."""
-    from decimal import Decimal
-
+    """Handle the confirm payment POST (with signed slip photo)."""
     from django.utils import timezone
+    from decimal import Decimal
 
     payroll = get_object_or_404(Payroll, pk=pk)
 
@@ -1429,7 +1807,6 @@ def payroll_pay_save(request, pk):
 
     payroll.save()
 
-    # Notify the accountant who created it (if different from who paid)
     if payroll.created_by and payroll.created_by != request.user:
         create_notification(
             payroll.created_by,
@@ -1445,7 +1822,6 @@ def payroll_pay_save(request, pk):
     )
     return redirect('payroll_detail', pk=payroll.pk)
 
-
 @role_required('Manager', 'Accountant')
 def payroll_slip(request, pk):
     """Printable salary slip for employee signature/thumbprint."""
@@ -1457,7 +1833,11 @@ def payroll_slip(request, pk):
 def equipment_list(request):
     status_filter = request.GET.get('status', '')
     type_filter = request.GET.get('type', '')
+    show_voided = request.GET.get('show_voided', '')
+
     equipment = Equipment.objects.select_related('mine').all()
+    if not show_voided:
+        equipment = equipment.filter(voided=False)
     if status_filter:
         equipment = equipment.filter(status=status_filter)
     if type_filter:
@@ -1467,6 +1847,7 @@ def equipment_list(request):
         'equipment': equipment,
         'status_filter': status_filter,
         'type_filter': type_filter,
+        'show_voided': show_voided,
         'type_choices': Equipment.TYPE_CHOICES,
     })
 
@@ -1547,27 +1928,55 @@ def equipment_edit(request, pk):
 
 
 @role_required('Manager')
-def equipment_delete(request, pk):
+def equipment_void(request, pk):
     equipment = get_object_or_404(Equipment, pk=pk)
-    if request.method == 'POST':
-        name = equipment.name
-        equipment.delete()
-        messages.success(request, f'Equipment "{name}" deleted.')
+    if equipment.voided:
+        messages.warning(request, 'This equipment is already voided.')
         return redirect('equipment_list')
-    return render(request, 'equipment/delete.html', {'equipment': equipment})
+
+    if request.method == 'POST':
+        reason = request.POST.get('void_reason', '').strip()
+        if not reason:
+            messages.error(request, 'Please provide a reason for voiding.')
+            return redirect('equipment_void', pk=equipment.pk)
+
+        label = f'{equipment.equipment_code} — {equipment.name}'
+        if void_record(equipment, request.user, reason, request, label):
+            messages.success(request, f'Equipment voided: {label}')
+        return redirect('equipment_list')
+
+    return render(request, 'shared/void_confirm.html', {
+        'title': 'Void Equipment',
+        'object_label': f'{equipment.equipment_code} — {equipment.name}',
+        'object_type': 'Equipment',
+        'details': [
+            ('Type', equipment.equipment_type),
+            ('Model', equipment.model_number or '—'),
+            ('Status', equipment.status),
+            ('Mine', equipment.mine.name if equipment.mine else '—'),
+        ],
+        'cancel_url': 'equipment_list',
+    })
 
 
 # ---------- MAINTENANCE ----------
 @role_required('Manager', 'Accountant', 'Viewer')
 def maintenance_list(request):
     type_filter = request.GET.get('type', '')
+    show_voided = request.GET.get('show_voided', '')
+
     logs = MaintenanceLog.objects.select_related('equipment').all()
+    if not show_voided:
+        logs = logs.filter(voided=False)
     if type_filter:
         logs = logs.filter(maintenance_type=type_filter)
+
     total_cost = sum(log.cost for log in logs)
+
     return render(request, 'equipment/maintenance_list.html', {
         'logs': logs,
         'type_filter': type_filter,
+        'show_voided': show_voided,
         'total_cost': total_cost,
         'type_choices': MaintenanceLog.TYPE_CHOICES,
     })
@@ -1617,14 +2026,26 @@ def maintenance_edit(request, pk):
 
 
 @role_required('Manager')
-def maintenance_delete(request, pk):
+def maintenance_void(request, pk):
     log = get_object_or_404(MaintenanceLog, pk=pk)
     equipment_pk = log.equipment.pk
-    if request.method == 'POST':
-        log.delete()
-        messages.success(request, 'Maintenance log deleted.')
+
+    if log.voided:
+        messages.warning(request, 'This maintenance log is already voided.')
         return redirect('equipment_detail', pk=equipment_pk)
-    return render(request, 'equipment/maintenance_delete.html', {'log': log})
+
+    if request.method == 'POST':
+        reason = request.POST.get('void_reason', '').strip()
+        if not reason:
+            messages.error(request, 'Please provide a reason for voiding.')
+            return redirect('maintenance_void', pk=log.pk)
+
+        label = f'{log.equipment.name} — {log.maintenance_type} on {log.date}'
+        if void_record(log, request.user, reason, request, label):
+            messages.success(request, f'Maintenance log voided.')
+        return redirect('equipment_detail', pk=equipment_pk)
+
+    return render(request, 'equipment/maintenance_void.html', {'log': log})
 
 # ---------- LIVE DISPATCH API ----------
 @role_required('Manager', 'Accountant', 'Viewer')
@@ -1762,3 +2183,164 @@ def stock_quick_out(request, item_pk):
         messages.success(request, f'Issued {qty} {item.unit} of {item.name}. New stock: {item.quantity} {item.unit}')
 
     return redirect('inventory_list')
+
+# ---------- FUEL REPORT ----------
+@role_required('Manager', 'Accountant', 'Viewer')
+def fuel_report(request):
+    from datetime import date, timedelta
+    from django.db.models import Sum
+
+    # Filter: default = current month
+    month = request.GET.get('month', '')
+    year = request.GET.get('year', '')
+
+    today = date.today()
+    if month:
+        try:
+            month_int = int(month)
+        except ValueError:
+            month_int = today.month
+    else:
+        month_int = today.month
+
+    if year:
+        try:
+            year_int = int(year)
+        except ValueError:
+            year_int = today.year
+    else:
+        year_int = today.year
+
+    # All fuel transactions for the period
+    fuel_txns = StockTransaction.objects.filter(
+        transaction_type='OUT',
+        item__category='Fuel',
+        date__month=month_int,
+        date__year=year_int,
+    ).select_related('item', 'issued_to_equipment')
+
+    # Group by equipment
+    equipment_data = {}
+    unassigned_liters = 0
+    unassigned_cost = 0
+
+    for txn in fuel_txns:
+        liters = float(txn.quantity or 0)
+        cost = liters * float(txn.item.unit_price or 0)
+
+        if txn.issued_to_equipment:
+            eq = txn.issued_to_equipment
+            if eq.pk not in equipment_data:
+                equipment_data[eq.pk] = {
+                    'equipment': eq,
+                    'liters': 0,
+                    'cost': 0,
+                    'transactions': 0,
+                }
+            equipment_data[eq.pk]['liters'] += liters
+            equipment_data[eq.pk]['cost'] += cost
+            equipment_data[eq.pk]['transactions'] += 1
+        else:
+            unassigned_liters += liters
+            unassigned_cost += cost
+
+    # Sort by liters descending
+    ranked = sorted(equipment_data.values(), key=lambda x: x['liters'], reverse=True)
+
+    total_liters = sum(e['liters'] for e in ranked) + unassigned_liters
+    total_cost = sum(e['cost'] for e in ranked) + unassigned_cost
+
+    # Month options for dropdown
+    months = [
+        (1, 'January'), (2, 'February'), (3, 'March'), (4, 'April'),
+        (5, 'May'), (6, 'June'), (7, 'July'), (8, 'August'),
+        (9, 'September'), (10, 'October'), (11, 'November'), (12, 'December'),
+    ]
+
+    return render(request, 'equipment/fuel_report.html', {
+        'ranked': ranked,
+        'month': month_int,
+        'year': year_int,
+        'months': months,
+        'total_liters': total_liters,
+        'total_cost': total_cost,
+        'unassigned_liters': unassigned_liters,
+        'unassigned_cost': unassigned_cost,
+        'equipment_count': len(ranked),
+    })
+
+# ---------- PAYROLL AUTO-CALC API ----------
+@role_required('Manager', 'Accountant')
+def payroll_autofill_api(request):
+    """Returns an employee's salary + attendance counts for a given month/year,
+    only counting dates on/after the employee's joining date."""
+    from django.http import JsonResponse
+    from decimal import Decimal
+    from datetime import date
+
+    employee_id = request.GET.get('employee')
+    month = request.GET.get('month')
+    year = request.GET.get('year')
+
+    if not all([employee_id, month, year]):
+        return JsonResponse({'error': 'Missing params'}, status=400)
+
+    try:
+        employee = Employee.objects.get(pk=employee_id)
+        month_int = int(month)
+        year_int = int(year)
+    except (Employee.DoesNotExist, ValueError):
+        return JsonResponse({'error': 'Invalid params'}, status=400)
+
+    # Base queryset: this employee, this month/year
+    records = Attendance.objects.filter(
+        employee=employee,
+        date__month=month_int,
+        date__year=year_int,
+    )
+
+    # Only include dates on/after the employee's joining date
+    joining_date = employee.date_of_joining
+    if joining_date:
+        records = records.filter(date__gte=joining_date)
+
+    present = records.filter(status='Present').count()
+    absent = records.filter(status='Absent').count()
+    leave = records.filter(status='Leave').count()
+    half = records.filter(status='Half Day').count()
+
+    # Sum overtime hours
+    overtime_hours = Decimal('0')
+    for r in records:
+        overtime_hours += (r.overtime_hours or Decimal('0'))
+
+    # Calculate worked days so far (for context)
+    from calendar import monthrange
+    if joining_date and joining_date.year == year_int and joining_date.month == month_int:
+        # Employee joined this month
+        days_in_month = monthrange(year_int, month_int)[1]
+        eligible_days = days_in_month - joining_date.day + 1
+        joined_this_month = True
+    elif joining_date and joining_date > date(year_int, month_int, 1):
+        # Joined after this month started (in a different month — shouldn't happen)
+        eligible_days = 0
+        joined_this_month = True
+    else:
+        # Full month
+        eligible_days = monthrange(year_int, month_int)[1]
+        joined_this_month = False
+
+    return JsonResponse({
+        'basic_salary': float(employee.salary or 0),
+        'present_days': present,
+        'absent_days': absent,
+        'leave_days': leave,
+        'half_days': half,
+        'overtime_hours': float(overtime_hours),
+        'employee_name': f'{employee.first_name} {employee.last_name}',
+        'employee_code': employee.employee_code,
+        'joining_date': str(joining_date) if joining_date else '',
+        'joined_this_month': joined_this_month,
+        'eligible_days': eligible_days,
+        'total_attendance_records': records.count(),
+    })

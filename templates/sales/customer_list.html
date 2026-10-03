@@ -7,11 +7,18 @@
 
 <div class="panel mb-3">
     <form method="get" class="row g-2 align-items-end">
-        <div class="col-md-8">
+        <div class="col-md-6">
             <label class="form-label">Search</label>
             <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Name, company, or phone...">
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
+            <label class="form-label">Show Voided</label>
+            <select name="show_voided" class="form-select">
+                <option value="">Hide</option>
+                <option value="1" {% if show_voided %}selected{% endif %}>Show</option>
+            </select>
+        </div>
+        <div class="col-md-3">
             <button type="submit" class="btn btn-amber w-100">
                 <i class="bi bi-search"></i> Search
             </button>
@@ -28,9 +35,11 @@
             <a href="{% url 'sale_list' %}" class="btn btn-outline-amber">
                 <i class="bi bi-receipt"></i> Sales
             </a>
+            {% if is_manager or is_accountant %}
             <a href="{% url 'customer_add' %}" class="btn btn-amber">
                 <i class="bi bi-plus-lg"></i> Add Customer
             </a>
+            {% endif %}
         </div>
     </div>
 
@@ -48,28 +57,35 @@
         </thead>
         <tbody>
             {% for c in customers %}
-            <tr>
-                <td><span style="color:var(--amber-glow);">{{ c.name }}</span></td>
+            <tr {% if c.voided %}style="opacity:0.5;"{% endif %}>
+                <td>
+                    <span style="color:var(--accent);">{{ c.name }}</span>
+                    {% if c.voided %}
+                        <span class="badge-status badge-inactive" style="margin-left:4px;">VOIDED</span>
+                    {% endif %}
+                </td>
                 <td>{{ c.company|default:"—" }}</td>
                 <td>{{ c.phone|default:"—" }}</td>
                 <td>{{ c.email|default:"—" }}</td>
                 <td>{{ c.ntn|default:"—" }}</td>
                 <td>
-                    <a href="{% url 'customer_edit' c.pk %}" class="btn btn-sm btn-outline-amber">
+                    {% if is_manager and not c.voided %}
+                    <a href="{% url 'customer_edit' c.pk %}" class="btn btn-sm btn-outline-amber" title="Edit">
                         <i class="bi bi-pencil"></i>
                     </a>
-                    <a href="{% url 'customer_delete' c.pk %}" class="btn btn-sm btn-outline-danger">
-                        <i class="bi bi-trash"></i>
+                    <a href="{% url 'customer_void' c.pk %}" class="btn btn-sm btn-outline-danger" title="Void">
+                        <i class="bi bi-slash-circle"></i>
                     </a>
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
     {% else %}
-    <p style="color:var(--text-dim); text-align:center; padding:30px;">
-        <i class="bi bi-person-plus" style="font-size:40px; display:block; margin-bottom:10px;"></i>
-        No customers yet. <a href="{% url 'customer_add' %}" style="color:var(--amber);">Add the first one</a>.
+    <p style="color:var(--text-muted); text-align:center; padding:30px;">
+        <i class="bi bi-person-plus" style="font-size:40px; display:block; margin-bottom:10px; opacity:0.5;"></i>
+        No customers yet. <a href="{% url 'customer_add' %}" style="color:var(--accent);">Add the first one</a>.
     </p>
     {% endif %}
 </div>

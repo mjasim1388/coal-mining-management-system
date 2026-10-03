@@ -75,7 +75,7 @@ class EmployeeForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['salary'].required = False
+        self.fields['salary'].required = True          # ← make required
         self.fields['shift'].required = False
         self.fields['status'].required = False
         self.fields['date_of_birth'].required = False
@@ -85,7 +85,7 @@ class EmployeeForm(forms.ModelForm):
         self.fields['notes'].required = False
         self.fields['photo'].required = False
         self.fields['cnic'].help_text = 'Format: 12345-1234567-1 (dashes added automatically)'
-        clear_zeros(self, ['salary'])
+        clear_zeros(self, ['salary'])                  # ← keep this — shows empty placeholder
 
 
 class MineForm(forms.ModelForm):

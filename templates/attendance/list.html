@@ -7,11 +7,11 @@
 
 <div class="panel mb-3">
     <form method="get" class="row g-2 align-items-end">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <label class="form-label">Date</label>
             <input type="date" name="date" value="{{ date_filter }}" class="form-control">
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <label class="form-label">Status</label>
             <select name="status" class="form-select">
                 <option value="">All</option>
@@ -21,7 +21,14 @@
                 <option value="Half Day" {% if status_filter == 'Half Day' %}selected{% endif %}>Half Day</option>
             </select>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
+            <label class="form-label">Show Voided</label>
+            <select name="show_voided" class="form-select">
+                <option value="">Hide</option>
+                <option value="1" {% if show_voided %}selected{% endif %}>Show</option>
+            </select>
+        </div>
+        <div class="col-md-3">
             <button type="submit" class="btn btn-amber w-100">
                 <i class="bi bi-funnel"></i> Filter
             </button>
@@ -34,7 +41,7 @@
         <div class="panel-title mb-0">
             <i class="bi bi-calendar-check"></i> Records ({{ records|length }})
         </div>
-                <div>
+        <div>
             <a href="{% url 'attendance_punch' %}" class="btn btn-amber">
                 <i class="bi bi-fingerprint"></i> Punch In / Out
             </a>
@@ -66,8 +73,13 @@
         </thead>
         <tbody>
             {% for r in records %}
-            <tr>
-                <td>{{ r.date }}</td>
+            <tr {% if r.voided %}style="opacity:0.5;"{% endif %}>
+                <td>
+                    {{ r.date }}
+                    {% if r.voided %}
+                        <span class="badge-status badge-inactive" style="margin-left:4px;">VOIDED</span>
+                    {% endif %}
+                </td>
                 <td>{{ r.employee.first_name }} {{ r.employee.last_name }} ({{ r.employee.employee_code }})</td>
                 <td>
                     {% if r.photo %}
@@ -101,13 +113,13 @@
                 </td>
                 <td>{{ r.check_in|default:"—" }}</td>
                 <td>{{ r.check_out|default:"—" }}</td>
-                                <td>
-                    {% if is_manager %}
+                <td>
+                    {% if is_manager and not r.voided %}
                     <a href="{% url 'attendance_edit' r.pk %}" class="btn btn-sm btn-outline-amber" title="Edit">
                         <i class="bi bi-pencil"></i>
                     </a>
-                    <a href="{% url 'attendance_delete' r.pk %}" class="btn btn-sm btn-outline-danger" title="Delete">
-                        <i class="bi bi-trash"></i>
+                    <a href="{% url 'attendance_void' r.pk %}" class="btn btn-sm btn-outline-danger" title="Void">
+                        <i class="bi bi-slash-circle"></i>
                     </a>
                     {% else %}
                     <span style="color:var(--text-muted); font-size:12px;">—</span>
@@ -119,7 +131,7 @@
     </table>
     {% else %}
     <p style="color:var(--text-muted); text-align:center; padding:30px;">
-        <i class="bi bi-calendar-x" style="font-size:40px; display:block; margin-bottom:10px;"></i>
+        <i class="bi bi-calendar-x" style="font-size:40px; display:block; margin-bottom:10px; opacity:0.5;"></i>
         No attendance records. <a href="{% url 'attendance_punch' %}" style="color:var(--accent);">Punch in the first one</a>.
     </p>
     {% endif %}

@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - Coal Mine{% endblock %}
+{% block page_title %}{{ title|upper }}{% endblock %}
+
+{% block content %}
+
+<div class="panel" style="max-width: 640px;">
+    <div class="panel-title" style="color:#ef5b5b;">
+        <i class="bi bi-slash-circle-fill"></i> {{ title }}
+    </div>
+
+    <div style="padding: 16px 18px; background: var(--bg-raised); border-radius: 8px; border: 1px solid var(--border-light); margin-bottom: 22px;">
+        <div style="font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">
+            {{ object_label }}
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px;">
+            {{ object_type }}
+        </div>
+        {% if details %}
+        <div style="margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border-light);">
+            {% for key, value in details %}
+            <div style="display:flex; justify-content:space-between; padding: 4px 0; font-size: 13px;">
+                <span style="color: var(--text-muted);">{{ key }}</span>
+                <span style="color: var(--text-primary); font-weight: 500;">{{ value }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div style="padding: 14px 18px; background: rgba(239, 91, 91, 0.1); border: 1px solid rgba(239, 91, 91, 0.35); border-radius: 8px; margin-bottom: 22px;">
+        <p style="margin: 0; color: #f87171; font-size: 13.5px; line-height: 1.5;">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <strong>What happens when you void:</strong>
+        </p>
+        <ul style="margin: 8px 0 0; padding-left: 20px; color: #fca5a5; font-size: 13px; line-height: 1.6;">
+            <li>The record is marked as <strong>VOIDED</strong> — it is not deleted</li>
+            <li>It disappears from the active list but stays in the system</li>
+            <li>Your name, the reason, time, and IP address are permanently logged</li>
+            <li>This action cannot be undone</li>
+        </ul>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label">Reason for voiding *</label>
+            <textarea name="void_reason" class="form-control" rows="3" required
+                      placeholder="e.g. Duplicate entry, wrong data, correction required..."></textarea>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-danger">
+                <i class="bi bi-slash-circle"></i> Yes, Void This Record
+            </button>
+            <a href="{% url cancel_url %}" class="btn btn-outline-amber">
+                <i class="bi bi-arrow-left"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

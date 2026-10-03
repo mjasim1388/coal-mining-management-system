@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+
+{% block title %}Fuel Report - Coal Mine{% endblock %}
+{% block page_title %}FUEL CONSUMPTION REPORT{% endblock %}
+
+{% block content %}
+
+<style>
+    /* ---------- FUEL BAR ---------- */
+    .fuel-bar-wrap {
+        width: 100%;
+        height: 8px;
+        background: var(--bg-raised);
+        border-radius: 4px;
+        overflow: hidden;
+        border: 1px solid var(--border-light);
+    }
+    .fuel-bar-fill {
+        height: 100%;
+        border-radius: 4px;
+        background: linear-gradient(90deg, #d97706, #fbbf24);
+        transition: width 0.5s ease;
+        width: 0%;
+    }
+    /* Top consumer gets a warmer gradient */
+    tr.top-consumer .fuel-bar-fill {
+        background: linear-gradient(90deg, #dc2626, #f97316, #fbbf24);
+        box-shadow: 0 0 8px rgba(251, 191, 36, 0.4);
+    }
+</style>
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-3">
+    <div class="col-md-3">
+        <div class="stat-card stat-amber">
+            <i class="bi bi-fuel-pump icon"></i>
+            <h2>{{ total_liters|floatformat:0 }}</h2>
+            <p>Total Liters</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card stat-green">
+            <i class="bi bi-cash-stack icon"></i>
+            <h2>{{ total_cost|floatformat:0 }}</h2>
+            <p>Total Cost (PKR)</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card stat-blue">
+            <i class="bi bi-tools icon"></i>
+            <h2>{{ equipment_count }}</h2>
+            <p>Machines Refueled</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card stat-red">
+            <i class="bi bi-question-circle icon"></i>
+            <h2>{{ unassigned_liters|floatformat:0 }}</h2>
+            <p>Unassigned (L)</p>
+        </div>
+    </div>
+</div>
+
+<!-- Filter -->
+<div class="panel mb-3">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label">Month</label>
+            <select name="month" class="form-select">
+                {% for num, name in months %}
+                <option value="{{ num }}" {% if month == num %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Year</label>
+            <input type="number" name="year" class="form-control" value="{{ year }}">
+        </div>
+        <div class="col-md-4">
+            <button type="submit" class="btn btn-amber w-100">
+                <i class="bi bi-funnel"></i> Generate Report
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Ranking Table -->
+<div class="panel">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="panel-title mb-0">
+            <i class="bi bi-trophy-fill"></i> Machines by Fuel Consumption
+        </div>
+        <a href="{% url 'equipment_list' %}" class="btn btn-outline-amber btn-sm">
+            <i class="bi bi-tools"></i> All Equipment
+        </a>
+    </div>
+
+    {% if ranked %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th style="width:40px;">#</th>
+                <th>Equipment</th>
+                <th>Type</th>
+                <th style="min-width:160px;">Liters</th>
+                <th style="text-align:right;">Cost (PKR)</th>
+                <th style="text-align:right;">Txns</th>
+                <th style="text-align:right;">% of Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in ranked %}
+            <tr class="{% if forloop.counter == 1 %}top-consumer{% endif %}">
+                <td style="color:var(--text-muted); font-weight:700;">
+                    {% if forloop.counter == 1 %}
+                        <i class="bi bi-trophy-fill" style="color:#fbbf24;"></i>
+                    {% elif forloop.counter == 2 %}
+                        <i class="bi bi-trophy-fill" style="color:#cbd5e1;"></i>
+                    {% elif forloop.counter == 3 %}
+                        <i class="bi bi-trophy-fill" style="color:#d97706;"></i>
+                    {% else %}
+                        {{ forloop.counter }}
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'equipment_detail' item.equipment.pk %}"
+                       style="color:var(--accent); font-weight:600; text-decoration:none;">
+                        {{ item.equipment.name }}
+                    </a>
+                    <br>
+                    <small style="color:var(--text-muted); font-family:monospace;">{{ item.equipment.equipment_code }}</small>
+                </td>
+                <td>{{ item.equipment.equipment_type }}</td>
+                <td>
+                    <div class="fuel-bar-wrap"
+                         data-liters="{{ item.liters|floatformat:0 }}"
+                         data-max="{{ ranked.0.liters|floatformat:0 }}">
+                        <div class="fuel-bar-fill"></div>
+                    </div>
+                    <div style="margin-top:6px;">
+                        <strong style="color:var(--accent); font-size:14px;">{{ item.liters|floatformat:0 }}</strong> L
+                    </div>
+                </td>
+                <td style="text-align:right;">{{ item.cost|floatformat:0 }}</td>
+                <td style="text-align:right;">{{ item.transactions }}</td>
+                <td style="text-align:right; font-weight:600;">
+                    {% widthratio item.liters total_liters 100 %}%
+                </td>
+            </tr>
+            {% endfor %}
+
+            {% if unassigned_liters > 0 %}
+            <tr style="background:rgba(245,158,11,0.08);">
+                <td>—</td>
+                <td colspan="2"><em style="color:var(--text-muted);">Unassigned (General / Mine usage)</em></td>
+                <td>
+                    <div class="fuel-bar-wrap"
+                         data-liters="{{ unassigned_liters|floatformat:0 }}"
+                         data-max="{{ ranked.0.liters|floatformat:0 }}">
+                        <div class="fuel-bar-fill"></div>
+                    </div>
+                    <div style="margin-top:6px;">
+                        <strong style="color:var(--accent); font-size:14px;">{{ unassigned_liters|floatformat:0 }}</strong> L
+                    </div>
+                </td>
+                <td style="text-align:right;">{{ unassigned_cost|floatformat:0 }}</td>
+                <td style="text-align:right;">—</td>
+                <td style="text-align:right; font-weight:600;">
+                    {% widthratio unassigned_liters total_liters 100 %}%
+                </td>
+            </tr>
+            {% endif %}
+        </tbody>
+        <tfoot>
+            <tr style="border-top:2px solid var(--border-medium); font-weight:700;">
+                <td></td>
+                <td colspan="2">TOTAL</td>
+                <td style="color:var(--accent); font-size:16px;">{{ total_liters|floatformat:0 }} L</td>
+                <td style="text-align:right;">{{ total_cost|floatformat:0 }}</td>
+                <td></td>
+                <td style="text-align:right;">100%</td>
+            </tr>
+        </tfoot>
+    </table>
+    {% else %}
+    <p style="color:var(--text-muted); text-align:center; padding:40px;">
+        <i class="bi bi-fuel-pump" style="font-size:44px; display:block; margin-bottom:12px; opacity:0.5;"></i>
+        No fuel consumption recorded for {{ month }}/{{ year }}.
+        <br>
+        <small>Change the month/year above, or <a href="{% url 'inventory_list' %}" style="color:var(--accent);">issue fuel from Inventory</a>.</small>
+    </p>
+    {% endif %}
+</div>
+
+<script>
+    (function() {
+        document.querySelectorAll('.fuel-bar-wrap').forEach(function(wrap) {
+            var liters = parseFloat(wrap.dataset.liters) || 0;
+            var max = parseFloat(wrap.dataset.max) || 1;
+            if (max === 0) max = 1;
+
+            var percent = Math.max(6, Math.min(100, (liters / max) * 100));
+            var fill = wrap.querySelector('.fuel-bar-fill');
+            if (fill) {
+                // Small delay so the transition animates in
+                requestAnimationFrame(function() {
+                    fill.style.width = percent + '%';
+                });
+            }
+        });
+    })();
+</script>
+
+{% endblock %}
