@@ -1629,12 +1629,12 @@ def attendance_punch_save(request, pk):
 # ---------- BACKUP ----------
 @role_required('Manager', 'Accountant')
 def backup_now(request):
+    import subprocess
     import os
     import shutil
-    import subprocess
-
     from django.conf import settings
     from django.utils import timezone
+    from datetime import timedelta
 
     if request.method == 'POST':
         try:
@@ -1642,12 +1642,17 @@ def backup_now(request):
             backup_dir = os.path.join(settings.BASE_DIR, 'backups')
             os.makedirs(backup_dir, exist_ok=True)
 
-            # Build filename with timestamp
-            timestamp = timezone.localtime().strftime('%Y-%m-%d_%H-%M-%S')
-            filename = f'coalmining_db_{timestamp}.dump'
-            filepath = os.path.join(backup_dir, filename)
+            # Today's date for the dated file
+            today_str = timezone.localtime().strftime('%Y-%m-%d')
 
-            # Find pg_dump path (PostgreSQL 18 on this machine)
+            # Backup file paths
+            dated_filename = f'coalmining_{today_str}.dump'
+            dated_filepath = os.path.join(backup_dir, dated_filename)
+
+            master_filename = 'coalmining_backup.dump'
+            master_filepath = os.path.join(backup_dir, master_filename)
+
+            # Find pg_dump path
             pg_dump_path = shutil.which('pg_dump')
             if not pg_dump_path:
                 for ver in ['18', '17', '16', '15', '14']:
@@ -1659,12 +1664,12 @@ def backup_now(request):
                 messages.error(request, 'pg_dump.exe not found. Please check PostgreSQL installation path.')
                 return redirect('dashboard')
 
-            # Run pg_dump
+            # Run pg_dump → write to dated file
             env = os.environ.copy()
-            env['PGPASSWORD'] = 'jasim'  # your database password
+            env['PGPASSWORD'] = 'jasim'
 
             result = subprocess.run(
-                [pg_dump_path, '-U', 'postgres', '-h', 'localhost', '-Fc', '-f', filepath, 'coalmining_db'],
+                [pg_dump_path, '-U', 'postgres', '-h', 'localhost', '-Fc', '-f', dated_filepath, 'coalmining_db'],
                 env=env,
                 capture_output=True,
                 text=True,
@@ -1675,10 +1680,37 @@ def backup_now(request):
                 messages.error(request, f'Backup failed: {result.stderr}')
                 return redirect('dashboard')
 
+            # Copy dated file to master (overwrite)
+            shutil.copy2(dated_filepath, master_filepath)
+
+            # Auto-cleanup: delete dated files older than 7 days
+            cutoff_date = timezone.localdate() - timedelta(days=7)
+            removed_count = 0
+            for fname in os.listdir(backup_dir):
+                if not (fname.startswith('coalmining_') and fname.endswith('.dump')):
+                    continue
+                if fname == master_filename:
+                    continue
+                # Extract date from filename like coalmining_2026-10-03.dump
+                try:
+                    date_str = fname.replace('coalmining_', '').replace('.dump', '')
+                    from datetime import datetime
+                    file_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                    if file_date < cutoff_date:
+                        os.remove(os.path.join(backup_dir, fname))
+                        removed_count += 1
+                except (ValueError, OSError):
+                    pass
+
             # Get file size
-            size_mb = os.path.getsize(filepath) / (1024 * 1024)
-            messages.success(request, f'✅ Backup saved successfully: {filename} ({size_mb:.2f} MB)')
-            return redirect('dashboard')
+            size_mb = os.path.getsize(dated_filepath) / (1024 * 1024)
+
+            msg = f'✅ Backup saved: {dated_filename} ({size_mb:.2f} MB)'
+            if removed_count > 0:
+                msg += f' — cleaned up {removed_count} old backup(s)'
+
+            messages.success(request, msg)
+            return redirect('backup_list')
 
         except subprocess.TimeoutExpired:
             messages.error(request, 'Backup timed out after 2 minutes.')
@@ -1689,11 +1721,11 @@ def backup_now(request):
 
     # GET request — show confirmation page
     return render(request, 'backup/confirm.html')
+
 # ---------- BACKUP HISTORY ----------
 @role_required('Manager', 'Accountant')
 def backup_list(request):
     import os
-
     from django.conf import settings
     from django.utils import timezone
 
@@ -1708,22 +1740,24 @@ def backup_list(request):
         stat = os.stat(fpath)
         backups.append({
             'filename': fname,
+            'is_master': fname == 'coalmining_backup.dump',
             'size_mb': round(stat.st_size / (1024 * 1024), 2),
             'modified': timezone.datetime.fromtimestamp(stat.st_mtime),
             'modified_ts': stat.st_mtime,
         })
 
-    # Sort newest first
-    backups.sort(key=lambda x: x['modified_ts'], reverse=True)
+    # Sort: master file first, then by date descending
+    backups.sort(key=lambda x: (not x['is_master'], -x['modified_ts']))
 
     total_size = sum(b['size_mb'] for b in backups)
+    dated_count = sum(1 for b in backups if not b['is_master'])
 
     return render(request, 'backup/list.html', {
         'backups': backups,
         'total_size': round(total_size, 2),
         'count': len(backups),
+        'dated_count': dated_count,
     })
-
 
 @role_required('Manager', 'Accountant')
 def backup_download(request, filename):
@@ -1746,26 +1780,6 @@ def backup_download(request, filename):
         filename=filename,
     )
 
-
-@role_required('Manager')
-def backup_delete(request, filename):
-    import os
-
-    from django.conf import settings
-
-    if request.method == 'POST':
-        if '/' in filename or '\\' in filename or '..' in filename:
-            messages.error(request, 'Invalid filename.')
-            return redirect('backup_list')
-
-        filepath = os.path.join(settings.BASE_DIR, 'backups', filename)
-        if os.path.exists(filepath):
-            os.remove(filepath)
-            messages.success(request, f'Backup deleted: {filename}')
-        else:
-            messages.error(request, 'File not found.')
-
-    return redirect('backup_list')
 
 # ---------- SALARY PAYMENT CONFIRMATION ----------
 @role_required('Manager', 'Accountant')

@@ -110,5 +110,5 @@ urlpatterns = [
     path('backup/', views.backup_now, name='backup_now'),
     path('backup/list/', views.backup_list, name='backup_list'),
     path('backup/download/<str:filename>/', views.backup_download, name='backup_download'),
-    path('backup/delete/<str:filename>/', views.backup_delete, name='backup_delete'),
+
 ]

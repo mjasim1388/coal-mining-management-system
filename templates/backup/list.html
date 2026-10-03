@@ -30,10 +30,21 @@
     </div>
 </div>
 
+<div class="panel mb-3" style="border-left:4px solid var(--accent);">
+    <div style="font-size:13px; color:var(--text-secondary); line-height:1.6;">
+        <i class="bi bi-info-circle-fill" style="color:var(--accent);"></i>
+        <strong>How backup works:</strong>
+        Clicking <strong>Backup Now</strong> creates a fresh snapshot of the database. A
+        <strong>master file</strong> always holds the latest copy, and up to <strong>7 daily
+        backups</strong> are kept automatically. Older backups are removed to save space.
+        Backups cannot be deleted manually.
+    </div>
+</div>
+
 <div class="panel">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="panel-title mb-0">
-            <i class="bi bi-archive-fill"></i> All Backups ({{ count }})
+            <i class="bi bi-archive-fill"></i> Available Backups ({{ count }})
         </div>
         <a href="{% url 'backup_now' %}" class="btn btn-amber">
             <i class="bi bi-shield-check"></i> Backup Now
@@ -44,38 +55,47 @@
     <table class="table">
         <thead>
             <tr>
-                <th>#</th>
+                <th style="width:40px;">#</th>
                 <th>Filename</th>
-                <th>Date &amp; Time</th>
+                <th>Created</th>
                 <th>Size</th>
-                <th>Actions</th>
+                <th style="text-align:right;">Actions</th>
             </tr>
         </thead>
         <tbody>
             {% for b in backups %}
-            <tr>
-                <td style="color:var(--text-muted);">{{ forloop.counter }}</td>
+            <tr {% if b.is_master %}style="background:rgba(229,161,28,0.06);"{% endif %}>
+                <td style="color:var(--text-muted);">
+                    {% if b.is_master %}
+                        <i class="bi bi-star-fill" style="color:var(--accent);" title="Latest backup"></i>
+                    {% else %}
+                        {{ forloop.counter }}
+                    {% endif %}
+                </td>
                 <td>
                     <i class="bi bi-file-earmark-zip" style="color:var(--accent); margin-right:6px;"></i>
-                    <span style="color:var(--text-primary); font-family:monospace; font-size:12.5px;">{{ b.filename }}</span>
+                    <span style="font-family:monospace; font-size:12.5px; color:var(--text-primary);">{{ b.filename }}</span>
+                    {% if b.is_master %}
+                        <span class="badge-status badge-active" style="margin-left:6px;">LATEST</span>
+                    {% endif %}
                 </td>
                 <td>{{ b.modified|date:"d M Y, H:i" }}</td>
                 <td><span style="color:var(--accent); font-weight:600;">{{ b.size_mb }} MB</span></td>
-                <td>
+                <td style="text-align:right;">
                     <a href="{% url 'backup_download' b.filename %}" class="btn btn-sm btn-outline-amber" title="Download">
-                        <i class="bi bi-download"></i>
+                        <i class="bi bi-download"></i> Download
                     </a>
-                    {% if is_manager %}
-                    <a href="{% url 'backup_delete' b.filename %}" class="btn btn-sm btn-outline-danger" title="Delete"
-                       onclick="return confirm('Delete backup: {{ b.filename }}? This cannot be undone.');">
-                        <i class="bi bi-trash"></i>
-                    </a>
-                    {% endif %}
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+
+    <p style="color:var(--text-muted); font-size:12px; margin-top:14px; padding-top:14px; border-top:1px solid var(--border-light);">
+        <i class="bi bi-shield-lock"></i>
+        Backups are kept for <strong>7 days</strong> and rotate automatically. Copy the latest backup to a USB drive weekly for extra safety.
+    </p>
+
     {% else %}
     <p style="color:var(--text-muted); text-align:center; padding:40px 0;">
         <i class="bi bi-archive" style="font-size:48px; display:block; margin-bottom:12px; opacity:0.5;"></i>
