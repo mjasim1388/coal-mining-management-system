@@ -1,0 +1,398 @@
+{% extends 'base.html' %}
+
+{% block title %}Equipment Report - Coal Mine{% endblock %}
+{% block page_title %}EQUIPMENT REPORT{% endblock %}
+
+{% block content %}
+
+<!-- ==================== SCREEN VIEW ==================== -->
+
+<div class="panel mb-3">
+    <form method="get">
+        <div class="row g-2 align-items-end">
+            <div class="col-6 col-md-3">
+                <label class="form-label">Month</label>
+                <select name="month" class="form-select">
+                    {% for num, name in months %}
+                    <option value="{{ num }}" {% if month == num %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label">Year</label>
+                <input type="number" name="year" value="{{ year }}" class="form-control">
+            </div>
+            <div class="col-12 col-md-7">
+                <button type="submit" class="btn btn-amber w-100">
+                    <i class="bi bi-funnel"></i> Generate Report
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="panel mb-3" style="border-left:4px solid var(--accent);">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <div style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Report Period</div>
+            <div style="font-size:20px; font-weight:800; color:var(--text-primary); margin-top:2px;">{{ month_name }} {{ year }}</div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <button onclick="window.print()" class="btn btn-amber btn-sm">
+                <i class="bi bi-printer"></i> Print
+            </button>
+            <a href="{% url 'reports_hub' %}" class="btn btn-outline-amber btn-sm">
+                <i class="bi bi-arrow-left"></i> Reports
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-2 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-amber">
+            <i class="bi bi-tools icon"></i>
+            <h2>{{ total_equipment }}</h2>
+            <p>Total Equipment</p>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-green">
+            <i class="bi bi-check-circle-fill icon"></i>
+            <h2>{{ working }}</h2>
+            <p>Working</p>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-red">
+            <i class="bi bi-wrench icon"></i>
+            <h2>{{ under_maint }}</h2>
+            <p>Under Maintenance</p>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-blue">
+            <i class="bi bi-cash-stack icon"></i>
+            <h2>{{ total_maint_cost|floatformat:0 }}</h2>
+            <p>Maintenance Cost (PKR)</p>
+        </div>
+    </div>
+</div>
+
+<!-- Maintenance by Type -->
+<div class="panel mb-3">
+    <div class="panel-title"><i class="bi bi-wrench-adjustable"></i> Maintenance by Type — {{ month_name }} {{ year }}</div>
+    {% if type_list %}
+    <div style="overflow-x:auto;">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th style="text-align:right;">Count</th>
+                    <th style="text-align:right;">Total Cost (PKR)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for name, data in type_list %}
+                <tr>
+                    <td><strong>{{ name }}</strong></td>
+                    <td style="text-align:right;">{{ data.count }}</td>
+                    <td style="text-align:right; color:var(--accent); font-weight:700;">{{ data.cost|floatformat:0 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="border-top:2px solid var(--border-medium); font-weight:700;">
+                    <td>TOTAL</td>
+                    <td style="text-align:right;">{{ total_logs }}</td>
+                    <td style="text-align:right; color:var(--accent);">{{ total_maint_cost|floatformat:0 }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted); text-align:center; padding:16px; margin:0;">No maintenance this period.</p>
+    {% endif %}
+</div>
+
+<!-- Equipment Status -->
+<div class="panel">
+    <div class="panel-title"><i class="bi bi-list-ul"></i> Equipment Details ({{ eq_list|length }})</div>
+    {% if eq_list %}
+    <div style="overflow-x:auto;">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Mine</th>
+                    <th>Status</th>
+                    <th style="text-align:right;">Logs</th>
+                    <th style="text-align:right;">Cost (PKR)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for eq in eq_list %}
+                <tr>
+                    <td style="font-family:monospace; font-size:12px; color:var(--accent);">{{ eq.code }}</td>
+                    <td><strong>{{ eq.name }}</strong></td>
+                    <td>{{ eq.type }}</td>
+                    <td>{{ eq.mine }}</td>
+                    <td>
+                        {% if eq.status == 'Working' %}
+                            <span class="badge-status badge-active">WORKING</span>
+                        {% elif eq.status == 'Under Maintenance' %}
+                            <span class="badge-status badge-leave">MAINTENANCE</span>
+                        {% else %}
+                            <span class="badge-status badge-inactive">OUT OF SERVICE</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align:right;">{{ eq.logs }}</td>
+                    <td style="text-align:right; color:var(--accent); font-weight:700;">{{ eq.cost|floatformat:0 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted); text-align:center; padding:24px; margin:0;">No equipment on record.</p>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+
+<!-- ==================== PRINT VIEW ==================== -->
+{% block print_view %}
+
+<style>
+    .print-doc { display: none; }
+
+    @media print {
+        .app-container { display: none !important; }
+        .print-doc { display: block !important; }
+
+        html, body {
+            background: #fff !important;
+            color: #000 !important;
+            font-family: Georgia, 'Times New Roman', serif !important;
+            font-size: 10.5pt !important;
+            line-height: 1.4 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        @page { size: A4; margin: 18mm 15mm; }
+
+        .print-doc * {
+            background: transparent !important;
+            color: #000 !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+        }
+
+        .print-doc .company {
+            text-align: center;
+            font-size: 20pt;
+            font-weight: bold;
+            letter-spacing: 4pt;
+            border-bottom: 2pt solid #000;
+            padding-bottom: 8pt;
+            margin-bottom: 4pt;
+        }
+        .print-doc .report-type {
+            text-align: center;
+            font-size: 13pt;
+            font-weight: bold;
+            letter-spacing: 3pt;
+            margin-top: 6pt;
+        }
+        .print-doc .report-period {
+            text-align: center;
+            font-size: 12pt;
+            font-weight: bold;
+            margin-top: 4pt;
+            margin-bottom: 14pt;
+        }
+        .print-doc .meta-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 9pt;
+            border-bottom: 1pt solid #000;
+            padding-bottom: 6pt;
+            margin-bottom: 18pt;
+        }
+
+        .print-doc .section {
+            font-size: 11pt;
+            font-weight: bold;
+            letter-spacing: 2pt;
+            text-transform: uppercase;
+            border-bottom: 1pt solid #000;
+            padding-bottom: 3pt;
+            margin: 16pt 0 10pt 0;
+            page-break-after: avoid;
+        }
+
+        .print-doc .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14pt;
+        }
+        .print-doc .summary-table td {
+            padding: 6pt 8pt;
+            border-bottom: 0.5pt dotted #999;
+            font-size: 10.5pt;
+        }
+        .print-doc .summary-table td:last-child {
+            text-align: right;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .print-doc .summary-table tr.total td {
+            border-top: 1.5pt solid #000;
+            border-bottom: 1.5pt solid #000;
+            padding-top: 8pt;
+            padding-bottom: 8pt;
+            font-size: 11.5pt;
+        }
+
+        .print-doc .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14pt;
+        }
+        .print-doc .data-table thead { display: table-header-group; }
+        .print-doc .data-table th {
+            background: #dcdcdc !important;
+            border: 1pt solid #000;
+            padding: 6pt 8pt;
+            font-size: 9.5pt;
+            font-weight: bold;
+            text-align: left;
+            text-transform: uppercase;
+            letter-spacing: 0.5pt;
+        }
+        .print-doc .data-table td {
+            border: 0.5pt solid #333;
+            padding: 5pt 8pt;
+            font-size: 10pt;
+            vertical-align: middle;
+        }
+        .print-doc .data-table tbody tr:nth-child(even) td {
+            background: #f4f4f4 !important;
+        }
+        .print-doc .data-table tfoot td {
+            background: #dcdcdc !important;
+            border: 1pt solid #000;
+            font-weight: bold;
+            font-size: 10pt;
+            padding: 6pt 8pt;
+        }
+        .print-doc .data-table tr { page-break-inside: avoid; }
+        .print-doc .num { text-align: right; }
+
+        .print-doc .footer {
+            display: flex;
+            justify-content: space-between;
+            border-top: 1pt solid #000;
+            padding-top: 6pt;
+            margin-top: 24pt;
+            font-size: 8.5pt;
+        }
+    }
+</style>
+
+<div class="print-doc">
+
+    <div class="company">COAL MINE COMPANY</div>
+    <div class="report-type">EQUIPMENT REPORT</div>
+    <div class="report-period">{{ month_name }} {{ year }}</div>
+
+    <div class="meta-row">
+        <span>Generated: {{ now|date:"d M Y" }}</span>
+        <span>Prepared by: {{ request.user.username }}</span>
+    </div>
+
+    <!-- 1. SUMMARY -->
+    <div class="section">1. Summary</div>
+    <table class="summary-table">
+        <tr><td>Total Equipment</td><td>{{ total_equipment }}</td></tr>
+        <tr><td>Working Equipment</td><td>{{ working }}</td></tr>
+        <tr><td>Under Maintenance</td><td>{{ under_maint }}</td></tr>
+        <tr><td>Out of Service</td><td>{{ out_of_service }}</td></tr>
+        <tr><td>Maintenance Logs ({{ month_name }})</td><td>{{ total_logs }}</td></tr>
+        <tr class="total"><td>TOTAL MAINTENANCE COST</td><td>PKR {{ total_maint_cost|floatformat:0 }}</td></tr>
+    </table>
+
+    <!-- 2. MAINTENANCE BY TYPE -->
+    {% if type_list %}
+    <div class="section">2. Maintenance by Type</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th class="num">Count</th>
+                <th class="num">Total Cost (PKR)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for name, data in type_list %}
+            <tr>
+                <td>{{ name }}</td>
+                <td class="num">{{ data.count }}</td>
+                <td class="num">{{ data.cost|floatformat:0 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td>TOTAL</td>
+                <td class="num">{{ total_logs }}</td>
+                <td class="num">{{ total_maint_cost|floatformat:0 }}</td>
+            </tr>
+        </tfoot>
+    </table>
+    {% endif %}
+
+    <!-- 3. EQUIPMENT DETAILS -->
+    {% if eq_list %}
+    <div class="section">3. Equipment Details</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Code</th>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Mine</th>
+                <th>Status</th>
+                <th class="num">Logs</th>
+                <th class="num">Cost (PKR)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for eq in eq_list %}
+            <tr>
+                <td>{{ eq.code }}</td>
+                <td>{{ eq.name }}</td>
+                <td>{{ eq.type }}</td>
+                <td>{{ eq.mine }}</td>
+                <td>{{ eq.status }}</td>
+                <td class="num">{{ eq.logs }}</td>
+                <td class="num">{{ eq.cost|floatformat:0 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <div class="footer">
+        <span>Coal Mine Management System</span>
+        <span>Generated: {{ now|date:"d M Y" }}</span>
+    </div>
+
+</div>
+
+{% endblock %}

@@ -2854,9 +2854,218 @@ def report_inventory(request):
 
 @role_required('Manager', 'Accountant')
 def report_attendance(request):
-    return render(request, 'reports/coming_soon.html', {'report_name': 'Attendance Report', 'report_icon': 'bi-calendar-check'})
+    from datetime import date
+    from calendar import month_abbr
+    from django.db.models import Count
 
+    today = date.today()
+    month_str = request.GET.get('month', '')
+    year_str = request.GET.get('year', '')
+
+    try:
+        month = int(month_str) if month_str else today.month
+    except ValueError:
+        month = today.month
+    try:
+        year = int(year_str) if year_str else today.year
+    except ValueError:
+        year = today.year
+
+    records = Attendance.objects.filter(
+        voided=False,
+        date__year=year,
+        date__month=month,
+    ).select_related('employee')
+
+    total = records.count()
+    present = records.filter(status='Present').count()
+    absent = records.filter(status='Absent').count()
+    leave = records.filter(status='Leave').count()
+    half = records.filter(status='Half Day').count()
+
+    total_overtime = sum(r.overtime_hours or 0 for r in records)
+
+    # Percentages
+    def pct(n, total):
+        return round((n / total) * 100, 1) if total else 0
+
+    present_pct = pct(present, total)
+    absent_pct = pct(absent, total)
+    leave_pct = pct(leave, total)
+    half_pct = pct(half, total)
+
+    # By Department
+    dept_data = {}
+    for r in records:
+        d = r.employee.department or 'Unassigned'
+        if d not in dept_data:
+            dept_data[d] = {'present': 0, 'absent': 0, 'leave': 0, 'half': 0, 'total': 0, 'overtime': 0}
+        dept_data[d]['total'] += 1
+        dept_data[d]['overtime'] += float(r.overtime_hours or 0)
+        if r.status == 'Present':
+            dept_data[d]['present'] += 1
+        elif r.status == 'Absent':
+            dept_data[d]['absent'] += 1
+        elif r.status == 'Leave':
+            dept_data[d]['leave'] += 1
+        elif r.status == 'Half Day':
+            dept_data[d]['half'] += 1
+    for d in dept_data:
+        dept_data[d]['present_pct'] = pct(dept_data[d]['present'], dept_data[d]['total'])
+    dept_list = sorted(dept_data.items(), key=lambda x: x[1]['total'], reverse=True)
+
+    # By Employee (summary)
+    emp_data = {}
+    for r in records:
+        key = r.employee.pk
+        if key not in emp_data:
+            emp_data[key] = {
+                'code': r.employee.employee_code,
+                'name': f'{r.employee.first_name} {r.employee.last_name}',
+                'department': r.employee.department,
+                'present': 0, 'absent': 0, 'leave': 0, 'half': 0,
+                'total': 0, 'overtime': 0,
+            }
+        emp_data[key]['total'] += 1
+        emp_data[key]['overtime'] += float(r.overtime_hours or 0)
+        if r.status == 'Present':
+            emp_data[key]['present'] += 1
+        elif r.status == 'Absent':
+            emp_data[key]['absent'] += 1
+        elif r.status == 'Leave':
+            emp_data[key]['leave'] += 1
+        elif r.status == 'Half Day':
+            emp_data[key]['half'] += 1
+
+    emp_list = []
+    for data in emp_data.values():
+        data['present_pct'] = pct(data['present'], data['total'])
+        emp_list.append(data)
+    emp_list.sort(key=lambda x: x['present_pct'], reverse=True)
+
+    # Previous month trend
+    prev_month = month - 1
+    prev_year = year
+    if prev_month <= 0:
+        prev_month = 12
+        prev_year -= 1
+    prev_present = Attendance.objects.filter(
+        voided=False, date__year=prev_year, date__month=prev_month, status='Present'
+    ).count()
+
+    trend_pct = None
+    if prev_present > 0:
+        trend_pct = round(((present - prev_present) / prev_present) * 100, 1)
+
+    context = {
+        'month': month,
+        'year': year,
+        'month_name': month_abbr[month],
+        'months': Payroll.MONTH_CHOICES,
+        'now': today,
+
+        'total': total,
+        'present': present,
+        'absent': absent,
+        'leave': leave,
+        'half': half,
+        'present_pct': present_pct,
+        'absent_pct': absent_pct,
+        'leave_pct': leave_pct,
+        'half_pct': half_pct,
+        'total_overtime': total_overtime,
+        'trend_pct': trend_pct,
+
+        'dept_list': dept_list,
+        'emp_list': emp_list,
+    }
+    return render(request, 'reports/attendance.html', context)
 
 @role_required('Manager', 'Accountant')
 def report_equipment(request):
-    return render(request, 'reports/coming_soon.html', {'report_name': 'Equipment Report', 'report_icon': 'bi-tools'})
+    from datetime import date
+    from calendar import month_abbr
+
+    today = date.today()
+    month_str = request.GET.get('month', '')
+    year_str = request.GET.get('year', '')
+
+    try:
+        month = int(month_str) if month_str else today.month
+    except ValueError:
+        month = today.month
+    try:
+        year = int(year_str) if year_str else today.year
+    except ValueError:
+        year = today.year
+
+    # Equipment counts
+    all_equipment = Equipment.objects.filter(voided=False)
+    total_equipment = all_equipment.count()
+    working = all_equipment.filter(status='Working').count()
+    under_maint = all_equipment.filter(status='Under Maintenance').count()
+    out_of_service = all_equipment.filter(status='Out of Service').count()
+
+    # Maintenance logs for the period
+    logs = MaintenanceLog.objects.filter(
+        voided=False,
+        date__year=year,
+        date__month=month,
+    ).select_related('equipment')
+
+    total_logs = logs.count()
+    total_maint_cost = sum(log.cost for log in logs)
+
+    # By type
+    maint_by_type = {}
+    for log in logs:
+        t = log.maintenance_type
+        if t not in maint_by_type:
+            maint_by_type[t] = {'count': 0, 'cost': 0}
+        maint_by_type[t]['count'] += 1
+        maint_by_type[t]['cost'] += float(log.cost)
+    type_list = sorted(maint_by_type.items(), key=lambda x: x[1]['cost'], reverse=True)
+
+    # Per equipment
+    eq_data = {}
+    for eq in all_equipment:
+        eq_logs = logs.filter(equipment=eq)
+        total_cost = sum(log.cost for log in eq_logs)
+        eq_data[eq.pk] = {
+            'code': eq.equipment_code,
+            'name': eq.name,
+            'type': eq.equipment_type,
+            'status': eq.status,
+            'mine': eq.mine.name if eq.mine else '—',
+            'logs': eq_logs.count(),
+            'cost': float(total_cost),
+        }
+    eq_list = sorted(eq_data.values(), key=lambda x: x['cost'], reverse=True)
+
+    # Equipment by status
+    status_list = [
+        ('Working', working),
+        ('Under Maintenance', under_maint),
+        ('Out of Service', out_of_service),
+    ]
+
+    context = {
+        'month': month,
+        'year': year,
+        'month_name': month_abbr[month],
+        'months': Payroll.MONTH_CHOICES,
+        'now': today,
+
+        'total_equipment': total_equipment,
+        'working': working,
+        'under_maint': under_maint,
+        'out_of_service': out_of_service,
+
+        'total_logs': total_logs,
+        'total_maint_cost': total_maint_cost,
+
+        'type_list': type_list,
+        'eq_list': eq_list,
+        'status_list': status_list,
+    }
+    return render(request, 'reports/equipment.html', context)

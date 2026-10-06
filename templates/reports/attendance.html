@@ -1,0 +1,406 @@
+{% extends 'base.html' %}
+
+{% block title %}Attendance Report - Coal Mine{% endblock %}
+{% block page_title %}ATTENDANCE REPORT{% endblock %}
+
+{% block content %}
+
+<!-- ==================== SCREEN VIEW ==================== -->
+
+<div class="panel mb-3">
+    <form method="get">
+        <div class="row g-2 align-items-end">
+            <div class="col-6 col-md-3">
+                <label class="form-label">Month</label>
+                <select name="month" class="form-select">
+                    {% for num, name in months %}
+                    <option value="{{ num }}" {% if month == num %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label">Year</label>
+                <input type="number" name="year" value="{{ year }}" class="form-control">
+            </div>
+            <div class="col-12 col-md-7">
+                <button type="submit" class="btn btn-amber w-100">
+                    <i class="bi bi-funnel"></i> Generate Report
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="panel mb-3" style="border-left:4px solid var(--accent);">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <div style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Report Period</div>
+            <div style="font-size:20px; font-weight:800; color:var(--text-primary); margin-top:2px;">{{ month_name }} {{ year }}</div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'export_attendance' %}" class="btn btn-outline-amber btn-sm">
+                <i class="bi bi-file-earmark-excel"></i> Export
+            </a>
+            <button onclick="window.print()" class="btn btn-amber btn-sm">
+                <i class="bi bi-printer"></i> Print
+            </button>
+            <a href="{% url 'reports_hub' %}" class="btn btn-outline-amber btn-sm">
+                <i class="bi bi-arrow-left"></i> Reports
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-2 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-amber">
+            <i class="bi bi-calendar-check icon"></i>
+            <h2>{{ total }}</h2>
+            <p>Total Records</p>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-green">
+            <i class="bi bi-check-circle-fill icon"></i>
+            <h2>{{ present }} <small style="font-size:14px; color:var(--text-muted);">({{ present_pct }}%)</small></h2>
+            <p>Present</p>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-red">
+            <i class="bi bi-x-circle-fill icon"></i>
+            <h2>{{ absent }} <small style="font-size:14px; color:var(--text-muted);">({{ absent_pct }}%)</small></h2>
+            <p>Absent</p>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-blue">
+            <i class="bi bi-clock-fill icon"></i>
+            <h2>{{ total_overtime|floatformat:1 }} <small style="font-size:14px; color:var(--text-muted);">h</small></h2>
+            <p>Overtime Hours</p>
+        </div>
+    </div>
+</div>
+
+<!-- By Department -->
+<div class="panel mb-3">
+    <div class="panel-title"><i class="bi bi-building"></i> Attendance by Department</div>
+    {% if dept_list %}
+    <div style="overflow-x:auto;">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Department</th>
+                    <th style="text-align:right;">Total</th>
+                    <th style="text-align:right;">Present</th>
+                    <th style="text-align:right;">Absent</th>
+                    <th style="text-align:right;">Leave</th>
+                    <th style="text-align:right;">OT (h)</th>
+                    <th style="text-align:right;">Present %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for name, data in dept_list %}
+                <tr>
+                    <td><strong>{{ name }}</strong></td>
+                    <td style="text-align:right;">{{ data.total }}</td>
+                    <td style="text-align:right; color:var(--success);">{{ data.present }}</td>
+                    <td style="text-align:right; color:var(--danger);">{{ data.absent }}</td>
+                    <td style="text-align:right;">{{ data.leave }}</td>
+                    <td style="text-align:right;">{{ data.overtime|floatformat:1 }}</td>
+                    <td style="text-align:right; color:var(--accent); font-weight:700;">{{ data.present_pct }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted); text-align:center; padding:16px; margin:0;">No data this period.</p>
+    {% endif %}
+</div>
+
+<!-- By Employee -->
+<div class="panel">
+    <div class="panel-title"><i class="bi bi-people-fill"></i> Attendance by Employee ({{ emp_list|length }})</div>
+    {% if emp_list %}
+    <div style="overflow-x:auto;">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Employee</th>
+                    <th>Department</th>
+                    <th style="text-align:right;">Present</th>
+                    <th style="text-align:right;">Absent</th>
+                    <th style="text-align:right;">Leave</th>
+                    <th style="text-align:right;">Half</th>
+                    <th style="text-align:right;">OT (h)</th>
+                    <th style="text-align:right;">Present %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in emp_list %}
+                <tr>
+                    <td style="font-family:monospace; font-size:12px; color:var(--accent);">{{ emp.code }}</td>
+                    <td><strong>{{ emp.name }}</strong></td>
+                    <td>{{ emp.department }}</td>
+                    <td style="text-align:right; color:var(--success);">{{ emp.present }}</td>
+                    <td style="text-align:right; color:var(--danger);">{{ emp.absent }}</td>
+                    <td style="text-align:right;">{{ emp.leave }}</td>
+                    <td style="text-align:right;">{{ emp.half }}</td>
+                    <td style="text-align:right;">{{ emp.overtime|floatformat:1 }}</td>
+                    <td style="text-align:right; color:var(--accent); font-weight:700;">{{ emp.present_pct }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted); text-align:center; padding:24px; margin:0;">No attendance records for this period.</p>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+
+<!-- ==================== PRINT VIEW ==================== -->
+{% block print_view %}
+
+<style>
+    .print-doc { display: none; }
+
+    @media print {
+        .app-container { display: none !important; }
+        .print-doc { display: block !important; }
+
+        html, body {
+            background: #fff !important;
+            color: #000 !important;
+            font-family: Georgia, 'Times New Roman', serif !important;
+            font-size: 10.5pt !important;
+            line-height: 1.4 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        @page { size: A4; margin: 18mm 15mm; }
+
+        .print-doc * {
+            background: transparent !important;
+            color: #000 !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+        }
+
+        .print-doc .company {
+            text-align: center;
+            font-size: 20pt;
+            font-weight: bold;
+            letter-spacing: 4pt;
+            border-bottom: 2pt solid #000;
+            padding-bottom: 8pt;
+            margin-bottom: 4pt;
+        }
+        .print-doc .report-type {
+            text-align: center;
+            font-size: 13pt;
+            font-weight: bold;
+            letter-spacing: 3pt;
+            margin-top: 6pt;
+        }
+        .print-doc .report-period {
+            text-align: center;
+            font-size: 12pt;
+            font-weight: bold;
+            margin-top: 4pt;
+            margin-bottom: 14pt;
+        }
+        .print-doc .meta-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 9pt;
+            border-bottom: 1pt solid #000;
+            padding-bottom: 6pt;
+            margin-bottom: 18pt;
+        }
+
+        .print-doc .section {
+            font-size: 11pt;
+            font-weight: bold;
+            letter-spacing: 2pt;
+            text-transform: uppercase;
+            border-bottom: 1pt solid #000;
+            padding-bottom: 3pt;
+            margin: 16pt 0 10pt 0;
+            page-break-after: avoid;
+        }
+
+        .print-doc .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14pt;
+        }
+        .print-doc .summary-table td {
+            padding: 6pt 8pt;
+            border-bottom: 0.5pt dotted #999;
+            font-size: 10.5pt;
+        }
+        .print-doc .summary-table td:last-child {
+            text-align: right;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .print-doc .summary-table tr.total td {
+            border-top: 1.5pt solid #000;
+            border-bottom: 1.5pt solid #000;
+            padding-top: 8pt;
+            padding-bottom: 8pt;
+            font-size: 11.5pt;
+        }
+
+        .print-doc .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14pt;
+        }
+        .print-doc .data-table thead { display: table-header-group; }
+        .print-doc .data-table th {
+            background: #dcdcdc !important;
+            border: 1pt solid #000;
+            padding: 6pt 8pt;
+            font-size: 9.5pt;
+            font-weight: bold;
+            text-align: left;
+            text-transform: uppercase;
+            letter-spacing: 0.5pt;
+        }
+        .print-doc .data-table td {
+            border: 0.5pt solid #333;
+            padding: 5pt 8pt;
+            font-size: 10pt;
+            vertical-align: middle;
+        }
+        .print-doc .data-table tbody tr:nth-child(even) td {
+            background: #f4f4f4 !important;
+        }
+        .print-doc .data-table tfoot td {
+            background: #dcdcdc !important;
+            border: 1pt solid #000;
+            font-weight: bold;
+            font-size: 10pt;
+            padding: 6pt 8pt;
+        }
+        .print-doc .data-table tr { page-break-inside: avoid; }
+        .print-doc .num { text-align: right; }
+
+        .print-doc .footer {
+            display: flex;
+            justify-content: space-between;
+            border-top: 1pt solid #000;
+            padding-top: 6pt;
+            margin-top: 24pt;
+            font-size: 8.5pt;
+        }
+    }
+</style>
+
+<div class="print-doc">
+
+    <div class="company">COAL MINE COMPANY</div>
+    <div class="report-type">ATTENDANCE REPORT</div>
+    <div class="report-period">{{ month_name }} {{ year }}</div>
+
+    <div class="meta-row">
+        <span>Generated: {{ now|date:"d M Y" }}</span>
+        <span>Prepared by: {{ request.user.username }}</span>
+    </div>
+
+    <!-- 1. SUMMARY -->
+    <div class="section">1. Summary</div>
+    <table class="summary-table">
+        <tr><td>Total Attendance Records</td><td>{{ total }}</td></tr>
+        <tr><td>Present</td><td>{{ present }} ({{ present_pct }}%)</td></tr>
+        <tr><td>Absent</td><td>{{ absent }} ({{ absent_pct }}%)</td></tr>
+        <tr><td>Leave</td><td>{{ leave }} ({{ leave_pct }}%)</td></tr>
+        <tr><td>Half Day</td><td>{{ half }} ({{ half_pct }}%)</td></tr>
+        <tr><td>Total Overtime Hours</td><td>{{ total_overtime|floatformat:1 }} hours</td></tr>
+        {% if trend_pct is not None %}
+        <tr><td>Present Trend vs Previous Month</td><td>{{ trend_pct }}%</td></tr>
+        {% endif %}
+    </table>
+
+    <!-- 2. BY DEPARTMENT -->
+    {% if dept_list %}
+    <div class="section">2. Attendance by Department</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Department</th>
+                <th class="num">Total</th>
+                <th class="num">Present</th>
+                <th class="num">Absent</th>
+                <th class="num">Leave</th>
+                <th class="num">OT (h)</th>
+                <th class="num">Present %</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for name, data in dept_list %}
+            <tr>
+                <td>{{ name }}</td>
+                <td class="num">{{ data.total }}</td>
+                <td class="num">{{ data.present }}</td>
+                <td class="num">{{ data.absent }}</td>
+                <td class="num">{{ data.leave }}</td>
+                <td class="num">{{ data.overtime|floatformat:1 }}</td>
+                <td class="num">{{ data.present_pct }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- 3. BY EMPLOYEE -->
+    {% if emp_list %}
+    <div class="section">3. Attendance by Employee</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Code</th>
+                <th>Employee</th>
+                <th>Department</th>
+                <th class="num">Present</th>
+                <th class="num">Absent</th>
+                <th class="num">Leave</th>
+                <th class="num">Half</th>
+                <th class="num">OT (h)</th>
+                <th class="num">Present %</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for emp in emp_list %}
+            <tr>
+                <td>{{ emp.code }}</td>
+                <td>{{ emp.name }}</td>
+                <td>{{ emp.department }}</td>
+                <td class="num">{{ emp.present }}</td>
+                <td class="num">{{ emp.absent }}</td>
+                <td class="num">{{ emp.leave }}</td>
+                <td class="num">{{ emp.half }}</td>
+                <td class="num">{{ emp.overtime|floatformat:1 }}</td>
+                <td class="num">{{ emp.present_pct }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <div class="footer">
+        <span>Coal Mine Management System</span>
+        <span>Generated: {{ now|date:"d M Y" }}</span>
+    </div>
+
+</div>
+
+{% endblock %}
