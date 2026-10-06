@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Sales Dashboard - Coal Mine{% endblock %}
 {% block page_title %}SALES DASHBOARD{% endblock %}
@@ -210,7 +211,7 @@
 {{ trend_labels|json_script:"trend_labels" }}
 {{ trend_data|json_script:"trend_data" }}
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="{% static 'vendor/chart.umd.min.js' %}"></script>
 <script>
     (function() {
         // ==================== CHART ====================

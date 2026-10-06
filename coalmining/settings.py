@@ -199,3 +199,22 @@ CSRF_TRUSTED_ORIGINS = [
 # Media serving for local network (no CDN/nginx)
 # Django will serve media files directly when DEBUG=False
 SERVE_MEDIA_IN_PRODUCTION = True
+
+
+
+
+
+# Temporary logging to see errors when DEBUG=False
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'ERROR',
+    },
+}
