@@ -6,8 +6,9 @@
 
 {% block content %}
 
-<!-- Filter Bar (hidden in print) -->
-<div class="panel mb-3 no-print">
+<!-- ==================== SCREEN VIEW ==================== -->
+
+<div class="panel mb-3">
     <form method="get">
         <div class="row g-2 align-items-end">
             <div class="col-6 col-md-3">
@@ -40,17 +41,7 @@
     </form>
 </div>
 
-<!-- Print-only header -->
-<div class="print-header" style="display:none;">
-    <div style="text-align:center; border-bottom: 3px double #000; padding-bottom: 12px; margin-bottom: 20px;">
-        <h1 style="font-size:22px; letter-spacing:3px; margin:0; color:#000; font-weight:700;">COAL MINE COMPANY</h1>
-        <div style="font-size:13px; letter-spacing:1px; color:#000; margin-top:4px;">PRODUCTION REPORT</div>
-        <div style="font-size:14px; font-weight:700; color:#000; margin-top:8px;">{{ month_name }} {{ year }}</div>
-    </div>
-</div>
-
-<!-- Period Header (screen only) -->
-<div class="panel mb-3 period-header no-print" style="border-left:4px solid var(--accent);">
+<div class="panel mb-3" style="border-left:4px solid var(--accent);">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
             <div style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Report Period</div>
@@ -70,35 +61,44 @@
     </div>
 </div>
 
-<!-- KPI Summary (compact, print-friendly) -->
-<div class="kpi-print-grid">
-    <div class="kpi-print-item">
-        <div class="kpi-print-label">Coal Produced</div>
-        <div class="kpi-print-value">{{ total_tons|floatformat:0 }} <span class="kpi-print-unit">tons</span></div>
+<div class="row g-2 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-green">
+            <i class="bi bi-truck icon"></i>
+            <h2>{{ total_tons|floatformat:0 }}</h2>
+            <p>Coal Produced (tons)</p>
+        </div>
     </div>
-    <div class="kpi-print-item">
-        <div class="kpi-print-label">Overburden</div>
-        <div class="kpi-print-value">{{ total_overburden|floatformat:0 }} <span class="kpi-print-unit">tons</span></div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-amber">
+            <i class="bi bi-layers icon"></i>
+            <h2>{{ total_overburden|floatformat:0 }}</h2>
+            <p>Overburden (tons)</p>
+        </div>
     </div>
-    <div class="kpi-print-item">
-        <div class="kpi-print-label">Stripping Ratio</div>
-        <div class="kpi-print-value">{{ stripping_ratio }}</div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-blue">
+            <i class="bi bi-people-fill icon"></i>
+            <h2>{{ total_workers }}</h2>
+            <p>Worker-Shifts</p>
+        </div>
     </div>
-    <div class="kpi-print-item">
-        <div class="kpi-print-label">Records</div>
-        <div class="kpi-print-value">{{ record_count }}</div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-blue">
+            <i class="bi bi-clipboard-data icon"></i>
+            <h2>{{ record_count }}</h2>
+            <p>Production Records</p>
+        </div>
     </div>
 </div>
 
-<!-- Daily Chart -->
-<div class="panel mb-3 chart-panel">
-    <div class="panel-title chart-title"><i class="bi bi-graph-up"></i> Daily Production — {{ month_name }} {{ year }}</div>
+<div class="panel mb-3">
+    <div class="panel-title"><i class="bi bi-graph-up"></i> Daily Production — {{ month_name }} {{ year }}</div>
     <div style="position:relative; height:240px;">
         <canvas id="dailyChart"></canvas>
     </div>
 </div>
 
-<!-- Breakdown tables -->
 <div class="row g-2 mb-3">
     <div class="col-12 col-lg-6">
         <div class="panel h-100">
@@ -118,7 +118,7 @@
                     <tr>
                         <td><strong>{{ name }}</strong></td>
                         <td style="text-align:right;">{{ data.records }}</td>
-                        <td style="text-align:right; color:var(--accent); font-weight:600;">{{ data.tons|floatformat:0 }}</td>
+                        <td style="text-align:right; color:var(--accent); font-weight:700;">{{ data.tons|floatformat:0 }}</td>
                         <td style="text-align:right;">{{ data.overburden|floatformat:0 }}</td>
                     </tr>
                     {% endfor %}
@@ -183,199 +183,6 @@
     </div>
 </div>
 
-<!-- Print footer -->
-<div class="print-footer" style="display:none;">
-    <div style="text-align:center; border-top:1px solid #000; padding-top:10px; margin-top:20px; font-size:11px; color:#000;">
-        Printed: <span id="printTimestamp"></span> &nbsp;|&nbsp; Coal Mine Management System
-    </div>
-</div>
-
-<!-- KPI print grid styles -->
-<style>
-    .kpi-print-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 12px;
-        margin-bottom: 18px;
-    }
-    .kpi-print-item {
-        background: var(--bg-panel);
-        border: 1px solid var(--border-light);
-        border-left: 3px solid var(--accent);
-        border-radius: 8px;
-        padding: 14px 16px;
-    }
-    .kpi-print-label {
-        font-size: 11px;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        color: var(--text-muted);
-        font-weight: 700;
-        margin-bottom: 6px;
-    }
-    .kpi-print-value {
-        font-size: 22px;
-        font-weight: 800;
-        color: var(--text-primary);
-    }
-    .kpi-print-unit {
-        font-size: 12px;
-        color: var(--text-muted);
-        font-weight: 500;
-    }
-
-    @media (max-width: 767.98px) {
-        .kpi-print-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-
-    /* =========================================================
-       PRINT STYLES — Clean professional B&W
-       ========================================================= */
-    @media print {
-        /* Hide screen-only elements */
-        .no-print,
-        .sidebar,
-        .topbar,
-        .app-footer,
-        .btn,
-        .form-select,
-        .form-control,
-        form { display: none !important; }
-
-        /* Show print-only elements */
-        .print-header,
-        .print-footer { display: block !important; }
-
-        /* Base reset */
-        body, html {
-            background: #fff !important;
-            color: #000 !important;
-            font-family: 'Times New Roman', Georgia, serif !important;
-            font-size: 11pt !important;
-        }
-
-        .main-area { margin-left: 0 !important; }
-        .content { padding: 0 !important; }
-
-        /* Panels become simple bordered sections */
-        .panel {
-            background: #fff !important;
-            border: 1px solid #333 !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            padding: 12px 16px !important;
-            margin-bottom: 14px !important;
-            page-break-inside: avoid;
-        }
-
-        /* Panel titles */
-        .panel-title {
-            color: #000 !important;
-            border-bottom: 1px solid #333 !important;
-            padding-bottom: 6px !important;
-            margin-bottom: 10px !important;
-            font-size: 12pt !important;
-            font-weight: 700 !important;
-        }
-        .panel-title i { display: none !important; }
-
-        /* KPI grid — black border, no color */
-        .kpi-print-grid {
-            grid-template-columns: repeat(4, 1fr) !important;
-            gap: 8px !important;
-            margin-bottom: 14px !important;
-        }
-        .kpi-print-item {
-            background: #fff !important;
-            border: 1px solid #333 !important;
-            border-left: 2px solid #000 !important;
-            border-radius: 0 !important;
-            padding: 10px 12px !important;
-        }
-        .kpi-print-label {
-            color: #000 !important;
-            font-size: 9pt !important;
-            letter-spacing: 1px !important;
-        }
-        .kpi-print-value {
-            color: #000 !important;
-            font-size: 16pt !important;
-            font-weight: 700 !important;
-        }
-        .kpi-print-unit {
-            color: #000 !important;
-            font-size: 10pt !important;
-        }
-
-        /* Tables — clean bordered look */
-        .table {
-            color: #000 !important;
-            width: 100% !important;
-            font-size: 10pt !important;
-            border-collapse: collapse !important;
-        }
-        .table thead th {
-            background: #e8e8e8 !important;
-            color: #000 !important;
-            border: 1px solid #333 !important;
-            padding: 6px 8px !important;
-            font-size: 10pt !important;
-            font-weight: 700 !important;
-            text-align: left;
-        }
-        .table tbody td {
-            background: #fff !important;
-            color: #000 !important;
-            border: 1px solid #666 !important;
-            padding: 6px 8px !important;
-            font-size: 10pt !important;
-        }
-        .table tbody tr:hover td {
-            background: #fff !important;
-        }
-        .table tfoot tr {
-            background: #f0f0f0 !important;
-        }
-        .table tfoot td {
-            background: #f0f0f0 !important;
-            color: #000 !important;
-            font-weight: 700 !important;
-            border: 1px solid #333 !important;
-        }
-
-        /* All colored text becomes black */
-        strong, b, span, div, p, td, th, h1, h2, h3, h4, h5, h6 {
-            color: #000 !important;
-        }
-
-        /* Remove colored borders */
-        [style*="border-left"] {
-            border-left: 2px solid #000 !important;
-        }
-
-        /* Chart container — keep the chart but as grayscale */
-        .chart-panel {
-            page-break-inside: avoid;
-            margin-bottom: 14px !important;
-        }
-        .chart-panel canvas {
-            max-height: 200px !important;
-            filter: grayscale(100%) contrast(1.2);
-        }
-
-        /* Page setup */
-        @page {
-            size: A4;
-            margin: 15mm 12mm;
-        }
-
-        /* Report header spacing */
-        .print-header {
-            margin-bottom: 16px !important;
-        }
-    }
-</style>
-
 {{ daily_labels|json_script:"daily_labels" }}
 {{ daily_tons|json_script:"daily_tons" }}
 {{ daily_overburden|json_script:"daily_overburden" }}
@@ -419,7 +226,6 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                animation: false,
                 plugins: {
                     legend: { labels: { color: textMuted, boxWidth: 12, padding: 12 } },
                     tooltip: {
@@ -443,15 +249,272 @@
                 }
             }
         });
-
-        // Timestamp for print footer
-        const ts = new Date().toLocaleString('en-GB', {
-            day: '2-digit', month: 'short', year: 'numeric',
-            hour: '2-digit', minute: '2-digit'
-        });
-        const el = document.getElementById('printTimestamp');
-        if (el) el.textContent = ts;
     })();
 </script>
+
+{% endblock %}
+
+
+<!-- ==================== PRINT VIEW ==================== -->
+{% block print_view %}
+
+<style>
+    .print-doc { display: none; }
+
+    @media print {
+        .app-container { display: none !important; }
+        .print-doc { display: block !important; }
+
+        html, body {
+            background: #fff !important;
+            color: #000 !important;
+            font-family: Georgia, 'Times New Roman', serif !important;
+            font-size: 10.5pt !important;
+            line-height: 1.4 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        @page {
+            size: A4;
+            margin: 18mm 15mm;
+        }
+
+        .print-doc * {
+            background: transparent !important;
+            color: #000 !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+        }
+
+        .print-doc .company {
+            text-align: center;
+            font-size: 20pt;
+            font-weight: bold;
+            letter-spacing: 4pt;
+            border-bottom: 2pt solid #000;
+            padding-bottom: 8pt;
+            margin-bottom: 4pt;
+        }
+        .print-doc .report-type {
+            text-align: center;
+            font-size: 13pt;
+            font-weight: bold;
+            letter-spacing: 3pt;
+            margin-top: 6pt;
+        }
+        .print-doc .report-period {
+            text-align: center;
+            font-size: 12pt;
+            font-weight: bold;
+            margin-top: 4pt;
+            margin-bottom: 14pt;
+        }
+        .print-doc .meta-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 9pt;
+            border-bottom: 1pt solid #000;
+            padding-bottom: 6pt;
+            margin-bottom: 18pt;
+        }
+
+        .print-doc .section {
+            font-size: 11pt;
+            font-weight: bold;
+            letter-spacing: 2pt;
+            text-transform: uppercase;
+            border-bottom: 1pt solid #000;
+            padding-bottom: 3pt;
+            margin: 16pt 0 10pt 0;
+            page-break-after: avoid;
+        }
+
+        .print-doc .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14pt;
+        }
+        .print-doc .summary-table td {
+            padding: 6pt 8pt;
+            border-bottom: 0.5pt dotted #999;
+            font-size: 10.5pt;
+        }
+        .print-doc .summary-table td:last-child {
+            text-align: right;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .print-doc .summary-table tr.total td {
+            border-top: 1.5pt solid #000;
+            border-bottom: 1.5pt solid #000;
+            padding-top: 8pt;
+            padding-bottom: 8pt;
+            font-size: 11.5pt;
+        }
+
+        .print-doc .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14pt;
+        }
+        .print-doc .data-table thead {
+            display: table-header-group;
+        }
+        .print-doc .data-table th {
+            background: #dcdcdc !important;
+            border: 1pt solid #000;
+            padding: 6pt 8pt;
+            font-size: 9.5pt;
+            font-weight: bold;
+            text-align: left;
+            text-transform: uppercase;
+            letter-spacing: 0.5pt;
+        }
+        .print-doc .data-table td {
+            border: 0.5pt solid #333;
+            padding: 5pt 8pt;
+            font-size: 10pt;
+            vertical-align: middle;
+        }
+        .print-doc .data-table tbody tr:nth-child(even) td {
+            background: #f4f4f4 !important;
+        }
+        .print-doc .data-table tfoot td {
+            background: #dcdcdc !important;
+            border: 1pt solid #000;
+            font-weight: bold;
+            font-size: 10pt;
+            padding: 6pt 8pt;
+        }
+        .print-doc .data-table tr {
+            page-break-inside: avoid;
+        }
+        .print-doc .num { text-align: right; }
+
+        .print-doc .footer {
+            display: flex;
+            justify-content: space-between;
+            border-top: 1pt solid #000;
+            padding-top: 6pt;
+            margin-top: 24pt;
+            font-size: 8.5pt;
+        }
+    }
+</style>
+
+<div class="print-doc">
+
+    <div class="company">COAL MINE COMPANY</div>
+    <div class="report-type">PRODUCTION REPORT</div>
+    <div class="report-period">{{ month_name }} {{ year }}</div>
+
+    <div class="meta-row">
+        <span>Generated: {{ now|date:"d M Y" }}</span>
+        <span>Prepared by: {{ request.user.username }}</span>
+    </div>
+
+    <!-- 1. SUMMARY -->
+    <div class="section">1. Summary</div>
+    <table class="summary-table">
+        <tr><td>Total Coal Produced</td><td>{{ total_tons|floatformat:0 }} tons</td></tr>
+        <tr><td>Total Overburden Removed</td><td>{{ total_overburden|floatformat:0 }} tons</td></tr>
+        <tr><td>Stripping Ratio</td><td>{{ stripping_ratio }}</td></tr>
+        <tr><td>Total Worker-Shifts</td><td>{{ total_workers }}</td></tr>
+        <tr><td>Production Records</td><td>{{ record_count }}</td></tr>
+        {% if trend_pct is not None %}
+        <tr><td>Trend vs Previous Month</td><td>{{ trend_pct }}%</td></tr>
+        {% endif %}
+    </table>
+
+    <!-- 2. BY MINE -->
+    {% if mine_list %}
+    <div class="section">2. Production by Mine</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Mine</th>
+                <th class="num">Records</th>
+                <th class="num">Coal (tons)</th>
+                <th class="num">Overburden (tons)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for name, data in mine_list %}
+            <tr>
+                <td>{{ name }}</td>
+                <td class="num">{{ data.records }}</td>
+                <td class="num">{{ data.tons|floatformat:0 }}</td>
+                <td class="num">{{ data.overburden|floatformat:0 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td>TOTAL</td>
+                <td class="num">{{ record_count }}</td>
+                <td class="num">{{ total_tons|floatformat:0 }}</td>
+                <td class="num">{{ total_overburden|floatformat:0 }}</td>
+            </tr>
+        </tfoot>
+    </table>
+    {% endif %}
+
+    <!-- 3. BY SHIFT -->
+    {% if shift_list %}
+    <div class="section">3. Production by Shift</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Shift</th>
+                <th class="num">Records</th>
+                <th class="num">Coal (tons)</th>
+                <th class="num">% of Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for name, data in shift_list %}
+            <tr>
+                <td>{{ name }}</td>
+                <td class="num">{{ data.count }}</td>
+                <td class="num">{{ data.tons|floatformat:0 }}</td>
+                <td class="num">{% widthratio data.tons total_tons 100 %}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- 4. BY COAL TYPE -->
+    {% if coal_list %}
+    <div class="section">4. Production by Coal Type</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Coal Type</th>
+                <th class="num">Records</th>
+                <th class="num">Coal (tons)</th>
+                <th class="num">% of Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for name, data in coal_list %}
+            <tr>
+                <td>{{ name }}</td>
+                <td class="num">{{ data.count }}</td>
+                <td class="num">{{ data.tons|floatformat:0 }}</td>
+                <td class="num">{% widthratio data.tons total_tons 100 %}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <div class="footer">
+        <span>Coal Mine Management System</span>
+        <span>Generated: {{ now|date:"d M Y" }}</span>
+    </div>
+
+</div>
 
 {% endblock %}

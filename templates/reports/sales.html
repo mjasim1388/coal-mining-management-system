@@ -1,186 +1,96 @@
 {% extends 'base.html' %}
-{% load static %}
 
 {% block title %}Monthly Sales Report - Coal Mine{% endblock %}
 {% block page_title %}MONTHLY SALES REPORT{% endblock %}
 
 {% block content %}
 
-<!-- Filter Bar -->
+<!-- ==================== SCREEN VIEW ==================== -->
+
 <div class="panel mb-3">
-    <form method="get" class="row g-2 align-items-end">
-        <div class="col-md-3">
-            <label class="form-label">Month</label>
-            <select name="month" class="form-select">
-                {% for num, name in months %}
-                <option value="{{ num }}" {% if month == num %}selected{% endif %}>{{ name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">Year</label>
-            <input type="number" name="year" value="{{ year }}" class="form-control">
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Customer</label>
-            <select name="customer" class="form-select">
-                <option value="">All Customers</option>
-                {% for c in all_customers %}
-                <option value="{{ c.pk }}" {% if customer_filter == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-4">
-            <button type="submit" class="btn btn-amber w-100">
-                <i class="bi bi-funnel"></i> Generate Report
-            </button>
+    <form method="get">
+        <div class="row g-2 align-items-end">
+            <div class="col-6 col-md-3">
+                <label class="form-label">Month</label>
+                <select name="month" class="form-select">
+                    {% for num, name in months %}
+                    <option value="{{ num }}" {% if month == num %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label">Year</label>
+                <input type="number" name="year" value="{{ year }}" class="form-control">
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label">Customer</label>
+                <select name="customer" class="form-select">
+                    <option value="">All Customers</option>
+                    {% for c in all_customers %}
+                    <option value="{{ c.pk }}" {% if customer_filter == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <button type="submit" class="btn btn-amber w-100">
+                    <i class="bi bi-funnel"></i> Generate Report
+                </button>
+            </div>
         </div>
     </form>
 </div>
 
-<!-- Period Header -->
 <div class="panel mb-3" style="border-left:4px solid var(--accent);">
-    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
             <div style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Report Period</div>
-            <div style="font-size:22px; font-weight:800; color:var(--text-primary); margin-top:4px;">{{ month_name }} {{ year }}</div>
+            <div style="font-size:20px; font-weight:800; color:var(--text-primary); margin-top:2px;">{{ month_name }} {{ year }}</div>
         </div>
-        <div style="display:flex; gap:8px;">
-            <a href="{% url 'export_sales' %}" class="btn btn-outline-amber">
-                <i class="bi bi-file-earmark-excel"></i> Export to Excel
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'export_sales' %}" class="btn btn-outline-amber btn-sm">
+                <i class="bi bi-file-earmark-excel"></i> Export
             </a>
-            <button onclick="window.print()" class="btn btn-outline-amber">
+            <button onclick="window.print()" class="btn btn-amber btn-sm">
                 <i class="bi bi-printer"></i> Print
             </button>
-            <a href="{% url 'reports_hub' %}" class="btn btn-outline-amber">
-                <i class="bi bi-arrow-left"></i> All Reports
+            <a href="{% url 'reports_hub' %}" class="btn btn-outline-amber btn-sm">
+                <i class="bi bi-arrow-left"></i> Reports
             </a>
         </div>
     </div>
 </div>
 
-<!-- KPI Cards with Visual Bars -->
-<style>
-    .kpi-visual {
-        margin-top: 12px;
-        padding-top: 12px;
-        border-top: 1px solid var(--border-light);
-    }
-    .kpi-bar-track {
-        width: 100%;
-        height: 8px;
-        background: var(--bg-app);
-        border-radius: 4px;
-        overflow: hidden;
-        border: 1px solid var(--border-light);
-        position: relative;
-    }
-    .kpi-bar-fill {
-        height: 100%;
-        border-radius: 4px;
-        transition: width 0.6s ease;
-    }
-    .kpi-bar-green  { background: linear-gradient(90deg, #2fb67c, #4ade80); }
-    .kpi-bar-blue   { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
-    .kpi-bar-red    { background: linear-gradient(90deg, #dc2626, #ef5b5b); }
-    .kpi-bar-amber  { background: linear-gradient(90deg, #d97706, #fbbf24); }
-    .kpi-bar-label {
-        display: flex;
-        justify-content: space-between;
-        font-size: 11px;
-        color: var(--text-muted);
-        margin-bottom: 6px;
-        font-weight: 600;
-    }
-    .kpi-bar-label strong { color: var(--text-primary); }
-</style>
-
-<div class="row g-3 mb-3">
-    <!-- Total Sales -->
-    <div class="col-md-3">
-        <div class="stat-card stat-green" style="height:100%;">
+<div class="row g-2 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-green">
             <i class="bi bi-cash-stack icon"></i>
             <h2>{{ total_sales|floatformat:0 }}</h2>
             <p>Total Sales (PKR)</p>
-
-            <div class="kpi-visual">
-                <div class="kpi-bar-label">
-                    <span>vs last month</span>
-                    {% if trend_pct is not None %}
-                        <strong style="color: {% if trend_pct > 0 %}var(--success){% elif trend_pct < 0 %}var(--danger){% else %}var(--text-muted){% endif %};">
-                            <i class="bi bi-arrow-{% if trend_pct > 0 %}up{% elif trend_pct < 0 %}down{% else %}right{% endif %}"></i>
-                            {{ trend_pct }}%
-                        </strong>
-                    {% else %}
-                        <strong style="color:var(--text-muted);">—</strong>
-                    {% endif %}
-                </div>
-                <div class="kpi-bar-track">
-                    <div class="kpi-bar-fill kpi-bar-green" data-width="{{ trend_pct|default:100 }}"></div>
-                </div>
-            </div>
         </div>
     </div>
-
-    <!-- Cash Received -->
-    <div class="col-md-3">
-        <div class="stat-card stat-blue" style="height:100%;">
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-blue">
             <i class="bi bi-wallet2 icon"></i>
             <h2>{{ total_received|floatformat:0 }}</h2>
             <p>Cash Received (PKR)</p>
-
-            <div class="kpi-visual">
-                <div class="kpi-bar-label">
-                    <span>Collection rate</span>
-                    <strong>{% if total_sales > 0 %}{% widthratio total_received total_sales 100 %}{% else %}0{% endif %}%</strong>
-                </div>
-                <div class="kpi-bar-track">
-                    <div class="kpi-bar-fill kpi-bar-blue" data-width="{% if total_sales > 0 %}{% widthratio total_received total_sales 100 %}{% else %}0{% endif %}"></div>
-                </div>
-            </div>
         </div>
     </div>
-
-    <!-- Outstanding -->
-    <div class="col-md-3">
-        <div class="stat-card stat-red" style="height:100%;">
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-red">
             <i class="bi bi-hourglass-split icon"></i>
             <h2>{{ total_outstanding|floatformat:0 }}</h2>
             <p>Outstanding (PKR)</p>
-
-            <div class="kpi-visual">
-                <div class="kpi-bar-label">
-                    <span>Uncollected</span>
-                    <strong>{% if total_sales > 0 %}{% widthratio total_outstanding total_sales 100 %}{% else %}0{% endif %}%</strong>
-                </div>
-                <div class="kpi-bar-track">
-                    <div class="kpi-bar-fill kpi-bar-red" data-width="{% if total_sales > 0 %}{% widthratio total_outstanding total_sales 100 %}{% else %}0{% endif %}"></div>
-                </div>
-            </div>
         </div>
     </div>
-
-    <!-- Tons Sold -->
-    <div class="col-md-3">
-        <div class="stat-card stat-amber" style="height:100%;">
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-amber">
             <i class="bi bi-truck icon"></i>
             <h2>{{ total_tons|floatformat:0 }}</h2>
-            <p>Tons Sold</p>
-
-            <div class="kpi-visual">
-                <div class="kpi-bar-label">
-                    <span>Dispatches</span>
-                    <strong>{{ dispatch_count }}</strong>
-                </div>
-                <div class="kpi-bar-track">
-                    <div class="kpi-bar-fill kpi-bar-amber" data-width="100"></div>
-                </div>
-            </div>
+            <p>Tons Sold · {{ dispatch_count }}</p>
         </div>
     </div>
 </div>
 
-<!-- Daily Sales Chart -->
 <div class="panel mb-3">
     <div class="panel-title"><i class="bi bi-graph-up"></i> Daily Sales — {{ month_name }} {{ year }}</div>
     <div style="position:relative; height:240px;">
@@ -188,13 +98,12 @@
     </div>
 </div>
 
-<!-- Two column: Customer + Mine breakdown -->
-<div class="row g-3 mb-3">
-    <div class="col-md-6">
+<div class="row g-2 mb-3">
+    <div class="col-12 col-lg-6">
         <div class="panel h-100">
             <div class="panel-title"><i class="bi bi-people-fill"></i> Sales by Customer</div>
             {% if customer_list %}
-            <table class="table">
+            <table class="table table-sm">
                 <thead>
                     <tr>
                         <th>Customer</th>
@@ -215,16 +124,16 @@
                 </tbody>
             </table>
             {% else %}
-            <p style="color:var(--text-muted); text-align:center; padding:24px; margin:0;">No sales this period.</p>
+            <p style="color:var(--text-muted); text-align:center; padding:16px; margin:0;">No data.</p>
             {% endif %}
         </div>
     </div>
 
-    <div class="col-md-6">
+    <div class="col-12 col-lg-6">
         <div class="panel h-100">
             <div class="panel-title"><i class="bi bi-geo-alt-fill"></i> Sales by Mine</div>
             {% if mine_list %}
-            <table class="table">
+            <table class="table table-sm">
                 <thead>
                     <tr>
                         <th>Mine</th>
@@ -245,45 +154,313 @@
                 </tbody>
             </table>
             {% else %}
-            <p style="color:var(--text-muted); text-align:center; padding:24px; margin:0;">No data.</p>
+            <p style="color:var(--text-muted); text-align:center; padding:16px; margin:0;">No data.</p>
             {% endif %}
         </div>
     </div>
 </div>
 
-<!-- Payment Status Breakdown -->
-<div class="panel mb-3">
-    <div class="panel-title"><i class="bi bi-credit-card-fill"></i> Payment Status Breakdown</div>
-    <div class="row g-3">
-        <div class="col-md-4">
-            <div style="padding:16px; background:var(--success-soft); border-radius:8px; border:1px solid var(--success);">
-                <div style="font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--success); font-weight:700;">Paid</div>
-                <div style="font-size:24px; font-weight:800; color:var(--text-primary); margin:6px 0;">{{ paid_amount|floatformat:0 }}</div>
-                <small style="color:var(--text-muted);">{{ paid_count }} dispatch{{ paid_count|pluralize }} · PKR</small>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div style="padding:16px; background:var(--warning-soft); border-radius:8px; border:1px solid var(--warning);">
-                <div style="font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--warning); font-weight:700;">Partial</div>
-                <div style="font-size:24px; font-weight:800; color:var(--text-primary); margin:6px 0;">{{ partial_amount|floatformat:0 }}</div>
-                <small style="color:var(--text-muted);">{{ partial_count }} dispatch{{ partial_count|pluralize }} · PKR</small>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div style="padding:16px; background:var(--danger-soft); border-radius:8px; border:1px solid var(--danger);">
-                <div style="font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--danger); font-weight:700;">Unpaid</div>
-                <div style="font-size:24px; font-weight:800; color:var(--text-primary); margin:6px 0;">{{ unpaid_amount|floatformat:0 }}</div>
-                <small style="color:var(--text-muted);">{{ unpaid_count }} dispatch{{ unpaid_count|pluralize }} · PKR</small>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- All Dispatches -->
 <div class="panel">
     <div class="panel-title"><i class="bi bi-list-ul"></i> All Dispatches ({{ dispatch_count }})</div>
     {% if all_dispatches %}
-    <table class="table">
+    <div style="overflow-x:auto;">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Dispatch No</th>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th>Mine</th>
+                    <th>Truck</th>
+                    <th style="text-align:right;">Tons</th>
+                    <th style="text-align:right;">Total (PKR)</th>
+                    <th style="text-align:right;">Paid</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in all_dispatches %}
+                <tr>
+                    <td style="font-family:monospace; font-size:12px; color:var(--accent);">{{ s.dispatch_no|default:s.invoice_no }}</td>
+                    <td>{{ s.date }}</td>
+                    <td>{{ s.customer.name }}</td>
+                    <td>{{ s.mine.name|default:"—" }}</td>
+                    <td>{{ s.truck_no|default:"—" }}</td>
+                    <td style="text-align:right;">{{ s.quantity_tons }}</td>
+                    <td style="text-align:right; font-weight:700; color:var(--accent);">{{ s.total_amount|floatformat:0 }}</td>
+                    <td style="text-align:right;">{{ s.amount_paid|floatformat:0 }}</td>
+                    <td>
+                        {% if s.payment_status == 'Paid' %}
+                            <span class="badge-status badge-active">PAID</span>
+                        {% elif s.payment_status == 'Partial' %}
+                            <span class="badge-status badge-leave">PARTIAL</span>
+                        {% else %}
+                            <span class="badge-status badge-inactive">UNPAID</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted); text-align:center; padding:24px; margin:0;">No dispatches in this period.</p>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+
+<!-- ==================== PRINT VIEW ==================== -->
+{% block print_view %}
+
+<style>
+    .print-doc { display: none; }
+
+    @media print {
+        .app-container { display: none !important; }
+        .print-doc { display: block !important; }
+
+        html, body {
+            background: #fff !important;
+            color: #000 !important;
+            font-family: Georgia, 'Times New Roman', serif !important;
+            font-size: 10.5pt !important;
+            line-height: 1.4 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        @page {
+            size: A4;
+            margin: 18mm 15mm;
+        }
+
+        .print-doc * {
+            background: transparent !important;
+            color: #000 !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+        }
+
+        .print-doc .company {
+            text-align: center;
+            font-size: 20pt;
+            font-weight: bold;
+            letter-spacing: 4pt;
+            border-bottom: 2pt solid #000;
+            padding-bottom: 8pt;
+            margin-bottom: 4pt;
+        }
+        .print-doc .report-type {
+            text-align: center;
+            font-size: 13pt;
+            font-weight: bold;
+            letter-spacing: 3pt;
+            margin-top: 6pt;
+        }
+        .print-doc .report-period {
+            text-align: center;
+            font-size: 12pt;
+            font-weight: bold;
+            margin-top: 4pt;
+            margin-bottom: 14pt;
+        }
+        .print-doc .meta-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 9pt;
+            border-bottom: 1pt solid #000;
+            padding-bottom: 6pt;
+            margin-bottom: 18pt;
+        }
+
+        .print-doc .section {
+            font-size: 11pt;
+            font-weight: bold;
+            letter-spacing: 2pt;
+            text-transform: uppercase;
+            border-bottom: 1pt solid #000;
+            padding-bottom: 3pt;
+            margin: 16pt 0 10pt 0;
+            page-break-after: avoid;
+        }
+
+        .print-doc .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14pt;
+        }
+        .print-doc .summary-table td {
+            padding: 6pt 8pt;
+            border-bottom: 0.5pt dotted #999;
+            font-size: 10.5pt;
+        }
+        .print-doc .summary-table td:last-child {
+            text-align: right;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .print-doc .summary-table tr.total td {
+            border-top: 1.5pt solid #000;
+            border-bottom: 1.5pt solid #000;
+            padding-top: 8pt;
+            padding-bottom: 8pt;
+            font-size: 11.5pt;
+        }
+
+        .print-doc .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14pt;
+        }
+        .print-doc .data-table thead {
+            display: table-header-group;
+        }
+        .print-doc .data-table th {
+            background: #dcdcdc !important;
+            border: 1pt solid #000;
+            padding: 6pt 8pt;
+            font-size: 9.5pt;
+            font-weight: bold;
+            text-align: left;
+            text-transform: uppercase;
+            letter-spacing: 0.5pt;
+        }
+        .print-doc .data-table td {
+            border: 0.5pt solid #333;
+            padding: 5pt 8pt;
+            font-size: 10pt;
+            vertical-align: middle;
+        }
+        .print-doc .data-table tbody tr:nth-child(even) td {
+            background: #f4f4f4 !important;
+        }
+        .print-doc .data-table tfoot td {
+            background: #dcdcdc !important;
+            border: 1pt solid #000;
+            font-weight: bold;
+            font-size: 10pt;
+            padding: 6pt 8pt;
+        }
+        .print-doc .data-table tr {
+            page-break-inside: avoid;
+        }
+        .print-doc .num { text-align: right; }
+
+        .print-doc .footer {
+            display: flex;
+            justify-content: space-between;
+            border-top: 1pt solid #000;
+            padding-top: 6pt;
+            margin-top: 24pt;
+            font-size: 8.5pt;
+        }
+    }
+</style>
+
+<div class="print-doc">
+
+    <div class="company">COAL MINE COMPANY</div>
+    <div class="report-type">MONTHLY SALES REPORT</div>
+    <div class="report-period">{{ month_name }} {{ year }}</div>
+
+    <div class="meta-row">
+        <span>Generated: {{ now|date:"d M Y" }}</span>
+        <span>Prepared by: {{ request.user.username }}</span>
+    </div>
+
+    <!-- 1. SUMMARY -->
+    <div class="section">1. Summary</div>
+    <table class="summary-table">
+        <tr><td>Total Sales</td><td>PKR {{ total_sales|floatformat:0 }}</td></tr>
+        <tr><td>Cash Received</td><td>PKR {{ total_received|floatformat:0 }}</td></tr>
+        <tr><td>Outstanding Balance</td><td>PKR {{ total_outstanding|floatformat:0 }}</td></tr>
+        <tr><td>Total Tons Sold</td><td>{{ total_tons|floatformat:0 }} tons</td></tr>
+        <tr><td>Total Dispatches</td><td>{{ dispatch_count }}</td></tr>
+        {% if trend_pct is not None %}
+        <tr><td>Trend vs Previous Month</td><td>{{ trend_pct }}%</td></tr>
+        {% endif %}
+    </table>
+
+    <!-- 2. PAYMENT STATUS -->
+    <div class="section">2. Payment Status</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Status</th>
+                <th class="num">Dispatches</th>
+                <th class="num">Amount (PKR)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>Paid</td><td class="num">{{ paid_count }}</td><td class="num">{{ paid_amount|floatformat:0 }}</td></tr>
+            <tr><td>Partial</td><td class="num">{{ partial_count }}</td><td class="num">{{ partial_amount|floatformat:0 }}</td></tr>
+            <tr><td>Unpaid</td><td class="num">{{ unpaid_count }}</td><td class="num">{{ unpaid_amount|floatformat:0 }}</td></tr>
+        </tbody>
+        <tfoot>
+            <tr>
+                <td>TOTAL</td>
+                <td class="num">{{ dispatch_count }}</td>
+                <td class="num">{{ total_sales|floatformat:0 }}</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <!-- 3. BY CUSTOMER -->
+    {% if customer_list %}
+    <div class="section">3. Sales by Customer</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Customer</th>
+                <th class="num">Dispatches</th>
+                <th class="num">Tons</th>
+                <th class="num">Sales (PKR)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for name, data in customer_list %}
+            <tr>
+                <td>{{ name }}</td>
+                <td class="num">{{ data.count }}</td>
+                <td class="num">{{ data.tons|floatformat:0 }}</td>
+                <td class="num">{{ data.sales|floatformat:0 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- 4. BY MINE -->
+    {% if mine_list %}
+    <div class="section">4. Sales by Mine</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Mine</th>
+                <th class="num">Dispatches</th>
+                <th class="num">Tons</th>
+                <th class="num">Sales (PKR)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for name, data in mine_list %}
+            <tr>
+                <td>{{ name }}</td>
+                <td class="num">{{ data.count }}</td>
+                <td class="num">{{ data.tons|floatformat:0 }}</td>
+                <td class="num">{{ data.sales|floatformat:0 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- 5. DISPATCH DETAILS -->
+    {% if all_dispatches %}
+    <div class="section">5. Dispatch Details</div>
+    <table class="data-table">
         <thead>
             <tr>
                 <th>Dispatch No</th>
@@ -291,134 +468,44 @@
                 <th>Customer</th>
                 <th>Mine</th>
                 <th>Truck</th>
-                <th style="text-align:right;">Tons</th>
-                <th style="text-align:right;">Total (PKR)</th>
-                <th style="text-align:right;">Paid</th>
+                <th class="num">Tons</th>
+                <th class="num">Total (PKR)</th>
+                <th class="num">Paid (PKR)</th>
                 <th>Status</th>
             </tr>
         </thead>
         <tbody>
             {% for s in all_dispatches %}
             <tr>
-                <td><span style="color:var(--accent); font-family:monospace; font-size:12px;">{{ s.dispatch_no|default:s.invoice_no }}</span></td>
+                <td>{{ s.dispatch_no|default:s.invoice_no }}</td>
                 <td>{{ s.date }}</td>
                 <td>{{ s.customer.name }}</td>
                 <td>{{ s.mine.name|default:"—" }}</td>
                 <td>{{ s.truck_no|default:"—" }}</td>
-                <td style="text-align:right;">{{ s.quantity_tons }}</td>
-                <td style="text-align:right; font-weight:700; color:var(--accent);">{{ s.total_amount|floatformat:0 }}</td>
-                <td style="text-align:right;">{{ s.amount_paid|floatformat:0 }}</td>
-                <td>
-                    {% if s.payment_status == 'Paid' %}
-                        <span class="badge-status badge-active">PAID</span>
-                    {% elif s.payment_status == 'Partial' %}
-                        <span class="badge-status badge-leave">PARTIAL</span>
-                    {% else %}
-                        <span class="badge-status badge-inactive">UNPAID</span>
-                    {% endif %}
-                </td>
+                <td class="num">{{ s.quantity_tons }}</td>
+                <td class="num">{{ s.total_amount|floatformat:0 }}</td>
+                <td class="num">{{ s.amount_paid|floatformat:0 }}</td>
+                <td>{{ s.payment_status }}</td>
             </tr>
             {% endfor %}
         </tbody>
         <tfoot>
-            <tr style="border-top:2px solid var(--border-medium); font-weight:700;">
+            <tr>
                 <td colspan="5">TOTAL</td>
-                <td style="text-align:right;">{{ total_tons|floatformat:0 }}</td>
-                <td style="text-align:right; color:var(--accent); font-size:15px;">{{ total_sales|floatformat:0 }}</td>
-                <td style="text-align:right;">{{ total_received|floatformat:0 }}</td>
+                <td class="num">{{ total_tons|floatformat:0 }}</td>
+                <td class="num">{{ total_sales|floatformat:0 }}</td>
+                <td class="num">{{ total_received|floatformat:0 }}</td>
                 <td></td>
             </tr>
         </tfoot>
     </table>
-    {% else %}
-    <p style="color:var(--text-muted); text-align:center; padding:30px; margin:0;">
-        No dispatches in this period.
-    </p>
     {% endif %}
+
+    <div class="footer">
+        <span>Coal Mine Management System</span>
+        <span>Generated: {{ now|date:"d M Y" }}</span>
+    </div>
+
 </div>
-
-<!-- Chart Data -->
-{{ daily_labels|json_script:"daily_labels" }}
-{{ daily_data|json_script:"daily_data" }}
-
-<script src="{% static 'vendor/chart.umd.min.js' %}"></script>
-<script>
-    (function() {
-        const labels = JSON.parse(document.getElementById('daily_labels').textContent);
-        const data = JSON.parse(document.getElementById('daily_data').textContent);
-        const style = getComputedStyle(document.documentElement);
-        const accent = style.getPropertyValue('--accent').trim();
-        const borderLight = style.getPropertyValue('--border-light').trim();
-        const textMuted = style.getPropertyValue('--text-muted').trim();
-
-        const ctx = document.getElementById('dailyChart').getContext('2d');
-        const gradient = ctx.createLinearGradient(0, 0, 0, 240);
-        gradient.addColorStop(0, 'rgba(47, 182, 124, 0.4)');
-        gradient.addColorStop(1, 'rgba(47, 182, 124, 0.02)');
-
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Daily Sales (PKR)',
-                    data: data,
-                    backgroundColor: accent,
-                    borderRadius: 4,
-                    barPercentage: 0.7,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: 'rgba(0,0,0,0.85)',
-                        padding: 10,
-                        callbacks: {
-                            label: function(ctx) {
-                                return 'PKR ' + Number(ctx.parsed.y).toLocaleString();
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: { ticks: { color: textMuted, font: { size: 10 } }, grid: { display: false } },
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            color: textMuted, font: { size: 10 },
-                            callback: function(v) {
-                                if (v >= 1000000) return (v / 1000000).toFixed(1) + 'M';
-                                if (v >= 1000) return (v / 1000).toFixed(0) + 'K';
-                                return v;
-                            }
-                        },
-                        grid: { color: borderLight, drawBorder: false }
-                    }
-                }
-            }
-        });
-    })();
-
-    <script>
-    (function() {
-        // Animate the KPI bars after page load
-        requestAnimationFrame(function() {
-            document.querySelectorAll('.kpi-bar-fill[data-width]').forEach(function(bar) {
-                var w = parseFloat(bar.dataset.width) || 0;
-                // Clamp between 0 and 100
-                if (w < 0) w = Math.min(100, Math.abs(w));
-                if (w > 100) w = 100;
-                // Small delay so the transition animates
-                setTimeout(function() {
-                    bar.style.width = w + '%';
-                }, 100);
-            });
-        });
-    })();
-</script>
-</script>
 
 {% endblock %}

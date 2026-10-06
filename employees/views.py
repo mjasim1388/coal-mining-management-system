@@ -2606,7 +2606,7 @@ def report_production(request):
         'months': Payroll.MONTH_CHOICES,
         'mine_filter': mine_filter,
         'all_mines': Mine.objects.filter(voided=False),
-
+        'now': today,
         'total_tons': total_tons,
         'total_overburden': total_overburden,
         'total_workers': total_workers,
@@ -2699,7 +2699,7 @@ def report_payroll(request):
         'month': month,
         'year': year,
         'month_name': month_abbr[month],
-        
+                'now': today,
         'months': Payroll.MONTH_CHOICES,
         'status_filter': status_filter,
 
