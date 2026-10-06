@@ -1,0 +1,509 @@
+{% extends 'base.html' %}
+
+{% block title %}Inventory Report - Coal Mine{% endblock %}
+{% block page_title %}INVENTORY REPORT{% endblock %}
+
+{% block content %}
+
+<!-- ==================== SCREEN VIEW ==================== -->
+
+<div class="panel mb-3">
+    <form method="get">
+        <div class="row g-2 align-items-end">
+            <div class="col-6 col-md-3">
+                <label class="form-label">Month</label>
+                <select name="month" class="form-select">
+                    {% for num, name in months %}
+                    <option value="{{ num }}" {% if month == num %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label">Year</label>
+                <input type="number" name="year" value="{{ year }}" class="form-control">
+            </div>
+            <div class="col-12 col-md-7">
+                <button type="submit" class="btn btn-amber w-100">
+                    <i class="bi bi-funnel"></i> Generate Report
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="panel mb-3" style="border-left:4px solid var(--accent);">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <div style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Report Period</div>
+            <div style="font-size:20px; font-weight:800; color:var(--text-primary); margin-top:2px;">{{ month_name }} {{ year }}</div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'export_inventory' %}" class="btn btn-outline-amber btn-sm">
+                <i class="bi bi-file-earmark-excel"></i> Export
+            </a>
+            <button onclick="window.print()" class="btn btn-amber btn-sm">
+                <i class="bi bi-printer"></i> Print
+            </button>
+            <a href="{% url 'reports_hub' %}" class="btn btn-outline-amber btn-sm">
+                <i class="bi bi-arrow-left"></i> Reports
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Current Stock KPIs -->
+<div class="row g-2 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-amber">
+            <i class="bi bi-box-seam icon"></i>
+            <h2>{{ total_items }}</h2>
+            <p>Total Items</p>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-green">
+            <i class="bi bi-cash-stack icon"></i>
+            <h2>{{ total_value|floatformat:0 }}</h2>
+            <p>Stock Value (PKR)</p>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-blue">
+            <i class="bi bi-arrow-down-circle-fill icon"></i>
+            <h2>{{ total_in|floatformat:0 }}</h2>
+            <p>Units Received</p>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-red">
+            <i class="bi bi-arrow-up-circle-fill icon"></i>
+            <h2>{{ total_out|floatformat:0 }}</h2>
+            <p>Units Issued</p>
+        </div>
+    </div>
+</div>
+
+<!-- Low Stock Alert -->
+{% if low_stock_items %}
+<div class="panel mb-3" style="border-left:4px solid var(--danger);">
+    <div class="panel-title" style="color:var(--danger);">
+        <i class="bi bi-exclamation-triangle-fill"></i> Low Stock Alerts ({{ low_stock_count }})
+    </div>
+    <div style="overflow-x:auto;">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Category</th>
+                    <th style="text-align:right;">Current Qty</th>
+                    <th style="text-align:right;">Reorder Level</th>
+                    <th>Unit</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in low_stock_items %}
+                <tr>
+                    <td><strong>{{ item.name }}</strong></td>
+                    <td>{{ item.category }}</td>
+                    <td style="text-align:right; color:var(--danger); font-weight:700;">{{ item.quantity }}</td>
+                    <td style="text-align:right;">{{ item.reorder_level }}</td>
+                    <td>{{ item.unit }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Category Breakdown (current stock) -->
+<div class="panel mb-3">
+    <div class="panel-title"><i class="bi bi-grid-3x3-gap-fill"></i> Current Stock by Category</div>
+    {% if category_list %}
+    <div style="overflow-x:auto;">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th style="text-align:right;">Items</th>
+                    <th style="text-align:right;">Total Quantity</th>
+                    <th style="text-align:right;">Stock Value (PKR)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for name, data in category_list %}
+                <tr>
+                    <td><strong>{{ name }}</strong></td>
+                    <td style="text-align:right;">{{ data.items }}</td>
+                    <td style="text-align:right;">{{ data.qty|floatformat:0 }}</td>
+                    <td style="text-align:right; color:var(--accent); font-weight:700;">{{ data.value|floatformat:0 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted); text-align:center; padding:16px; margin:0;">No items in stock.</p>
+    {% endif %}
+</div>
+
+<!-- Movements by Category -->
+<div class="panel mb-3">
+    <div class="panel-title"><i class="bi bi-arrow-left-right"></i> Stock Movements — {{ month_name }} {{ year }}</div>
+    {% if movement_cat_list %}
+    <div style="overflow-x:auto;">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th style="text-align:right;">In (units)</th>
+                    <th style="text-align:right;">In Value (PKR)</th>
+                    <th style="text-align:right;">Out (units)</th>
+                    <th style="text-align:right;">Out Value (PKR)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for name, data in movement_cat_list %}
+                <tr>
+                    <td><strong>{{ name }}</strong></td>
+                    <td style="text-align:right; color:var(--success);">{{ data.in|floatformat:0 }}</td>
+                    <td style="text-align:right;">{{ data.in_val|floatformat:0 }}</td>
+                    <td style="text-align:right; color:var(--danger);">{{ data.out|floatformat:0 }}</td>
+                    <td style="text-align:right;">{{ data.out_val|floatformat:0 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted); text-align:center; padding:16px; margin:0;">No movements this period.</p>
+    {% endif %}
+</div>
+
+<!-- Fuel Usage by Equipment -->
+{% if fuel_list %}
+<div class="panel">
+    <div class="panel-title"><i class="bi bi-fuel-pump-fill"></i> Fuel Issued to Equipment — {{ month_name }} {{ year }}</div>
+    <div style="overflow-x:auto;">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Equipment</th>
+                    <th style="text-align:right;">Liters</th>
+                    <th style="text-align:right;">Cost (PKR)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for name, data in fuel_list %}
+                <tr>
+                    <td><strong>{{ name }}</strong></td>
+                    <td style="text-align:right; color:var(--accent); font-weight:700;">{{ data.liters|floatformat:0 }}</td>
+                    <td style="text-align:right;">{{ data.cost|floatformat:0 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+
+<!-- ==================== PRINT VIEW ==================== -->
+{% block print_view %}
+
+<style>
+    .print-doc { display: none; }
+
+    @media print {
+        .app-container { display: none !important; }
+        .print-doc { display: block !important; }
+
+        html, body {
+            background: #fff !important;
+            color: #000 !important;
+            font-family: Georgia, 'Times New Roman', serif !important;
+            font-size: 10.5pt !important;
+            line-height: 1.4 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        @page {
+            size: A4;
+            margin: 18mm 15mm;
+        }
+
+        .print-doc * {
+            background: transparent !important;
+            color: #000 !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+        }
+
+        .print-doc .company {
+            text-align: center;
+            font-size: 20pt;
+            font-weight: bold;
+            letter-spacing: 4pt;
+            border-bottom: 2pt solid #000;
+            padding-bottom: 8pt;
+            margin-bottom: 4pt;
+        }
+        .print-doc .report-type {
+            text-align: center;
+            font-size: 13pt;
+            font-weight: bold;
+            letter-spacing: 3pt;
+            margin-top: 6pt;
+        }
+        .print-doc .report-period {
+            text-align: center;
+            font-size: 12pt;
+            font-weight: bold;
+            margin-top: 4pt;
+            margin-bottom: 14pt;
+        }
+        .print-doc .meta-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 9pt;
+            border-bottom: 1pt solid #000;
+            padding-bottom: 6pt;
+            margin-bottom: 18pt;
+        }
+
+        .print-doc .section {
+            font-size: 11pt;
+            font-weight: bold;
+            letter-spacing: 2pt;
+            text-transform: uppercase;
+            border-bottom: 1pt solid #000;
+            padding-bottom: 3pt;
+            margin: 16pt 0 10pt 0;
+            page-break-after: avoid;
+        }
+
+        .print-doc .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14pt;
+        }
+        .print-doc .summary-table td {
+            padding: 6pt 8pt;
+            border-bottom: 0.5pt dotted #999;
+            font-size: 10.5pt;
+        }
+        .print-doc .summary-table td:last-child {
+            text-align: right;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .print-doc .summary-table tr.total td {
+            border-top: 1.5pt solid #000;
+            border-bottom: 1.5pt solid #000;
+            padding-top: 8pt;
+            padding-bottom: 8pt;
+            font-size: 11.5pt;
+        }
+
+        .print-doc .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14pt;
+        }
+        .print-doc .data-table thead {
+            display: table-header-group;
+        }
+        .print-doc .data-table th {
+            background: #dcdcdc !important;
+            border: 1pt solid #000;
+            padding: 6pt 8pt;
+            font-size: 9.5pt;
+            font-weight: bold;
+            text-align: left;
+            text-transform: uppercase;
+            letter-spacing: 0.5pt;
+        }
+        .print-doc .data-table td {
+            border: 0.5pt solid #333;
+            padding: 5pt 8pt;
+            font-size: 10pt;
+            vertical-align: middle;
+        }
+        .print-doc .data-table tbody tr:nth-child(even) td {
+            background: #f4f4f4 !important;
+        }
+        .print-doc .data-table tfoot td {
+            background: #dcdcdc !important;
+            border: 1pt solid #000;
+            font-weight: bold;
+            font-size: 10pt;
+            padding: 6pt 8pt;
+        }
+        .print-doc .data-table tr {
+            page-break-inside: avoid;
+        }
+        .print-doc .num { text-align: right; }
+
+        .print-doc .footer {
+            display: flex;
+            justify-content: space-between;
+            border-top: 1pt solid #000;
+            padding-top: 6pt;
+            margin-top: 24pt;
+            font-size: 8.5pt;
+        }
+    }
+</style>
+
+<div class="print-doc">
+
+    <div class="company">COAL MINE COMPANY</div>
+    <div class="report-type">INVENTORY REPORT</div>
+    <div class="report-period">{{ month_name }} {{ year }}</div>
+
+    <div class="meta-row">
+        <span>Generated: {{ now|date:"d M Y" }}</span>
+        <span>Prepared by: {{ request.user.username }}</span>
+    </div>
+
+    <!-- 1. SUMMARY -->
+    <div class="section">1. Summary</div>
+    <table class="summary-table">
+        <tr><td>Total Items in Stock</td><td>{{ total_items }}</td></tr>
+        <tr><td>Total Stock Value</td><td>PKR {{ total_value|floatformat:0 }}</td></tr>
+        <tr><td>Items Below Reorder Level</td><td>{{ low_stock_count }}</td></tr>
+        <tr><td>Stock Received ({{ month_name }})</td><td>{{ total_in|floatformat:0 }} units (PKR {{ in_value|floatformat:0 }})</td></tr>
+        <tr><td>Stock Issued ({{ month_name }})</td><td>{{ total_out|floatformat:0 }} units (PKR {{ out_value|floatformat:0 }})</td></tr>
+        <tr><td>Total Transactions</td><td>{{ transaction_count }}</td></tr>
+    </table>
+
+    <!-- 2. LOW STOCK ALERTS -->
+    {% if low_stock_items %}
+    <div class="section">2. Low Stock Alerts</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Category</th>
+                <th class="num">Current Qty</th>
+                <th class="num">Reorder Level</th>
+                <th>Unit</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in low_stock_items %}
+            <tr>
+                <td>{{ item.name }}</td>
+                <td>{{ item.category }}</td>
+                <td class="num">{{ item.quantity }}</td>
+                <td class="num">{{ item.reorder_level }}</td>
+                <td>{{ item.unit }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- 3. STOCK BY CATEGORY -->
+    {% if category_list %}
+    <div class="section">{% if low_stock_items %}3{% else %}2{% endif %}. Current Stock by Category</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th class="num">Items</th>
+                <th class="num">Total Quantity</th>
+                <th class="num">Stock Value (PKR)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for name, data in category_list %}
+            <tr>
+                <td>{{ name }}</td>
+                <td class="num">{{ data.items }}</td>
+                <td class="num">{{ data.qty|floatformat:0 }}</td>
+                <td class="num">{{ data.value|floatformat:0 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td>TOTAL</td>
+                <td class="num">{{ total_items }}</td>
+                <td class="num"></td>
+                <td class="num">{{ total_value|floatformat:0 }}</td>
+            </tr>
+        </tfoot>
+    </table>
+    {% endif %}
+
+    <!-- 4. MOVEMENTS BY CATEGORY -->
+    {% if movement_cat_list %}
+    <div class="section">4. Stock Movements — {{ month_name }} {{ year }}</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th class="num">In (units)</th>
+                <th class="num">In Value (PKR)</th>
+                <th class="num">Out (units)</th>
+                <th class="num">Out Value (PKR)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for name, data in movement_cat_list %}
+            <tr>
+                <td>{{ name }}</td>
+                <td class="num">{{ data.in|floatformat:0 }}</td>
+                <td class="num">{{ data.in_val|floatformat:0 }}</td>
+                <td class="num">{{ data.out|floatformat:0 }}</td>
+                <td class="num">{{ data.out_val|floatformat:0 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td>TOTAL</td>
+                <td class="num">{{ total_in|floatformat:0 }}</td>
+                <td class="num">{{ in_value|floatformat:0 }}</td>
+                <td class="num">{{ total_out|floatformat:0 }}</td>
+                <td class="num">{{ out_value|floatformat:0 }}</td>
+            </tr>
+        </tfoot>
+    </table>
+    {% endif %}
+
+    <!-- 5. FUEL USAGE -->
+    {% if fuel_list %}
+    <div class="section">5. Fuel Issued to Equipment</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Equipment</th>
+                <th class="num">Liters</th>
+                <th class="num">Cost (PKR)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for name, data in fuel_list %}
+            <tr>
+                <td>{{ name }}</td>
+                <td class="num">{{ data.liters|floatformat:0 }}</td>
+                <td class="num">{{ data.cost|floatformat:0 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <div class="footer">
+        <span>Coal Mine Management System</span>
+        <span>Generated: {{ now|date:"d M Y" }}</span>
+    </div>
+
+</div>
+
+{% endblock %}

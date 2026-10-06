@@ -2726,8 +2726,131 @@ def report_payroll(request):
 
 @role_required('Manager', 'Accountant')
 def report_inventory(request):
-    return render(request, 'reports/coming_soon.html', {'report_name': 'Inventory Report', 'report_icon': 'bi-box-seam'})
+    from datetime import date
+    from calendar import month_abbr
+    from decimal import Decimal
 
+    today = date.today()
+    month_str = request.GET.get('month', '')
+    year_str = request.GET.get('year', '')
+
+    try:
+        month = int(month_str) if month_str else today.month
+    except ValueError:
+        month = today.month
+    try:
+        year = int(year_str) if year_str else today.year
+    except ValueError:
+        year = today.year
+
+    # Current stock status (all non-voided items)
+    all_items = list(InventoryItem.objects.filter(voided=False))
+    total_items = len(all_items)
+    total_value = sum(float(i.quantity) * float(i.unit_price) for i in all_items)
+    low_stock_items = [i for i in all_items if i.is_low_stock]
+    low_stock_count = len(low_stock_items)
+
+    # Transactions for the period
+    transactions = StockTransaction.objects.filter(
+        date__year=year,
+        date__month=month,
+    ).select_related('item', 'issued_to_equipment', 'issued_to_employee', 'issued_to_mine')
+
+    total_in = Decimal('0')
+    total_out = Decimal('0')
+    in_value = Decimal('0')
+    out_value = Decimal('0')
+
+    for t in transactions:
+        if t.transaction_type == 'IN':
+            total_in += t.quantity
+            in_value += (t.quantity * (t.item.unit_price or 0))
+        else:
+            total_out += t.quantity
+            out_value += (t.quantity * (t.item.unit_price or 0))
+
+    transaction_count = transactions.count()
+
+    # By Category (current stock)
+    category_data = {}
+    for item in all_items:
+        cat = item.category
+        if cat not in category_data:
+            category_data[cat] = {'items': 0, 'value': 0, 'qty': 0}
+        category_data[cat]['items'] += 1
+        category_data[cat]['value'] += float(item.quantity) * float(item.unit_price)
+        category_data[cat]['qty'] += float(item.quantity)
+    category_list = sorted(category_data.items(), key=lambda x: x[1]['value'], reverse=True)
+
+    # By Category (movements in period)
+    movement_by_category = {}
+    for t in transactions:
+        cat = t.item.category
+        if cat not in movement_by_category:
+            movement_by_category[cat] = {'in': 0, 'out': 0, 'in_val': 0, 'out_val': 0}
+        if t.transaction_type == 'IN':
+            movement_by_category[cat]['in'] += float(t.quantity)
+            movement_by_category[cat]['in_val'] += float(t.quantity) * float(t.item.unit_price or 0)
+        else:
+            movement_by_category[cat]['out'] += float(t.quantity)
+            movement_by_category[cat]['out_val'] += float(t.quantity) * float(t.item.unit_price or 0)
+    movement_cat_list = sorted(movement_by_category.items(), key=lambda x: x[1]['in_val'] + x[1]['out_val'], reverse=True)
+
+    # Fuel consumed by equipment (only OUT transactions of Fuel category)
+    fuel_usage = {}
+    fuel_txns = transactions.filter(transaction_type='OUT', item__category='Fuel')
+    for t in fuel_txns:
+        if t.issued_to_equipment:
+            eq_name = f"{t.issued_to_equipment.equipment_code} — {t.issued_to_equipment.name}"
+            if eq_name not in fuel_usage:
+                fuel_usage[eq_name] = {'liters': 0, 'cost': 0}
+            fuel_usage[eq_name]['liters'] += float(t.quantity)
+            fuel_usage[eq_name]['cost'] += float(t.quantity) * float(t.item.unit_price or 0)
+    fuel_list = sorted(fuel_usage.items(), key=lambda x: x[1]['liters'], reverse=True)
+
+    # Previous month for trend
+    prev_month = month - 1
+    prev_year = year
+    if prev_month <= 0:
+        prev_month = 12
+        prev_year -= 1
+
+    prev_out = sum(
+        t.quantity for t in StockTransaction.objects.filter(
+            transaction_type='OUT', date__year=prev_year, date__month=prev_month
+        )
+    ) or Decimal('0')
+
+    trend_pct = None
+    if prev_out > 0:
+        trend_pct = round(((float(total_out) - float(prev_out)) / float(prev_out)) * 100, 1)
+
+    context = {
+        'month': month,
+        'year': year,
+        'month_name': month_abbr[month],
+        'months': Payroll.MONTH_CHOICES,
+        'now': today,
+
+        'total_items': total_items,
+        'total_value': total_value,
+        'low_stock_count': low_stock_count,
+        'low_stock_items': low_stock_items,
+
+        'total_in': total_in,
+        'total_out': total_out,
+        'in_value': in_value,
+        'out_value': out_value,
+        'transaction_count': transaction_count,
+        'trend_pct': trend_pct,
+
+        'category_list': category_list,
+        'movement_cat_list': movement_cat_list,
+        'fuel_list': fuel_list,
+
+        'transactions': transactions.order_by('-date', '-created_at'),
+    }
+    return render(request, 'reports/inventory.html', context)
 
 @role_required('Manager', 'Accountant')
 def report_attendance(request):
