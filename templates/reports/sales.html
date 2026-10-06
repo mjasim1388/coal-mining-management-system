@@ -1,0 +1,424 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Monthly Sales Report - Coal Mine{% endblock %}
+{% block page_title %}MONTHLY SALES REPORT{% endblock %}
+
+{% block content %}
+
+<!-- Filter Bar -->
+<div class="panel mb-3">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label">Month</label>
+            <select name="month" class="form-select">
+                {% for num, name in months %}
+                <option value="{{ num }}" {% if month == num %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Year</label>
+            <input type="number" name="year" value="{{ year }}" class="form-control">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Customer</label>
+            <select name="customer" class="form-select">
+                <option value="">All Customers</option>
+                {% for c in all_customers %}
+                <option value="{{ c.pk }}" {% if customer_filter == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <button type="submit" class="btn btn-amber w-100">
+                <i class="bi bi-funnel"></i> Generate Report
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Period Header -->
+<div class="panel mb-3" style="border-left:4px solid var(--accent);">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <div>
+            <div style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Report Period</div>
+            <div style="font-size:22px; font-weight:800; color:var(--text-primary); margin-top:4px;">{{ month_name }} {{ year }}</div>
+        </div>
+        <div style="display:flex; gap:8px;">
+            <a href="{% url 'export_sales' %}" class="btn btn-outline-amber">
+                <i class="bi bi-file-earmark-excel"></i> Export to Excel
+            </a>
+            <button onclick="window.print()" class="btn btn-outline-amber">
+                <i class="bi bi-printer"></i> Print
+            </button>
+            <a href="{% url 'reports_hub' %}" class="btn btn-outline-amber">
+                <i class="bi bi-arrow-left"></i> All Reports
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- KPI Cards with Visual Bars -->
+<style>
+    .kpi-visual {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border-light);
+    }
+    .kpi-bar-track {
+        width: 100%;
+        height: 8px;
+        background: var(--bg-app);
+        border-radius: 4px;
+        overflow: hidden;
+        border: 1px solid var(--border-light);
+        position: relative;
+    }
+    .kpi-bar-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.6s ease;
+    }
+    .kpi-bar-green  { background: linear-gradient(90deg, #2fb67c, #4ade80); }
+    .kpi-bar-blue   { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+    .kpi-bar-red    { background: linear-gradient(90deg, #dc2626, #ef5b5b); }
+    .kpi-bar-amber  { background: linear-gradient(90deg, #d97706, #fbbf24); }
+    .kpi-bar-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+        font-weight: 600;
+    }
+    .kpi-bar-label strong { color: var(--text-primary); }
+</style>
+
+<div class="row g-3 mb-3">
+    <!-- Total Sales -->
+    <div class="col-md-3">
+        <div class="stat-card stat-green" style="height:100%;">
+            <i class="bi bi-cash-stack icon"></i>
+            <h2>{{ total_sales|floatformat:0 }}</h2>
+            <p>Total Sales (PKR)</p>
+
+            <div class="kpi-visual">
+                <div class="kpi-bar-label">
+                    <span>vs last month</span>
+                    {% if trend_pct is not None %}
+                        <strong style="color: {% if trend_pct > 0 %}var(--success){% elif trend_pct < 0 %}var(--danger){% else %}var(--text-muted){% endif %};">
+                            <i class="bi bi-arrow-{% if trend_pct > 0 %}up{% elif trend_pct < 0 %}down{% else %}right{% endif %}"></i>
+                            {{ trend_pct }}%
+                        </strong>
+                    {% else %}
+                        <strong style="color:var(--text-muted);">—</strong>
+                    {% endif %}
+                </div>
+                <div class="kpi-bar-track">
+                    <div class="kpi-bar-fill kpi-bar-green" data-width="{{ trend_pct|default:100 }}"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cash Received -->
+    <div class="col-md-3">
+        <div class="stat-card stat-blue" style="height:100%;">
+            <i class="bi bi-wallet2 icon"></i>
+            <h2>{{ total_received|floatformat:0 }}</h2>
+            <p>Cash Received (PKR)</p>
+
+            <div class="kpi-visual">
+                <div class="kpi-bar-label">
+                    <span>Collection rate</span>
+                    <strong>{% if total_sales > 0 %}{% widthratio total_received total_sales 100 %}{% else %}0{% endif %}%</strong>
+                </div>
+                <div class="kpi-bar-track">
+                    <div class="kpi-bar-fill kpi-bar-blue" data-width="{% if total_sales > 0 %}{% widthratio total_received total_sales 100 %}{% else %}0{% endif %}"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Outstanding -->
+    <div class="col-md-3">
+        <div class="stat-card stat-red" style="height:100%;">
+            <i class="bi bi-hourglass-split icon"></i>
+            <h2>{{ total_outstanding|floatformat:0 }}</h2>
+            <p>Outstanding (PKR)</p>
+
+            <div class="kpi-visual">
+                <div class="kpi-bar-label">
+                    <span>Uncollected</span>
+                    <strong>{% if total_sales > 0 %}{% widthratio total_outstanding total_sales 100 %}{% else %}0{% endif %}%</strong>
+                </div>
+                <div class="kpi-bar-track">
+                    <div class="kpi-bar-fill kpi-bar-red" data-width="{% if total_sales > 0 %}{% widthratio total_outstanding total_sales 100 %}{% else %}0{% endif %}"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tons Sold -->
+    <div class="col-md-3">
+        <div class="stat-card stat-amber" style="height:100%;">
+            <i class="bi bi-truck icon"></i>
+            <h2>{{ total_tons|floatformat:0 }}</h2>
+            <p>Tons Sold</p>
+
+            <div class="kpi-visual">
+                <div class="kpi-bar-label">
+                    <span>Dispatches</span>
+                    <strong>{{ dispatch_count }}</strong>
+                </div>
+                <div class="kpi-bar-track">
+                    <div class="kpi-bar-fill kpi-bar-amber" data-width="100"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Daily Sales Chart -->
+<div class="panel mb-3">
+    <div class="panel-title"><i class="bi bi-graph-up"></i> Daily Sales — {{ month_name }} {{ year }}</div>
+    <div style="position:relative; height:240px;">
+        <canvas id="dailyChart"></canvas>
+    </div>
+</div>
+
+<!-- Two column: Customer + Mine breakdown -->
+<div class="row g-3 mb-3">
+    <div class="col-md-6">
+        <div class="panel h-100">
+            <div class="panel-title"><i class="bi bi-people-fill"></i> Sales by Customer</div>
+            {% if customer_list %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th style="text-align:right;">Dispatches</th>
+                        <th style="text-align:right;">Tons</th>
+                        <th style="text-align:right;">Sales (PKR)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for name, data in customer_list %}
+                    <tr>
+                        <td><strong>{{ name }}</strong></td>
+                        <td style="text-align:right;">{{ data.count }}</td>
+                        <td style="text-align:right;">{{ data.tons|floatformat:0 }}</td>
+                        <td style="text-align:right; color:var(--accent); font-weight:700;">{{ data.sales|floatformat:0 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color:var(--text-muted); text-align:center; padding:24px; margin:0;">No sales this period.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="panel h-100">
+            <div class="panel-title"><i class="bi bi-geo-alt-fill"></i> Sales by Mine</div>
+            {% if mine_list %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Mine</th>
+                        <th style="text-align:right;">Dispatches</th>
+                        <th style="text-align:right;">Tons</th>
+                        <th style="text-align:right;">Sales (PKR)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for name, data in mine_list %}
+                    <tr>
+                        <td><strong>{{ name }}</strong></td>
+                        <td style="text-align:right;">{{ data.count }}</td>
+                        <td style="text-align:right;">{{ data.tons|floatformat:0 }}</td>
+                        <td style="text-align:right; color:var(--accent); font-weight:700;">{{ data.sales|floatformat:0 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color:var(--text-muted); text-align:center; padding:24px; margin:0;">No data.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Payment Status Breakdown -->
+<div class="panel mb-3">
+    <div class="panel-title"><i class="bi bi-credit-card-fill"></i> Payment Status Breakdown</div>
+    <div class="row g-3">
+        <div class="col-md-4">
+            <div style="padding:16px; background:var(--success-soft); border-radius:8px; border:1px solid var(--success);">
+                <div style="font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--success); font-weight:700;">Paid</div>
+                <div style="font-size:24px; font-weight:800; color:var(--text-primary); margin:6px 0;">{{ paid_amount|floatformat:0 }}</div>
+                <small style="color:var(--text-muted);">{{ paid_count }} dispatch{{ paid_count|pluralize }} · PKR</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div style="padding:16px; background:var(--warning-soft); border-radius:8px; border:1px solid var(--warning);">
+                <div style="font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--warning); font-weight:700;">Partial</div>
+                <div style="font-size:24px; font-weight:800; color:var(--text-primary); margin:6px 0;">{{ partial_amount|floatformat:0 }}</div>
+                <small style="color:var(--text-muted);">{{ partial_count }} dispatch{{ partial_count|pluralize }} · PKR</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div style="padding:16px; background:var(--danger-soft); border-radius:8px; border:1px solid var(--danger);">
+                <div style="font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--danger); font-weight:700;">Unpaid</div>
+                <div style="font-size:24px; font-weight:800; color:var(--text-primary); margin:6px 0;">{{ unpaid_amount|floatformat:0 }}</div>
+                <small style="color:var(--text-muted);">{{ unpaid_count }} dispatch{{ unpaid_count|pluralize }} · PKR</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- All Dispatches -->
+<div class="panel">
+    <div class="panel-title"><i class="bi bi-list-ul"></i> All Dispatches ({{ dispatch_count }})</div>
+    {% if all_dispatches %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Dispatch No</th>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Mine</th>
+                <th>Truck</th>
+                <th style="text-align:right;">Tons</th>
+                <th style="text-align:right;">Total (PKR)</th>
+                <th style="text-align:right;">Paid</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in all_dispatches %}
+            <tr>
+                <td><span style="color:var(--accent); font-family:monospace; font-size:12px;">{{ s.dispatch_no|default:s.invoice_no }}</span></td>
+                <td>{{ s.date }}</td>
+                <td>{{ s.customer.name }}</td>
+                <td>{{ s.mine.name|default:"—" }}</td>
+                <td>{{ s.truck_no|default:"—" }}</td>
+                <td style="text-align:right;">{{ s.quantity_tons }}</td>
+                <td style="text-align:right; font-weight:700; color:var(--accent);">{{ s.total_amount|floatformat:0 }}</td>
+                <td style="text-align:right;">{{ s.amount_paid|floatformat:0 }}</td>
+                <td>
+                    {% if s.payment_status == 'Paid' %}
+                        <span class="badge-status badge-active">PAID</span>
+                    {% elif s.payment_status == 'Partial' %}
+                        <span class="badge-status badge-leave">PARTIAL</span>
+                    {% else %}
+                        <span class="badge-status badge-inactive">UNPAID</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr style="border-top:2px solid var(--border-medium); font-weight:700;">
+                <td colspan="5">TOTAL</td>
+                <td style="text-align:right;">{{ total_tons|floatformat:0 }}</td>
+                <td style="text-align:right; color:var(--accent); font-size:15px;">{{ total_sales|floatformat:0 }}</td>
+                <td style="text-align:right;">{{ total_received|floatformat:0 }}</td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+    {% else %}
+    <p style="color:var(--text-muted); text-align:center; padding:30px; margin:0;">
+        No dispatches in this period.
+    </p>
+    {% endif %}
+</div>
+
+<!-- Chart Data -->
+{{ daily_labels|json_script:"daily_labels" }}
+{{ daily_data|json_script:"daily_data" }}
+
+<script src="{% static 'vendor/chart.umd.min.js' %}"></script>
+<script>
+    (function() {
+        const labels = JSON.parse(document.getElementById('daily_labels').textContent);
+        const data = JSON.parse(document.getElementById('daily_data').textContent);
+        const style = getComputedStyle(document.documentElement);
+        const accent = style.getPropertyValue('--accent').trim();
+        const borderLight = style.getPropertyValue('--border-light').trim();
+        const textMuted = style.getPropertyValue('--text-muted').trim();
+
+        const ctx = document.getElementById('dailyChart').getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+        gradient.addColorStop(0, 'rgba(47, 182, 124, 0.4)');
+        gradient.addColorStop(1, 'rgba(47, 182, 124, 0.02)');
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Daily Sales (PKR)',
+                    data: data,
+                    backgroundColor: accent,
+                    borderRadius: 4,
+                    barPercentage: 0.7,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.85)',
+                        padding: 10,
+                        callbacks: {
+                            label: function(ctx) {
+                                return 'PKR ' + Number(ctx.parsed.y).toLocaleString();
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: textMuted, font: { size: 10 } }, grid: { display: false } },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: textMuted, font: { size: 10 },
+                            callback: function(v) {
+                                if (v >= 1000000) return (v / 1000000).toFixed(1) + 'M';
+                                if (v >= 1000) return (v / 1000).toFixed(0) + 'K';
+                                return v;
+                            }
+                        },
+                        grid: { color: borderLight, drawBorder: false }
+                    }
+                }
+            }
+        });
+    })();
+
+    <script>
+    (function() {
+        // Animate the KPI bars after page load
+        requestAnimationFrame(function() {
+            document.querySelectorAll('.kpi-bar-fill[data-width]').forEach(function(bar) {
+                var w = parseFloat(bar.dataset.width) || 0;
+                // Clamp between 0 and 100
+                if (w < 0) w = Math.min(100, Math.abs(w));
+                if (w > 100) w = 100;
+                // Small delay so the transition animates
+                setTimeout(function() {
+                    bar.style.width = w + '%';
+                }, 100);
+            });
+        });
+    })();
+</script>
+</script>
+
+{% endblock %}

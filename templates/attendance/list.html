@@ -5,13 +5,14 @@
 
 {% block content %}
 
+<!-- Filter Bar -->
 <div class="panel mb-3">
     <form method="get" class="row g-2 align-items-end">
-        <div class="col-md-3">
+        <div class="col-6 col-md-3">
             <label class="form-label">Date</label>
             <input type="date" name="date" value="{{ date_filter }}" class="form-control">
         </div>
-        <div class="col-md-3">
+        <div class="col-6 col-md-3">
             <label class="form-label">Status</label>
             <select name="status" class="form-select">
                 <option value="">All</option>
@@ -21,14 +22,14 @@
                 <option value="Half Day" {% if status_filter == 'Half Day' %}selected{% endif %}>Half Day</option>
             </select>
         </div>
-        <div class="col-md-3">
+        <div class="col-6 col-md-3">
             <label class="form-label">Show Voided</label>
             <select name="show_voided" class="form-select">
                 <option value="">Hide</option>
                 <option value="1" {% if show_voided %}selected{% endif %}>Show</option>
             </select>
         </div>
-        <div class="col-md-3">
+        <div class="col-6 col-md-3">
             <button type="submit" class="btn btn-amber w-100">
                 <i class="bi bi-funnel"></i> Filter
             </button>
@@ -36,20 +37,37 @@
     </form>
 </div>
 
+<!-- KPI Card -->
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="stat-card stat-amber">
+            <i class="bi bi-calendar-check icon"></i>
+            <h2>{{ records|length }}</h2>
+            <p>Attendance Records</p>
+        </div>
+    </div>
+</div>
+
+<!-- Table -->
 <div class="panel">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div class="panel-title mb-0">
             <i class="bi bi-calendar-check"></i> Records ({{ records|length }})
         </div>
-        <div>
-            <a href="{% url 'attendance_punch' %}" class="btn btn-amber">
-                <i class="bi bi-fingerprint"></i> Punch In / Out
+        <div class="d-flex gap-2 flex-wrap">
+            {% if is_manager or is_accountant %}
+            <a href="{% url 'report_attendance' %}" class="btn btn-outline-amber btn-sm">
+                <i class="bi bi-file-earmark-bar-graph"></i> Report
             </a>
-            <a href="{% url 'export_attendance' %}" class="btn btn-outline-amber">
+            <a href="{% url 'export_attendance' %}" class="btn btn-outline-amber btn-sm">
                 <i class="bi bi-file-earmark-excel"></i> Export
             </a>
+            <a href="{% url 'attendance_punch' %}" class="btn btn-amber btn-sm">
+                <i class="bi bi-fingerprint"></i> Punch In / Out
+            </a>
+            {% endif %}
             {% if is_manager %}
-            <a href="{% url 'attendance_add' %}" class="btn btn-outline-amber">
+            <a href="{% url 'attendance_add' %}" class="btn btn-outline-amber btn-sm">
                 <i class="bi bi-plus-lg"></i> Add Manually
             </a>
             {% endif %}
@@ -57,78 +75,80 @@
     </div>
 
     {% if records %}
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Employee</th>
-                <th>Photo In</th>
-                <th>Photo Out</th>
-                <th>Shift</th>
-                <th>Status</th>
-                <th>Check In</th>
-                <th>Check Out</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for r in records %}
-            <tr {% if r.voided %}style="opacity:0.5;"{% endif %}>
-                <td>
-                    {{ r.date }}
-                    {% if r.voided %}
-                        <span class="badge-status badge-inactive" style="margin-left:4px;">VOIDED</span>
-                    {% endif %}
-                </td>
-                <td>{{ r.employee.first_name }} {{ r.employee.last_name }} ({{ r.employee.employee_code }})</td>
-                <td>
-                    {% if r.photo %}
-                    <img src="{{ r.photo.url }}" alt="Check-in"
-                        style="width:44px; height:44px; object-fit:cover; border-radius:6px; border:1px solid var(--border-light); cursor:pointer;"
-                        onclick="window.open('{{ r.photo.url }}', '_blank');">
-                    {% else %}
-                    <span style="color:var(--text-muted); font-size:12px;">—</span>
-                    {% endif %}
-                </td>
-                <td>
-                    {% if r.photo_out %}
-                    <img src="{{ r.photo_out.url }}" alt="Check-out"
-                        style="width:44px; height:44px; object-fit:cover; border-radius:6px; border:1px solid var(--border-light); cursor:pointer;"
-                        onclick="window.open('{{ r.photo_out.url }}', '_blank');">
-                    {% else %}
-                    <span style="color:var(--text-muted); font-size:12px;">—</span>
-                    {% endif %}
-                </td>
-                <td>{{ r.shift }}</td>
-                <td>
-                    {% if r.status == 'Present' %}
-                    <span class="badge-status badge-active">PRESENT</span>
-                    {% elif r.status == 'Absent' %}
-                    <span class="badge-status badge-inactive">ABSENT</span>
-                    {% elif r.status == 'Leave' %}
-                    <span class="badge-status badge-leave">LEAVE</span>
-                    {% else %}
-                    <span class="badge-status badge-leave">HALF DAY</span>
-                    {% endif %}
-                </td>
-                <td>{{ r.check_in|default:"—" }}</td>
-                <td>{{ r.check_out|default:"—" }}</td>
-                <td>
-                    {% if is_manager and not r.voided %}
-                    <a href="{% url 'attendance_edit' r.pk %}" class="btn btn-sm btn-outline-amber" title="Edit">
-                        <i class="bi bi-pencil"></i>
-                    </a>
-                    <a href="{% url 'attendance_void' r.pk %}" class="btn btn-sm btn-outline-danger" title="Void">
-                        <i class="bi bi-slash-circle"></i>
-                    </a>
-                    {% else %}
-                    <span style="color:var(--text-muted); font-size:12px;">—</span>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div style="overflow-x:auto;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Employee</th>
+                    <th>Photo In</th>
+                    <th>Photo Out</th>
+                    <th>Shift</th>
+                    <th>Status</th>
+                    <th>Check In</th>
+                    <th>Check Out</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in records %}
+                <tr {% if r.voided %}style="opacity:0.5;"{% endif %}>
+                    <td>
+                        {{ r.date }}
+                        {% if r.voided %}
+                            <span class="badge-status badge-inactive" style="margin-left:4px;">VOIDED</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ r.employee.first_name }} {{ r.employee.last_name }} <small style="color:var(--text-muted);">({{ r.employee.employee_code }})</small></td>
+                    <td>
+                        {% if r.photo %}
+                        <img src="{{ r.photo.url }}" alt="Check-in"
+                            style="width:44px; height:44px; object-fit:cover; border-radius:6px; border:1px solid var(--border-light); cursor:pointer;"
+                            onclick="window.open('{{ r.photo.url }}', '_blank');">
+                        {% else %}
+                        <span style="color:var(--text-muted); font-size:12px;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if r.photo_out %}
+                        <img src="{{ r.photo_out.url }}" alt="Check-out"
+                            style="width:44px; height:44px; object-fit:cover; border-radius:6px; border:1px solid var(--border-light); cursor:pointer;"
+                            onclick="window.open('{{ r.photo_out.url }}', '_blank');">
+                        {% else %}
+                        <span style="color:var(--text-muted); font-size:12px;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ r.shift }}</td>
+                    <td>
+                        {% if r.status == 'Present' %}
+                        <span class="badge-status badge-active">PRESENT</span>
+                        {% elif r.status == 'Absent' %}
+                        <span class="badge-status badge-inactive">ABSENT</span>
+                        {% elif r.status == 'Leave' %}
+                        <span class="badge-status badge-leave">LEAVE</span>
+                        {% else %}
+                        <span class="badge-status badge-leave">HALF DAY</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ r.check_in|default:"—" }}</td>
+                    <td>{{ r.check_out|default:"—" }}</td>
+                    <td style="white-space:nowrap;">
+                        {% if is_manager and not r.voided %}
+                        <a href="{% url 'attendance_edit' r.pk %}" class="btn btn-sm btn-outline-amber" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <a href="{% url 'attendance_void' r.pk %}" class="btn btn-sm btn-outline-danger" title="Void">
+                            <i class="bi bi-slash-circle"></i>
+                        </a>
+                        {% else %}
+                        <span style="color:var(--text-muted); font-size:12px;">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
     {% else %}
     <p style="color:var(--text-muted); text-align:center; padding:30px;">
         <i class="bi bi-calendar-x" style="font-size:40px; display:block; margin-bottom:10px; opacity:0.5;"></i>

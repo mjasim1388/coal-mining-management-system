@@ -110,5 +110,13 @@ urlpatterns = [
     path('backup/', views.backup_now, name='backup_now'),
     path('backup/list/', views.backup_list, name='backup_list'),
     path('backup/download/<str:filename>/', views.backup_download, name='backup_download'),
+    # Reports
+    path('reports/', views.reports_hub, name='reports_hub'),
+    path('reports/sales/', views.report_sales, name='report_sales'),
+    path('reports/production/', views.report_production, name='report_production'),
+    path('reports/payroll/', views.report_payroll, name='report_payroll'),
+    path('reports/inventory/', views.report_inventory, name='report_inventory'),
+    path('reports/attendance/', views.report_attendance, name='report_attendance'),
+    path('reports/equipment/', views.report_equipment, name='report_equipment'),
 
 ]

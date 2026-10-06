@@ -5,9 +5,10 @@
 
 {% block content %}
 
+<!-- Filter Bar -->
 <div class="panel mb-3">
     <form method="get" class="row g-2 align-items-end">
-        <div class="col-md-3">
+        <div class="col-6 col-md-3">
             <label class="form-label">Month</label>
             <select name="month" class="form-select">
                 <option value="">All</option>
@@ -16,11 +17,11 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-2">
+        <div class="col-6 col-md-2">
             <label class="form-label">Year</label>
-            <input type="number" name="year" value="{{ year_filter }}" class="form-control" placeholder="e.g. 2026">
+            <input type="number" name="year" value="{{ year_filter }}" class="form-control" placeholder="2026">
         </div>
-        <div class="col-md-2">
+        <div class="col-6 col-md-2">
             <label class="form-label">Status</label>
             <select name="status" class="form-select">
                 <option value="">All</option>
@@ -29,14 +30,14 @@
                 <option value="Paid" {% if status_filter == 'Paid' %}selected{% endif %}>Paid</option>
             </select>
         </div>
-        <div class="col-md-2">
+        <div class="col-6 col-md-2">
             <label class="form-label">Show Voided</label>
             <select name="show_voided" class="form-select">
                 <option value="">Hide</option>
                 <option value="1" {% if show_voided %}selected{% endif %}>Show</option>
             </select>
         </div>
-        <div class="col-md-3">
+        <div class="col-12 col-md-3">
             <button type="submit" class="btn btn-amber w-100">
                 <i class="bi bi-funnel"></i> Filter
             </button>
@@ -44,107 +45,114 @@
     </form>
 </div>
 
+<!-- KPI Card -->
 <div class="row g-3 mb-3">
     <div class="col-md-4">
         <div class="stat-card stat-amber">
             <i class="bi bi-cash-stack icon"></i>
-            <h2>{{ total }}</h2>
-            <p>Total Net Payroll</p>
+            <h2>{{ total|floatformat:0 }}</h2>
+            <p>Total Net Payroll (PKR)</p>
         </div>
     </div>
 </div>
 
+<!-- Table -->
 <div class="panel">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div class="panel-title mb-0">
             <i class="bi bi-cash-coin"></i> Payroll Records ({{ payrolls|length }})
         </div>
-        <div>
-            <a href="{% url 'export_payroll' %}" class="btn btn-outline-amber">
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'report_payroll' %}" class="btn btn-outline-amber btn-sm">
+                <i class="bi bi-file-earmark-bar-graph"></i> Report
+            </a>
+            <a href="{% url 'export_payroll' %}" class="btn btn-outline-amber btn-sm">
                 <i class="bi bi-file-earmark-excel"></i> Export
             </a>
-            <a href="{% url 'payroll_generate' %}" class="btn btn-outline-amber">
+            <a href="{% url 'payroll_generate' %}" class="btn btn-outline-amber btn-sm">
                 <i class="bi bi-magic"></i> Auto Generate
             </a>
-            <a href="{% url 'payroll_add' %}" class="btn btn-amber">
+            <a href="{% url 'payroll_add' %}" class="btn btn-amber btn-sm">
                 <i class="bi bi-plus-lg"></i> Add Payroll
             </a>
         </div>
     </div>
 
     {% if payrolls %}
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Employee</th>
-                <th>Period</th>
-                <th>Basic</th>
-                <th>Present</th>
-                <th>Overtime</th>
-                <th>Net Salary</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for p in payrolls %}
-            <tr {% if p.voided %}style="opacity:0.5;"{% endif %}>
-                <td>
-                    <a href="{% url 'payroll_detail' p.pk %}" style="color:var(--accent); text-decoration:none; font-weight:600;">
-                        {{ p.employee.first_name }} {{ p.employee.last_name }}
-                    </a>
-                    <br><small style="color:var(--text-muted);">{{ p.employee.employee_code }}</small>
-                    {% if p.voided %}
-                        <span class="badge-status badge-inactive" style="margin-left:6px;">VOIDED</span>
-                    {% endif %}
-                </td>
-                <td>{{ p.get_month_display }} {{ p.year }}</td>
-                <td>{{ p.basic_salary }}</td>
-                <td>{{ p.present_days }}</td>
-                <td>{{ p.overtime_amount }}</td>
-                <td><strong style="color:var(--accent);">{{ p.net_salary }}</strong></td>
-                <td>
-                    {% if p.status == 'Paid' %}
-                        <span class="badge-status badge-active">PAID</span>
-                    {% elif p.status == 'Approved' %}
-                        <span class="badge-status badge-active">APPROVED</span>
-                    {% elif p.status == 'Paid Pending' %}
-                        <span class="badge-status badge-leave">PAID PENDING</span>
-                    {% else %}
-                        <span class="badge-status badge-inactive">PENDING</span>
-                    {% endif %}
-                </td>
-                <td style="white-space:nowrap;">
-                    <a href="{% url 'payroll_detail' p.pk %}" class="btn btn-sm btn-outline-amber" title="View">
-                        <i class="bi bi-eye"></i>
-                    </a>
-                    {% if p.status == 'Approved' and not p.voided %}
-                    <button type="button"
-                            class="btn btn-sm btn-amber mark-paid-btn"
-                            data-pk="{{ p.pk }}"
-                            data-name="{{ p.employee.first_name }} {{ p.employee.last_name }}"
-                            data-code="{{ p.employee.employee_code }}"
-                            data-period="{{ p.get_month_display }} {{ p.year }}"
-                            data-net="{{ p.net_salary }}"
-                            title="Mark as Paid">
-                        <i class="bi bi-cash-coin"></i> Mark Paid
-                    </button>
-                    {% endif %}
-                    {% if is_manager and not p.voided %}
-                    <a href="{% url 'payroll_edit' p.pk %}" class="btn btn-sm btn-outline-amber" title="Edit">
-                        <i class="bi bi-pencil"></i>
-                    </a>
-                    {% if p.status != 'Paid' %}
-                    <a href="{% url 'payroll_void' p.pk %}" class="btn btn-sm btn-outline-danger" title="Void">
-                        <i class="bi bi-slash-circle"></i>
-                    </a>
-                    {% endif %}
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div style="overflow-x:auto;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Employee</th>
+                    <th>Period</th>
+                    <th style="text-align:right;">Basic</th>
+                    <th style="text-align:right;">Present</th>
+                    <th style="text-align:right;">Overtime</th>
+                    <th style="text-align:right;">Net Salary</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in payrolls %}
+                <tr {% if p.voided %}style="opacity:0.5;"{% endif %}>
+                    <td>
+                        <a href="{% url 'payroll_detail' p.pk %}" style="color:var(--accent); text-decoration:none; font-weight:600;">
+                            {{ p.employee.first_name }} {{ p.employee.last_name }}
+                        </a>
+                        <br><small style="color:var(--text-muted);">{{ p.employee.employee_code }}</small>
+                        {% if p.voided %}
+                            <span class="badge-status badge-inactive" style="margin-left:6px;">VOIDED</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ p.get_month_display }} {{ p.year }}</td>
+                    <td style="text-align:right;">{{ p.basic_salary|floatformat:0 }}</td>
+                    <td style="text-align:right;">{{ p.present_days }}</td>
+                    <td style="text-align:right;">{{ p.overtime_amount|floatformat:0 }}</td>
+                    <td style="text-align:right; color:var(--accent); font-weight:700;">{{ p.net_salary|floatformat:0 }}</td>
+                    <td>
+                        {% if p.status == 'Paid' %}
+                            <span class="badge-status badge-active">PAID</span>
+                        {% elif p.status == 'Approved' %}
+                            <span class="badge-status badge-active">APPROVED</span>
+                        {% elif p.status == 'Paid Pending' %}
+                            <span class="badge-status badge-leave">PAID PENDING</span>
+                        {% else %}
+                            <span class="badge-status badge-inactive">PENDING</span>
+                        {% endif %}
+                    </td>
+                    <td style="white-space:nowrap;">
+                        <a href="{% url 'payroll_detail' p.pk %}" class="btn btn-sm btn-outline-amber" title="View">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        {% if p.status == 'Approved' and not p.voided %}
+                        <button type="button"
+                                class="btn btn-sm btn-amber mark-paid-btn"
+                                data-pk="{{ p.pk }}"
+                                data-name="{{ p.employee.first_name }} {{ p.employee.last_name }}"
+                                data-code="{{ p.employee.employee_code }}"
+                                data-period="{{ p.get_month_display }} {{ p.year }}"
+                                data-net="{{ p.net_salary }}"
+                                title="Mark as Paid">
+                            <i class="bi bi-cash-coin"></i> Paid
+                        </button>
+                        {% endif %}
+                        {% if is_manager and not p.voided %}
+                        <a href="{% url 'payroll_edit' p.pk %}" class="btn btn-sm btn-outline-amber" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        {% if p.status != 'Paid' %}
+                        <a href="{% url 'payroll_void' p.pk %}" class="btn btn-sm btn-outline-danger" title="Void">
+                            <i class="bi bi-slash-circle"></i>
+                        </a>
+                        {% endif %}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
     {% else %}
     <p style="color:var(--text-muted); text-align:center; padding:30px;">
         <i class="bi bi-cash" style="font-size:40px; display:block; margin-bottom:10px; opacity:0.5;"></i>
@@ -153,7 +161,7 @@
     {% endif %}
 </div>
 
-<!-- ============ MARK PAID MODAL ============ -->
+<!-- MARK PAID MODAL -->
 <div class="modal fade" id="markPaidModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="background:var(--bg-panel); border:1px solid var(--border-light); color:var(--text-primary);">

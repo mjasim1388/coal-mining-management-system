@@ -1,0 +1,457 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Production Report - Coal Mine{% endblock %}
+{% block page_title %}PRODUCTION REPORT{% endblock %}
+
+{% block content %}
+
+<!-- Filter Bar (hidden in print) -->
+<div class="panel mb-3 no-print">
+    <form method="get">
+        <div class="row g-2 align-items-end">
+            <div class="col-6 col-md-3">
+                <label class="form-label">Month</label>
+                <select name="month" class="form-select">
+                    {% for num, name in months %}
+                    <option value="{{ num }}" {% if month == num %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label">Year</label>
+                <input type="number" name="year" value="{{ year }}" class="form-control">
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label">Mine</label>
+                <select name="mine" class="form-select">
+                    <option value="">All Mines</option>
+                    {% for m in all_mines %}
+                    <option value="{{ m.pk }}" {% if mine_filter == m.pk|stringformat:"s" %}selected{% endif %}>{{ m.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <button type="submit" class="btn btn-amber w-100">
+                    <i class="bi bi-funnel"></i> Generate Report
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Print-only header -->
+<div class="print-header" style="display:none;">
+    <div style="text-align:center; border-bottom: 3px double #000; padding-bottom: 12px; margin-bottom: 20px;">
+        <h1 style="font-size:22px; letter-spacing:3px; margin:0; color:#000; font-weight:700;">COAL MINE COMPANY</h1>
+        <div style="font-size:13px; letter-spacing:1px; color:#000; margin-top:4px;">PRODUCTION REPORT</div>
+        <div style="font-size:14px; font-weight:700; color:#000; margin-top:8px;">{{ month_name }} {{ year }}</div>
+    </div>
+</div>
+
+<!-- Period Header (screen only) -->
+<div class="panel mb-3 period-header no-print" style="border-left:4px solid var(--accent);">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <div style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Report Period</div>
+            <div style="font-size:20px; font-weight:800; color:var(--text-primary); margin-top:2px;">{{ month_name }} {{ year }}</div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'export_production' %}" class="btn btn-outline-amber btn-sm">
+                <i class="bi bi-file-earmark-excel"></i> Export
+            </a>
+            <button onclick="window.print()" class="btn btn-amber btn-sm">
+                <i class="bi bi-printer"></i> Print
+            </button>
+            <a href="{% url 'reports_hub' %}" class="btn btn-outline-amber btn-sm">
+                <i class="bi bi-arrow-left"></i> Reports
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- KPI Summary (compact, print-friendly) -->
+<div class="kpi-print-grid">
+    <div class="kpi-print-item">
+        <div class="kpi-print-label">Coal Produced</div>
+        <div class="kpi-print-value">{{ total_tons|floatformat:0 }} <span class="kpi-print-unit">tons</span></div>
+    </div>
+    <div class="kpi-print-item">
+        <div class="kpi-print-label">Overburden</div>
+        <div class="kpi-print-value">{{ total_overburden|floatformat:0 }} <span class="kpi-print-unit">tons</span></div>
+    </div>
+    <div class="kpi-print-item">
+        <div class="kpi-print-label">Stripping Ratio</div>
+        <div class="kpi-print-value">{{ stripping_ratio }}</div>
+    </div>
+    <div class="kpi-print-item">
+        <div class="kpi-print-label">Records</div>
+        <div class="kpi-print-value">{{ record_count }}</div>
+    </div>
+</div>
+
+<!-- Daily Chart -->
+<div class="panel mb-3 chart-panel">
+    <div class="panel-title chart-title"><i class="bi bi-graph-up"></i> Daily Production — {{ month_name }} {{ year }}</div>
+    <div style="position:relative; height:240px;">
+        <canvas id="dailyChart"></canvas>
+    </div>
+</div>
+
+<!-- Breakdown tables -->
+<div class="row g-2 mb-3">
+    <div class="col-12 col-lg-6">
+        <div class="panel h-100">
+            <div class="panel-title"><i class="bi bi-geo-alt-fill"></i> Production by Mine</div>
+            {% if mine_list %}
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Mine</th>
+                        <th style="text-align:right;">Records</th>
+                        <th style="text-align:right;">Coal (t)</th>
+                        <th style="text-align:right;">Overburden (t)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for name, data in mine_list %}
+                    <tr>
+                        <td><strong>{{ name }}</strong></td>
+                        <td style="text-align:right;">{{ data.records }}</td>
+                        <td style="text-align:right; color:var(--accent); font-weight:600;">{{ data.tons|floatformat:0 }}</td>
+                        <td style="text-align:right;">{{ data.overburden|floatformat:0 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color:var(--text-muted); text-align:center; padding:16px; margin:0;">No data.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+        <div class="panel h-100">
+            <div class="panel-title"><i class="bi bi-clock-fill"></i> By Shift</div>
+            {% if shift_list %}
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Shift</th>
+                        <th style="text-align:right;">Coal (t)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for name, data in shift_list %}
+                    <tr>
+                        <td><strong>{{ name }}</strong></td>
+                        <td style="text-align:right; color:var(--accent); font-weight:600;">{{ data.tons|floatformat:0 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color:var(--text-muted); text-align:center; padding:16px; margin:0;">No data.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+        <div class="panel h-100">
+            <div class="panel-title"><i class="bi bi-gem"></i> By Coal Type</div>
+            {% if coal_list %}
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th style="text-align:right;">Coal (t)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for name, data in coal_list %}
+                    <tr>
+                        <td><strong>{{ name }}</strong></td>
+                        <td style="text-align:right; color:var(--accent); font-weight:600;">{{ data.tons|floatformat:0 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color:var(--text-muted); text-align:center; padding:16px; margin:0;">No data.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Print footer -->
+<div class="print-footer" style="display:none;">
+    <div style="text-align:center; border-top:1px solid #000; padding-top:10px; margin-top:20px; font-size:11px; color:#000;">
+        Printed: <span id="printTimestamp"></span> &nbsp;|&nbsp; Coal Mine Management System
+    </div>
+</div>
+
+<!-- KPI print grid styles -->
+<style>
+    .kpi-print-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 18px;
+    }
+    .kpi-print-item {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-light);
+        border-left: 3px solid var(--accent);
+        border-radius: 8px;
+        padding: 14px 16px;
+    }
+    .kpi-print-label {
+        font-size: 11px;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+    .kpi-print-value {
+        font-size: 22px;
+        font-weight: 800;
+        color: var(--text-primary);
+    }
+    .kpi-print-unit {
+        font-size: 12px;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+
+    @media (max-width: 767.98px) {
+        .kpi-print-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* =========================================================
+       PRINT STYLES — Clean professional B&W
+       ========================================================= */
+    @media print {
+        /* Hide screen-only elements */
+        .no-print,
+        .sidebar,
+        .topbar,
+        .app-footer,
+        .btn,
+        .form-select,
+        .form-control,
+        form { display: none !important; }
+
+        /* Show print-only elements */
+        .print-header,
+        .print-footer { display: block !important; }
+
+        /* Base reset */
+        body, html {
+            background: #fff !important;
+            color: #000 !important;
+            font-family: 'Times New Roman', Georgia, serif !important;
+            font-size: 11pt !important;
+        }
+
+        .main-area { margin-left: 0 !important; }
+        .content { padding: 0 !important; }
+
+        /* Panels become simple bordered sections */
+        .panel {
+            background: #fff !important;
+            border: 1px solid #333 !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            padding: 12px 16px !important;
+            margin-bottom: 14px !important;
+            page-break-inside: avoid;
+        }
+
+        /* Panel titles */
+        .panel-title {
+            color: #000 !important;
+            border-bottom: 1px solid #333 !important;
+            padding-bottom: 6px !important;
+            margin-bottom: 10px !important;
+            font-size: 12pt !important;
+            font-weight: 700 !important;
+        }
+        .panel-title i { display: none !important; }
+
+        /* KPI grid — black border, no color */
+        .kpi-print-grid {
+            grid-template-columns: repeat(4, 1fr) !important;
+            gap: 8px !important;
+            margin-bottom: 14px !important;
+        }
+        .kpi-print-item {
+            background: #fff !important;
+            border: 1px solid #333 !important;
+            border-left: 2px solid #000 !important;
+            border-radius: 0 !important;
+            padding: 10px 12px !important;
+        }
+        .kpi-print-label {
+            color: #000 !important;
+            font-size: 9pt !important;
+            letter-spacing: 1px !important;
+        }
+        .kpi-print-value {
+            color: #000 !important;
+            font-size: 16pt !important;
+            font-weight: 700 !important;
+        }
+        .kpi-print-unit {
+            color: #000 !important;
+            font-size: 10pt !important;
+        }
+
+        /* Tables — clean bordered look */
+        .table {
+            color: #000 !important;
+            width: 100% !important;
+            font-size: 10pt !important;
+            border-collapse: collapse !important;
+        }
+        .table thead th {
+            background: #e8e8e8 !important;
+            color: #000 !important;
+            border: 1px solid #333 !important;
+            padding: 6px 8px !important;
+            font-size: 10pt !important;
+            font-weight: 700 !important;
+            text-align: left;
+        }
+        .table tbody td {
+            background: #fff !important;
+            color: #000 !important;
+            border: 1px solid #666 !important;
+            padding: 6px 8px !important;
+            font-size: 10pt !important;
+        }
+        .table tbody tr:hover td {
+            background: #fff !important;
+        }
+        .table tfoot tr {
+            background: #f0f0f0 !important;
+        }
+        .table tfoot td {
+            background: #f0f0f0 !important;
+            color: #000 !important;
+            font-weight: 700 !important;
+            border: 1px solid #333 !important;
+        }
+
+        /* All colored text becomes black */
+        strong, b, span, div, p, td, th, h1, h2, h3, h4, h5, h6 {
+            color: #000 !important;
+        }
+
+        /* Remove colored borders */
+        [style*="border-left"] {
+            border-left: 2px solid #000 !important;
+        }
+
+        /* Chart container — keep the chart but as grayscale */
+        .chart-panel {
+            page-break-inside: avoid;
+            margin-bottom: 14px !important;
+        }
+        .chart-panel canvas {
+            max-height: 200px !important;
+            filter: grayscale(100%) contrast(1.2);
+        }
+
+        /* Page setup */
+        @page {
+            size: A4;
+            margin: 15mm 12mm;
+        }
+
+        /* Report header spacing */
+        .print-header {
+            margin-bottom: 16px !important;
+        }
+    }
+</style>
+
+{{ daily_labels|json_script:"daily_labels" }}
+{{ daily_tons|json_script:"daily_tons" }}
+{{ daily_overburden|json_script:"daily_overburden" }}
+
+<script src="{% static 'vendor/chart.umd.min.js' %}"></script>
+<script>
+    (function() {
+        const labels = JSON.parse(document.getElementById('daily_labels').textContent);
+        const tons = JSON.parse(document.getElementById('daily_tons').textContent);
+        const ob = JSON.parse(document.getElementById('daily_overburden').textContent);
+
+        const style = getComputedStyle(document.documentElement);
+        const success = style.getPropertyValue('--success').trim();
+        const accent = style.getPropertyValue('--accent').trim();
+        const borderLight = style.getPropertyValue('--border-light').trim();
+        const textMuted = style.getPropertyValue('--text-muted').trim();
+
+        new Chart(document.getElementById('dailyChart'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Coal (tons)',
+                        data: tons,
+                        backgroundColor: success,
+                        borderRadius: 4,
+                        barPercentage: 0.7,
+                        stack: 'stack1',
+                    },
+                    {
+                        label: 'Overburden (tons)',
+                        data: ob,
+                        backgroundColor: accent,
+                        borderRadius: 4,
+                        barPercentage: 0.7,
+                        stack: 'stack1',
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                plugins: {
+                    legend: { labels: { color: textMuted, boxWidth: 12, padding: 12 } },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.85)',
+                        padding: 10,
+                        callbacks: {
+                            label: function(ctx) {
+                                return ctx.dataset.label + ': ' + Number(ctx.parsed.y).toLocaleString() + ' t';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: textMuted, font: { size: 10 } }, grid: { display: false } },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        ticks: { color: textMuted, font: { size: 10 } },
+                        grid: { color: borderLight, drawBorder: false }
+                    }
+                }
+            }
+        });
+
+        // Timestamp for print footer
+        const ts = new Date().toLocaleString('en-GB', {
+            day: '2-digit', month: 'short', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+        const el = document.getElementById('printTimestamp');
+        if (el) el.textContent = ts;
+    })();
+</script>
+
+{% endblock %}

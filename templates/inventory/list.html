@@ -34,7 +34,7 @@
 
 <!-- Tabs -->
 <div class="panel">
-    <div class="d-flex justify-content-between align-items-center mb-3" style="border-bottom: 1px solid var(--border-light); padding-bottom: 0;">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2" style="border-bottom: 1px solid var(--border-light); padding-bottom: 0;">
         <div style="display:flex; gap:4px;">
             <button type="button" class="inv-tab active" data-tab="items" onclick="switchTab('items')">
                 <i class="bi bi-box-seam"></i> Items
@@ -43,19 +43,22 @@
                 <i class="bi bi-arrow-left-right"></i> Movements
             </button>
         </div>
-        <div style="padding-bottom: 12px;">
+        <div style="padding-bottom: 12px; display:flex; gap:8px; flex-wrap:wrap;">
+            <a href="{% url 'report_inventory' %}" class="btn btn-outline-amber btn-sm">
+                <i class="bi bi-file-earmark-bar-graph"></i> Report
+            </a>
             <a href="{% url 'export_inventory' %}" class="btn btn-outline-amber btn-sm">
                 <i class="bi bi-file-earmark-excel"></i> Export
             </a>
             {% if is_manager or is_accountant %}
             <a href="{% url 'inventory_add' %}" class="btn btn-amber btn-sm">
-                <i class="bi bi-plus-lg"></i> Add New Item
+                <i class="bi bi-plus-lg"></i> Add Item
             </a>
             {% endif %}
         </div>
     </div>
 
-    <!-- ============ TAB: ITEMS ============ -->
+    <!-- TAB: ITEMS -->
     <div id="tab-items">
         <form method="get" class="row g-2 mb-3">
             <input type="hidden" name="tab" value="items">
@@ -87,83 +90,85 @@
         </form>
 
         {% if items %}
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Item</th>
-                    <th>Category</th>
-                    <th style="min-width:180px;">Stock Level</th>
-                    <th style="text-align:right;">Quantity</th>
-                    <th style="text-align:right;">Unit Price</th>
-                    <th style="text-align:right;">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in items %}
-                <tr {% if item.voided %}style="opacity:0.5;"{% endif %}>
-                    <td>
-                        <strong style="color:var(--text-primary);">{{ item.name }}</strong>
-                        {% if item.voided %}
-                            <span class="badge-status badge-inactive" style="margin-left:6px;">VOIDED</span>
-                        {% else %}
-                            {% if item.approval_status == 'Pending' %}
-                                <span class="badge-status badge-leave" style="margin-left:6px;">PENDING</span>
-                            {% elif item.approval_status == 'Rejected' %}
-                                <span class="badge-status badge-inactive" style="margin-left:6px;">REJECTED</span>
+        <div style="overflow-x:auto;">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Category</th>
+                        <th style="min-width:150px;">Stock Level</th>
+                        <th style="text-align:right;">Quantity</th>
+                        <th style="text-align:right;">Unit Price</th>
+                        <th style="text-align:right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr {% if item.voided %}style="opacity:0.5;"{% endif %}>
+                        <td>
+                            <strong style="color:var(--text-primary);">{{ item.name }}</strong>
+                            {% if item.voided %}
+                                <span class="badge-status badge-inactive" style="margin-left:6px;">VOIDED</span>
+                            {% else %}
+                                {% if item.approval_status == 'Pending' %}
+                                    <span class="badge-status badge-leave" style="margin-left:6px;">PENDING</span>
+                                {% elif item.approval_status == 'Rejected' %}
+                                    <span class="badge-status badge-inactive" style="margin-left:6px;">REJECTED</span>
+                                {% endif %}
+                                {% if item.is_low_stock %}
+                                    <span class="badge-status badge-inactive" style="margin-left:6px;">LOW</span>
+                                {% endif %}
                             {% endif %}
-                            {% if item.is_low_stock %}
-                                <span class="badge-status badge-inactive" style="margin-left:6px;">LOW</span>
-                            {% endif %}
-                        {% endif %}
-                    </td>
-                    <td>{{ item.category }}</td>
-                    <td>
-                        <div class="stock-bar-wrap" data-qty="{{ item.quantity }}" data-reorder="{{ item.reorder_level }}">
-                            <div class="stock-bar-track">
-                                <div class="stock-bar-fill"></div>
+                        </td>
+                        <td>{{ item.category }}</td>
+                        <td>
+                            <div class="stock-bar-wrap" data-qty="{{ item.quantity }}" data-reorder="{{ item.reorder_level }}">
+                                <div class="stock-bar-track">
+                                    <div class="stock-bar-fill"></div>
+                                </div>
+                                <div class="stock-bar-label"></div>
                             </div>
-                            <div class="stock-bar-label"></div>
-                        </div>
-                    </td>
-                    <td style="text-align:right;">
-                        <strong style="color:var(--accent); font-size:15px;">{{ item.quantity }}</strong>
-                        <small style="color:var(--text-muted);">{{ item.unit }}</small>
-                    </td>
-                    <td style="text-align:right;">{{ item.unit_price }}</td>
-                    <td style="text-align:right; white-space:nowrap;">
-                        {% if not item.voided %}
-                        <button type="button"
-                                class="btn btn-sm btn-amber stock-btn-in"
-                                data-pk="{{ item.pk }}"
-                                data-name="{{ item.name }}"
-                                data-unit="{{ item.unit }}"
-                                data-qty="{{ item.quantity }}"
-                                title="Add stock">
-                            <i class="bi bi-plus-lg"></i> In
-                        </button>
-                        <button type="button"
-                                class="btn btn-sm btn-outline-amber stock-btn-out"
-                                data-pk="{{ item.pk }}"
-                                data-name="{{ item.name }}"
-                                data-unit="{{ item.unit }}"
-                                data-qty="{{ item.quantity }}"
-                                title="Issue stock">
-                            <i class="bi bi-dash-lg"></i> Out
-                        </button>
-                        <a href="{% url 'inventory_edit' item.pk %}" class="btn btn-sm btn-outline-amber" title="Edit">
-                            <i class="bi bi-pencil"></i>
-                        </a>
-                        {% endif %}
-                        {% if is_manager and not item.voided %}
-                        <a href="{% url 'inventory_void' item.pk %}" class="btn btn-sm btn-outline-danger" title="Void">
-                            <i class="bi bi-slash-circle"></i>
-                        </a>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                        </td>
+                        <td style="text-align:right;">
+                            <strong style="color:var(--accent); font-size:15px;">{{ item.quantity }}</strong>
+                            <small style="color:var(--text-muted);">{{ item.unit }}</small>
+                        </td>
+                        <td style="text-align:right;">{{ item.unit_price }}</td>
+                        <td style="text-align:right; white-space:nowrap;">
+                            {% if not item.voided %}
+                            <button type="button"
+                                    class="btn btn-sm btn-amber stock-btn-in"
+                                    data-pk="{{ item.pk }}"
+                                    data-name="{{ item.name }}"
+                                    data-unit="{{ item.unit }}"
+                                    data-qty="{{ item.quantity }}"
+                                    title="Add stock">
+                                <i class="bi bi-plus-lg"></i> In
+                            </button>
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-amber stock-btn-out"
+                                    data-pk="{{ item.pk }}"
+                                    data-name="{{ item.name }}"
+                                    data-unit="{{ item.unit }}"
+                                    data-qty="{{ item.quantity }}"
+                                    title="Issue stock">
+                                <i class="bi bi-dash-lg"></i> Out
+                            </button>
+                            <a href="{% url 'inventory_edit' item.pk %}" class="btn btn-sm btn-outline-amber" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            {% endif %}
+                            {% if is_manager and not item.voided %}
+                            <a href="{% url 'inventory_void' item.pk %}" class="btn btn-sm btn-outline-danger" title="Void">
+                                <i class="bi bi-slash-circle"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
         {% else %}
         <p style="color:var(--text-muted); text-align:center; padding:30px;">
             <i class="bi bi-box" style="font-size:40px; display:block; margin-bottom:10px; opacity:0.5;"></i>
@@ -172,44 +177,46 @@
         {% endif %}
     </div>
 
-    <!-- ============ TAB: MOVEMENTS ============ -->
+    <!-- TAB: MOVEMENTS -->
     <div id="tab-movements" style="display:none;">
         {% if recent_movements %}
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Item</th>
-                    <th>Type</th>
-                    <th style="text-align:right;">Qty</th>
-                    <th>Issued To</th>
-                    <th>Reason</th>
-                    <th>By</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for t in recent_movements %}
-                <tr>
-                    <td>{{ t.date }}</td>
-                    <td><strong>{{ t.item.name }}</strong></td>
-                    <td>
-                        {% if t.transaction_type == 'IN' %}
-                            <span class="badge-status badge-active">IN</span>
-                        {% else %}
-                            <span class="badge-status badge-inactive">OUT</span>
-                        {% endif %}
-                    </td>
-                    <td style="text-align:right;">
-                        <strong style="color:var(--accent);">{{ t.quantity }}</strong>
-                        <small style="color:var(--text-muted);">{{ t.item.unit }}</small>
-                    </td>
-                    <td>{{ t.issued_to_display }}</td>
-                    <td style="max-width:200px;">{{ t.reason|default:"—" }}</td>
-                    <td>{{ t.handled_by|default:"—" }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div style="overflow-x:auto;">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Item</th>
+                        <th>Type</th>
+                        <th style="text-align:right;">Qty</th>
+                        <th>Issued To</th>
+                        <th>Reason</th>
+                        <th>By</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in recent_movements %}
+                    <tr>
+                        <td>{{ t.date }}</td>
+                        <td><strong>{{ t.item.name }}</strong></td>
+                        <td>
+                            {% if t.transaction_type == 'IN' %}
+                                <span class="badge-status badge-active">IN</span>
+                            {% else %}
+                                <span class="badge-status badge-inactive">OUT</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:right;">
+                            <strong style="color:var(--accent);">{{ t.quantity }}</strong>
+                            <small style="color:var(--text-muted);">{{ t.item.unit }}</small>
+                        </td>
+                        <td>{{ t.issued_to_display }}</td>
+                        <td style="max-width:200px;">{{ t.reason|default:"—" }}</td>
+                        <td>{{ t.handled_by|default:"—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
         <div style="text-align:center; margin-top:14px;">
             <a href="{% url 'stock_transaction_list' %}" class="btn btn-outline-amber btn-sm">
                 <i class="bi bi-list-ul"></i> View All Movements
@@ -224,7 +231,7 @@
     </div>
 </div>
 
-<!-- ============ MODAL: STOCK IN ============ -->
+<!-- MODAL: STOCK IN -->
 <div class="modal fade" id="stockInModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="background:var(--bg-panel); border:1px solid var(--border-light); color:var(--text-primary);">
@@ -265,7 +272,7 @@
     </div>
 </div>
 
-<!-- ============ MODAL: STOCK OUT ============ -->
+<!-- MODAL: STOCK OUT -->
 <div class="modal fade" id="stockOutModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="background:var(--bg-panel); border:1px solid var(--border-light); color:var(--text-primary);">
@@ -352,34 +359,24 @@
 
 <style>
     .inv-tab {
-        background: none;
-        border: none;
-        padding: 12px 20px;
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--text-muted);
-        cursor: pointer;
+        background: none; border: none;
+        padding: 12px 20px; font-size: 14px; font-weight: 600;
+        color: var(--text-muted); cursor: pointer;
         border-bottom: 2px solid transparent;
         transition: all 0.15s;
         font-family: inherit;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
+        display: inline-flex; align-items: center; gap: 6px;
     }
     .inv-tab:hover { color: var(--text-primary); }
     .inv-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-    /* Stock level bar */
     .stock-bar-wrap { display: flex; align-items: center; gap: 10px; }
     .stock-bar-track {
         flex: 1; height: 8px; background: var(--bg-raised);
         border-radius: 4px; overflow: hidden;
         border: 1px solid var(--border-light); min-width: 100px;
     }
-    .stock-bar-fill {
-        height: 100%; border-radius: 4px;
-        transition: width 0.3s ease; width: 0%;
-    }
+    .stock-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s ease; width: 0%; }
     .stock-bar-label {
         font-size: 11px; font-weight: 700; color: var(--text-muted);
         min-width: 42px; text-align: right; font-variant-numeric: tabular-nums;
@@ -415,7 +412,6 @@
             });
         });
 
-        // Stock buttons
         document.querySelectorAll('.stock-btn-in').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 openStockIn(this.dataset.pk, this.dataset.name, this.dataset.unit, this.dataset.qty);
@@ -427,7 +423,6 @@
             });
         });
 
-        // Stock level bars
         document.querySelectorAll('.stock-bar-wrap').forEach(function (wrap) {
             var qty = parseFloat(wrap.dataset.qty) || 0;
             var reorder = parseFloat(wrap.dataset.reorder) || 0;

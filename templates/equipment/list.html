@@ -5,9 +5,10 @@
 
 {% block content %}
 
+<!-- Filter Bar -->
 <div class="panel mb-3">
     <form method="get" class="row g-2 align-items-end">
-        <div class="col-md-4">
+        <div class="col-6 col-md-4">
             <label class="form-label">Status</label>
             <select name="status" class="form-select">
                 <option value="">All Status</option>
@@ -16,7 +17,7 @@
                 <option value="Out of Service" {% if status_filter == 'Out of Service' %}selected{% endif %}>Out of Service</option>
             </select>
         </div>
-        <div class="col-md-3">
+        <div class="col-6 col-md-3">
             <label class="form-label">Type</label>
             <select name="type" class="form-select">
                 <option value="">All Types</option>
@@ -25,14 +26,14 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-3">
+        <div class="col-6 col-md-2">
             <label class="form-label">Show Voided</label>
             <select name="show_voided" class="form-select">
                 <option value="">Hide</option>
                 <option value="1" {% if show_voided %}selected{% endif %}>Show</option>
             </select>
         </div>
-        <div class="col-md-2">
+        <div class="col-6 col-md-3">
             <button type="submit" class="btn btn-amber w-100">
                 <i class="bi bi-funnel"></i> Filter
             </button>
@@ -40,17 +41,24 @@
     </form>
 </div>
 
+<!-- Table -->
 <div class="panel">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div class="panel-title mb-0">
             <i class="bi bi-tools"></i> Equipment ({{ equipment|length }})
         </div>
-        <div>
-            <a href="{% url 'maintenance_list' %}" class="btn btn-outline-amber">
-                <i class="bi bi-wrench-adjustable"></i> Maintenance Logs
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'report_equipment' %}" class="btn btn-outline-amber btn-sm">
+                <i class="bi bi-file-earmark-bar-graph"></i> Report
+            </a>
+            <a href="{% url 'fuel_report' %}" class="btn btn-outline-amber btn-sm">
+                <i class="bi bi-fuel-pump"></i> Fuel Report
+            </a>
+            <a href="{% url 'maintenance_list' %}" class="btn btn-outline-amber btn-sm">
+                <i class="bi bi-wrench-adjustable"></i> Maintenance
             </a>
             {% if is_manager or is_accountant %}
-            <a href="{% url 'equipment_add' %}" class="btn btn-amber">
+            <a href="{% url 'equipment_add' %}" class="btn btn-amber btn-sm">
                 <i class="bi bi-plus-lg"></i> Add Equipment
             </a>
             {% endif %}
@@ -58,67 +66,69 @@
     </div>
 
     {% if equipment %}
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Code</th>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Mine</th>
-                <th>Status</th>
-                <th>Fuel</th>
-                <th>Purchase Date</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for eq in equipment %}
-            <tr {% if eq.voided %}style="opacity:0.5;"{% endif %}>
-                <td>
-                    <span style="color:var(--accent);">{{ eq.equipment_code }}</span>
-                    {% if eq.voided %}
-                        <span class="badge-status badge-inactive" style="margin-left:4px;">VOIDED</span>
-                    {% endif %}
-                </td>
-                <td>
-                    <a href="{% url 'equipment_detail' eq.pk %}" style="color:var(--text-primary); text-decoration:none; font-weight:600;">
-                        {{ eq.name }}
-                    </a>
-                </td>
-                <td>{{ eq.equipment_type }}</td>
-                <td>{{ eq.mine.name|default:"—" }}</td>
-                <td>
-                    {% if eq.status == 'Working' %}
-                        <span class="badge-status badge-active">WORKING</span>
-                    {% elif eq.status == 'Under Maintenance' %}
-                        <span class="badge-status badge-leave">MAINTENANCE</span>
-                    {% else %}
-                        <span class="badge-status badge-inactive">OUT OF SERVICE</span>
-                    {% endif %}
-                </td>
-                <td>{{ eq.fuel_type }}</td>
-                <td>{{ eq.purchase_date|default:"—" }}</td>
-                <td>
-                    <a href="{% url 'equipment_detail' eq.pk %}" class="btn btn-sm btn-outline-amber" title="View">
-                        <i class="bi bi-eye"></i>
-                    </a>
-                    {% if is_manager or is_accountant %}
-                    {% if not eq.voided %}
-                    <a href="{% url 'equipment_edit' eq.pk %}" class="btn btn-sm btn-outline-amber" title="Edit">
-                        <i class="bi bi-pencil"></i>
-                    </a>
-                    {% endif %}
-                    {% endif %}
-                    {% if is_manager and not eq.voided %}
-                    <a href="{% url 'equipment_void' eq.pk %}" class="btn btn-sm btn-outline-danger" title="Void">
-                        <i class="bi bi-slash-circle"></i>
-                    </a>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div style="overflow-x:auto;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Mine</th>
+                    <th>Status</th>
+                    <th>Fuel</th>
+                    <th>Purchase Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for eq in equipment %}
+                <tr {% if eq.voided %}style="opacity:0.5;"{% endif %}>
+                    <td>
+                        <span style="color:var(--accent); font-family:monospace; font-size:12px;">{{ eq.equipment_code }}</span>
+                        {% if eq.voided %}
+                            <span class="badge-status badge-inactive" style="margin-left:4px;">VOIDED</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'equipment_detail' eq.pk %}" style="color:var(--text-primary); text-decoration:none; font-weight:600;">
+                            {{ eq.name }}
+                        </a>
+                    </td>
+                    <td>{{ eq.equipment_type }}</td>
+                    <td>{{ eq.mine.name|default:"—" }}</td>
+                    <td>
+                        {% if eq.status == 'Working' %}
+                            <span class="badge-status badge-active">WORKING</span>
+                        {% elif eq.status == 'Under Maintenance' %}
+                            <span class="badge-status badge-leave">MAINTENANCE</span>
+                        {% else %}
+                            <span class="badge-status badge-inactive">OUT OF SERVICE</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ eq.fuel_type }}</td>
+                    <td>{{ eq.purchase_date|default:"—" }}</td>
+                    <td style="white-space:nowrap;">
+                        <a href="{% url 'equipment_detail' eq.pk %}" class="btn btn-sm btn-outline-amber" title="View">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        {% if is_manager or is_accountant %}
+                        {% if not eq.voided %}
+                        <a href="{% url 'equipment_edit' eq.pk %}" class="btn btn-sm btn-outline-amber" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        {% endif %}
+                        {% endif %}
+                        {% if is_manager and not eq.voided %}
+                        <a href="{% url 'equipment_void' eq.pk %}" class="btn btn-sm btn-outline-danger" title="Void">
+                            <i class="bi bi-slash-circle"></i>
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
     {% else %}
     <p style="color:var(--text-muted); text-align:center; padding:30px;">
         <i class="bi bi-tools" style="font-size:40px; display:block; margin-bottom:10px; opacity:0.5;"></i>

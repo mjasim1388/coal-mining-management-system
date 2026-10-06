@@ -519,6 +519,14 @@
             padding: 8px 16px;
             transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
         }
+                .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .btn:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
         .btn-amber, .btn-primary {
             background: var(--accent);
             color: var(--accent-ink);
@@ -778,6 +786,12 @@
             <div class="sidebar-section">Approvals</div>
             <a href="{% url 'approval_list' %}" class="{% if 'approval' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-shield-check"></i> Pending approvals
+            </a>
+            {% endif %}
+                        {% if is_manager or is_accountant %}
+            <div class="sidebar-section">Reports</div>
+            <a href="{% url 'reports_hub' %}" class="{% if 'report' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-file-earmark-bar-graph"></i> Reports
             </a>
             {% endif %}
 

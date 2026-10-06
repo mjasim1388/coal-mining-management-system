@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+
+{% block title %}Reports - Coal Mine{% endblock %}
+{% block page_title %}REPORTS{% endblock %}
+
+{% block content %}
+
+<div class="panel mb-3" style="border-left:4px solid var(--accent);">
+    <div style="font-size:13px; color:var(--text-secondary); line-height:1.6;">
+        <i class="bi bi-info-circle-fill" style="color:var(--accent);"></i>
+        <strong>Business Reports:</strong> Select a report below to see detailed analysis for any month. All reports can be exported to Excel or printed.
+    </div>
+</div>
+
+<style>
+    .report-card {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-light);
+        border-radius: 12px;
+        padding: 22px;
+        display: block;
+        text-decoration: none;
+        color: inherit;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+    .report-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: var(--accent);
+    }
+    .report-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 28px rgba(0,0,0,0.2);
+        border-color: var(--border-medium);
+        color: inherit;
+    }
+    .report-card.rc-green::before  { background: var(--success); }
+    .report-card.rc-blue::before   { background: var(--info); }
+    .report-card.rc-purple::before { background: #8b5cf6; }
+    .report-card.rc-red::before    { background: var(--danger); }
+
+    .report-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        color: var(--accent);
+        background: var(--accent-soft);
+        margin-bottom: 14px;
+    }
+    .report-card.rc-green .report-icon  { color: var(--success); background: rgba(47,182,124,0.15); }
+    .report-card.rc-blue .report-icon   { color: var(--info); background: rgba(76,154,255,0.15); }
+    .report-card.rc-purple .report-icon { color: #8b5cf6; background: rgba(139,92,246,0.15); }
+    .report-card.rc-red .report-icon    { color: var(--danger); background: rgba(239,91,91,0.15); }
+
+    .report-card h3 {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0 0 6px;
+    }
+    .report-card p {
+        font-size: 13px;
+        color: var(--text-muted);
+        margin: 0;
+        line-height: 1.5;
+    }
+    .report-card .report-arrow {
+        position: absolute;
+        top: 22px;
+        right: 22px;
+        font-size: 18px;
+        color: var(--border-medium);
+        transition: transform 0.2s ease, color 0.2s ease;
+    }
+    .report-card:hover .report-arrow {
+        transform: translateX(4px);
+        color: var(--accent);
+    }
+</style>
+
+<div class="row g-3">
+    <!-- Monthly Sales -->
+    <div class="col-md-4">
+        <a href="{% url 'report_sales' %}" class="report-card rc-green">
+            <i class="bi bi-arrow-right report-arrow"></i>
+            <div class="report-icon"><i class="bi bi-cash-stack"></i></div>
+            <h3>Monthly Sales Report</h3>
+            <p>Total sales, cash received, outstanding, breakdown by customer and mine, payment status.</p>
+        </a>
+    </div>
+
+    <!-- Production -->
+    <div class="col-md-4">
+        <a href="{% url 'report_production' %}" class="report-card">
+            <i class="bi bi-arrow-right report-arrow"></i>
+            <div class="report-icon"><i class="bi bi-truck"></i></div>
+            <h3>Production Report</h3>
+            <p>Total tons produced, breakdown by mine, shift, and coal type. Overburden removed.</p>
+        </a>
+    </div>
+
+    <!-- Payroll -->
+    <div class="col-md-4">
+        <a href="{% url 'report_payroll' %}" class="report-card rc-blue">
+            <i class="bi bi-arrow-right report-arrow"></i>
+            <div class="report-icon"><i class="bi bi-cash-coin"></i></div>
+            <h3>Payroll Report</h3>
+            <p>Total payroll, employee-wise breakdown, paid vs pending, overtime summary.</p>
+        </a>
+    </div>
+
+    <!-- Inventory -->
+    <div class="col-md-4">
+        <a href="{% url 'report_inventory' %}" class="report-card rc-purple">
+            <i class="bi bi-arrow-right report-arrow"></i>
+            <div class="report-icon"><i class="bi bi-box-seam"></i></div>
+            <h3>Inventory Report</h3>
+            <p>Current stock, movements in/out, low stock items, value of inventory, fuel usage.</p>
+        </a>
+    </div>
+
+    <!-- Attendance -->
+    <div class="col-md-4">
+        <a href="{% url 'report_attendance' %}" class="report-card">
+            <i class="bi bi-arrow-right report-arrow"></i>
+            <div class="report-icon"><i class="bi bi-calendar-check"></i></div>
+            <h3>Attendance Report</h3>
+            <p>Present / absent / leave summary, employee-wise attendance percentage, overtime hours.</p>
+        </a>
+    </div>
+
+    <!-- Equipment -->
+    <div class="col-md-4">
+        <a href="{% url 'report_equipment' %}" class="report-card rc-red">
+            <i class="bi bi-arrow-right report-arrow"></i>
+            <div class="report-icon"><i class="bi bi-tools"></i></div>
+            <h3>Equipment Report</h3>
+            <p>Equipment status, maintenance cost per machine, service history, fuel consumption.</p>
+        </a>
+    </div>
+</div>
+
+{% endblock %}

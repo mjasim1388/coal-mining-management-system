@@ -1,15 +1,30 @@
 {% extends 'base.html' %}
 
-{% block title %}Customers - Coal Mine{% endblock %}
-{% block page_title %}CUSTOMERS{% endblock %}
+{% block title %}Sales - Coal Mine{% endblock %}
+{% block page_title %}SALES &amp; DISPATCH{% endblock %}
 
 {% block content %}
 
+<!-- Filter Bar -->
 <div class="panel mb-3">
     <form method="get" class="row g-2 align-items-end">
-        <div class="col-md-6">
-            <label class="form-label">Search</label>
-            <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Name, company, or phone...">
+        <div class="col-md-4">
+            <label class="form-label">Customer</label>
+            <select name="customer" class="form-select">
+                <option value="">All Customers</option>
+                {% for c in customers %}
+                <option value="{{ c.pk }}" {% if customer_filter == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Payment Status</label>
+            <select name="status" class="form-select">
+                <option value="">All</option>
+                <option value="Unpaid" {% if status_filter == 'Unpaid' %}selected{% endif %}>Unpaid</option>
+                <option value="Partial" {% if status_filter == 'Partial' %}selected{% endif %}>Partial</option>
+                <option value="Paid" {% if status_filter == 'Paid' %}selected{% endif %}>Paid</option>
+            </select>
         </div>
         <div class="col-md-3">
             <label class="form-label">Show Voided</label>
@@ -18,74 +33,133 @@
                 <option value="1" {% if show_voided %}selected{% endif %}>Show</option>
             </select>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <button type="submit" class="btn btn-amber w-100">
-                <i class="bi bi-search"></i> Search
+                <i class="bi bi-funnel"></i> Filter
             </button>
         </div>
     </form>
 </div>
 
-<div class="panel">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div class="panel-title mb-0">
-            <i class="bi bi-people-fill"></i> Customers ({{ customers|length }})
+<!-- KPI Cards -->
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="stat-card stat-amber">
+            <i class="bi bi-cash-stack icon"></i>
+            <h2>{{ total_amount|floatformat:0 }}</h2>
+            <p>Total Sales (PKR)</p>
         </div>
-        <div>
-            <a href="{% url 'sale_list' %}" class="btn btn-outline-amber">
-                <i class="bi bi-receipt"></i> Sales
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card stat-green">
+            <i class="bi bi-check-circle-fill icon"></i>
+            <h2>{{ total_paid|floatformat:0 }}</h2>
+            <p>Total Received (PKR)</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card stat-red">
+            <i class="bi bi-exclamation-circle-fill icon"></i>
+            <h2>{{ total_balance|floatformat:0 }}</h2>
+            <p>Outstanding Balance (PKR)</p>
+        </div>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="panel">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div class="panel-title mb-0">
+            <i class="bi bi-receipt"></i> Invoices ({{ sales|length }})
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            {% if is_manager or is_accountant %}
+            <a href="{% url 'report_sales' %}" class="btn btn-outline-amber btn-sm">
+                <i class="bi bi-file-earmark-bar-graph"></i> Report
+            </a>
+            <a href="{% url 'export_sales' %}" class="btn btn-outline-amber btn-sm">
+                <i class="bi bi-file-earmark-excel"></i> Export
+            </a>
+            {% endif %}
+            <a href="{% url 'customer_list' %}" class="btn btn-outline-amber btn-sm">
+                <i class="bi bi-people"></i> Customers
             </a>
             {% if is_manager or is_accountant %}
-            <a href="{% url 'customer_add' %}" class="btn btn-amber">
-                <i class="bi bi-plus-lg"></i> Add Customer
+            <a href="{% url 'sale_add' %}" class="btn btn-amber btn-sm">
+                <i class="bi bi-plus-lg"></i> New Dispatch
             </a>
             {% endif %}
         </div>
     </div>
 
-    {% if customers %}
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Company</th>
-                <th>Phone</th>
-                <th>Email</th>
-                <th>NTN</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for c in customers %}
-            <tr {% if c.voided %}style="opacity:0.5;"{% endif %}>
-                <td>
-                    <span style="color:var(--accent);">{{ c.name }}</span>
-                    {% if c.voided %}
-                        <span class="badge-status badge-inactive" style="margin-left:4px;">VOIDED</span>
-                    {% endif %}
-                </td>
-                <td>{{ c.company|default:"—" }}</td>
-                <td>{{ c.phone|default:"—" }}</td>
-                <td>{{ c.email|default:"—" }}</td>
-                <td>{{ c.ntn|default:"—" }}</td>
-                <td>
-                    {% if is_manager and not c.voided %}
-                    <a href="{% url 'customer_edit' c.pk %}" class="btn btn-sm btn-outline-amber" title="Edit">
-                        <i class="bi bi-pencil"></i>
-                    </a>
-                    <a href="{% url 'customer_void' c.pk %}" class="btn btn-sm btn-outline-danger" title="Void">
-                        <i class="bi bi-slash-circle"></i>
-                    </a>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    {% if sales %}
+    <div style="overflow-x:auto;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Dispatch No</th>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th>Mine</th>
+                    <th style="text-align:right;">Tons</th>
+                    <th style="text-align:right;">Rate</th>
+                    <th style="text-align:right;">Total</th>
+                    <th style="text-align:right;">Paid</th>
+                    <th style="text-align:right;">Balance</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in sales %}
+                <tr {% if s.voided %}style="opacity:0.5;"{% endif %}>
+                    <td>
+                        <a href="{% url 'sale_detail' s.pk %}" style="color:var(--accent); text-decoration:none; font-family:monospace; font-size:12px;">
+                            {{ s.dispatch_no|default:s.invoice_no }}
+                        </a>
+                        {% if s.voided %}
+                            <span class="badge-status badge-inactive" style="margin-left:4px;">VOIDED</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ s.date }}</td>
+                    <td>{{ s.customer.name }}</td>
+                    <td>{{ s.mine.name|default:"—" }}</td>
+                    <td style="text-align:right;">{{ s.quantity_tons }}</td>
+                    <td style="text-align:right;">{{ s.price_per_ton|floatformat:0 }}</td>
+                    <td style="text-align:right; color:var(--accent); font-weight:700;">{{ s.total_amount|floatformat:0 }}</td>
+                    <td style="text-align:right; color:var(--success);">{{ s.amount_paid|floatformat:0 }}</td>
+                    <td style="text-align:right;">{{ s.balance|floatformat:0 }}</td>
+                    <td>
+                        {% if s.payment_status == 'Paid' %}
+                            <span class="badge-status badge-active">PAID</span>
+                        {% elif s.payment_status == 'Partial' %}
+                            <span class="badge-status badge-leave">PARTIAL</span>
+                        {% else %}
+                            <span class="badge-status badge-inactive">UNPAID</span>
+                        {% endif %}
+                    </td>
+                    <td style="white-space:nowrap;">
+                        <a href="{% url 'sale_detail' s.pk %}" class="btn btn-sm btn-outline-amber" title="View Invoice">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        <a href="{% url 'sale_slip' s.pk %}" target="_blank" class="btn btn-sm btn-amber" title="Print Dispatch Slip">
+                            <i class="bi bi-printer"></i> Slip
+                        </a>
+                        {% if is_manager and not s.voided %}
+                        <a href="{% url 'sale_delete' s.pk %}" class="btn btn-sm btn-outline-danger" title="Void Dispatch">
+                            <i class="bi bi-slash-circle"></i>
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
     {% else %}
     <p style="color:var(--text-muted); text-align:center; padding:30px;">
-        <i class="bi bi-person-plus" style="font-size:40px; display:block; margin-bottom:10px; opacity:0.5;"></i>
-        No customers yet. <a href="{% url 'customer_add' %}" style="color:var(--accent);">Add the first one</a>.
+        <i class="bi bi-receipt" style="font-size:40px; display:block; margin-bottom:10px; opacity:0.5;"></i>
+        No sales yet. <a href="{% url 'sale_add' %}" style="color:var(--accent);">Create the first dispatch</a>.
     </p>
     {% endif %}
 </div>

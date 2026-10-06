@@ -2358,3 +2358,286 @@ def payroll_autofill_api(request):
         'eligible_days': eligible_days,
         'total_attendance_records': records.count(),
     })
+
+# ---------- REPORTS HUB ----------
+@role_required('Manager', 'Accountant')
+def reports_hub(request):
+    return render(request, 'reports/hub.html')
+
+# ---------- REPORT STUBS (to be implemented) ----------
+@role_required('Manager', 'Accountant')
+def report_sales(request):
+    from datetime import date, timedelta
+    from calendar import month_abbr
+    from django.db.models import Sum
+
+    # ---- Filters ----
+    today = date.today()
+    month_str = request.GET.get('month', '')
+    year_str = request.GET.get('year', '')
+    customer_filter = request.GET.get('customer', '')
+
+    try:
+        month = int(month_str) if month_str else today.month
+    except ValueError:
+        month = today.month
+    try:
+        year = int(year_str) if year_str else today.year
+    except ValueError:
+        year = today.year
+
+    # ---- Sales for the period ----
+    sales_qs = Sale.objects.filter(
+        voided=False,
+        date__year=year,
+        date__month=month,
+    ).select_related('customer', 'mine')
+
+    if customer_filter:
+        sales_qs = sales_qs.filter(customer_id=customer_filter)
+
+    total_sales = sum(s.total_amount for s in sales_qs) or 0
+    total_received = sum(s.amount_paid for s in sales_qs) or 0
+    total_outstanding = total_sales - total_received
+    total_tons = sum(s.quantity_tons for s in sales_qs) or 0
+    dispatch_count = sales_qs.count()
+
+    # ---- Previous month for trend ----
+    prev_month = month - 1
+    prev_year = year
+    if prev_month <= 0:
+        prev_month = 12
+        prev_year -= 1
+
+    prev_qs = Sale.objects.filter(voided=False, date__year=prev_year, date__month=prev_month)
+    prev_total = sum(s.total_amount for s in prev_qs) or 0
+
+    if prev_total > 0:
+        trend_pct = round(((float(total_sales) - float(prev_total)) / float(prev_total)) * 100, 1)
+    else:
+        trend_pct = None
+
+    # ---- By Customer ----
+    customer_totals = {}
+    for s in sales_qs:
+        name = s.customer.name
+        if name not in customer_totals:
+            customer_totals[name] = {'sales': 0, 'received': 0, 'tons': 0, 'count': 0}
+        customer_totals[name]['sales'] += float(s.total_amount)
+        customer_totals[name]['received'] += float(s.amount_paid)
+        customer_totals[name]['tons'] += float(s.quantity_tons)
+        customer_totals[name]['count'] += 1
+
+    customer_list = sorted(customer_totals.items(), key=lambda x: x[1]['sales'], reverse=True)
+
+    # ---- By Mine ----
+    mine_totals = {}
+    for s in sales_qs:
+        name = s.mine.name if s.mine else 'Unassigned'
+        if name not in mine_totals:
+            mine_totals[name] = {'sales': 0, 'tons': 0, 'count': 0}
+        mine_totals[name]['sales'] += float(s.total_amount)
+        mine_totals[name]['tons'] += float(s.quantity_tons)
+        mine_totals[name]['count'] += 1
+
+    mine_list = sorted(mine_totals.items(), key=lambda x: x[1]['sales'], reverse=True)
+
+    # ---- By Payment Status ----
+    paid_count = sales_qs.filter(payment_status='Paid').count()
+    partial_count = sales_qs.filter(payment_status='Partial').count()
+    unpaid_count = sales_qs.filter(payment_status='Unpaid').count()
+
+    paid_amount = sum(s.total_amount for s in sales_qs if s.payment_status == 'Paid') or 0
+    partial_amount = sum(s.total_amount for s in sales_qs if s.payment_status == 'Partial') or 0
+    unpaid_amount = sum(s.total_amount for s in sales_qs if s.payment_status == 'Unpaid') or 0
+
+    # ---- By Day (for chart) ----
+    from calendar import monthrange
+    days_in_month = monthrange(year, month)[1]
+    daily_labels = []
+    daily_data = []
+    for d in range(1, days_in_month + 1):
+        daily_labels.append(str(d))
+        day_total = sum(s.total_amount for s in sales_qs.filter(date__day=d))
+        daily_data.append(float(day_total))
+
+    # ---- All dispatches ----
+    all_dispatches = list(sales_qs.order_by('-date'))
+
+    context = {
+        'month': month,
+        'year': year,
+        'month_name': month_abbr[month],
+        'months': Payroll.MONTH_CHOICES,  # reuse
+        'customer_filter': customer_filter,
+        'all_customers': Customer.objects.filter(voided=False),
+
+        'total_sales': total_sales,
+        'total_received': total_received,
+        'total_outstanding': total_outstanding,
+        'total_tons': total_tons,
+        'dispatch_count': dispatch_count,
+        'trend_pct': trend_pct,
+
+        'customer_list': customer_list,
+        'mine_list': mine_list,
+
+        'paid_count': paid_count,
+        'partial_count': partial_count,
+        'unpaid_count': unpaid_count,
+        'paid_amount': paid_amount,
+        'partial_amount': partial_amount,
+        'unpaid_amount': unpaid_amount,
+
+        'daily_labels': daily_labels,
+        'daily_data': daily_data,
+
+        'all_dispatches': all_dispatches,
+    }
+    return render(request, 'reports/sales.html', context)
+
+@role_required('Manager', 'Accountant')
+def report_production(request):
+    from datetime import date
+    from calendar import month_abbr, monthrange
+    from decimal import Decimal
+
+    today = date.today()
+    month_str = request.GET.get('month', '')
+    year_str = request.GET.get('year', '')
+    mine_filter = request.GET.get('mine', '')
+
+    try:
+        month = int(month_str) if month_str else today.month
+    except ValueError:
+        month = today.month
+    try:
+        year = int(year_str) if year_str else today.year
+    except ValueError:
+        year = today.year
+
+    # Production records for the period
+    records = ProductionRecord.objects.filter(
+        voided=False,
+        date__year=year,
+        date__month=month,
+    ).select_related('mine')
+
+    if mine_filter:
+        records = records.filter(mine_id=mine_filter)
+
+    total_tons = sum(r.quantity_tons for r in records) or Decimal('0')
+    total_overburden = sum(r.overburden_removed for r in records) or Decimal('0')
+    total_workers = sum(r.workers_count or 0 for r in records)
+    record_count = records.count()
+
+    # Previous month for trend
+    prev_month = month - 1
+    prev_year = year
+    if prev_month <= 0:
+        prev_month = 12
+        prev_year -= 1
+    prev_total = sum(
+        r.quantity_tons for r in ProductionRecord.objects.filter(
+            voided=False, date__year=prev_year, date__month=prev_month
+        )
+    ) or Decimal('0')
+
+    trend_pct = None
+    if prev_total > 0:
+        trend_pct = round(((float(total_tons) - float(prev_total)) / float(prev_total)) * 100, 1)
+
+    # By Mine
+    mine_totals = {}
+    for r in records:
+        name = r.mine.name
+        if name not in mine_totals:
+            mine_totals[name] = {'tons': 0, 'overburden': 0, 'records': 0, 'workers': 0}
+        mine_totals[name]['tons'] += float(r.quantity_tons)
+        mine_totals[name]['overburden'] += float(r.overburden_removed)
+        mine_totals[name]['records'] += 1
+        mine_totals[name]['workers'] += r.workers_count or 0
+    mine_list = sorted(mine_totals.items(), key=lambda x: x[1]['tons'], reverse=True)
+
+    # By Shift
+    shift_totals = {}
+    for r in records:
+        s = r.shift
+        if s not in shift_totals:
+            shift_totals[s] = {'tons': 0, 'count': 0}
+        shift_totals[s]['tons'] += float(r.quantity_tons)
+        shift_totals[s]['count'] += 1
+    shift_list = sorted(shift_totals.items(), key=lambda x: x[1]['tons'], reverse=True)
+
+    # By Coal Type
+    coal_totals = {}
+    for r in records:
+        c = r.coal_type
+        if c not in coal_totals:
+            coal_totals[c] = {'tons': 0, 'count': 0}
+        coal_totals[c]['tons'] += float(r.quantity_tons)
+        coal_totals[c]['count'] += 1
+    coal_list = sorted(coal_totals.items(), key=lambda x: x[1]['tons'], reverse=True)
+
+    # Daily production for chart
+    days_in_month = monthrange(year, month)[1]
+    daily_labels = []
+    daily_tons = []
+    daily_overburden = []
+    for d in range(1, days_in_month + 1):
+        daily_labels.append(str(d))
+        day_records = records.filter(date__day=d)
+        tons = sum(r.quantity_tons for r in day_records) or 0
+        ob = sum(r.overburden_removed for r in day_records) or 0
+        daily_tons.append(float(tons))
+        daily_overburden.append(float(ob))
+
+    # Striping ratio = overburden / coal
+    if total_tons > 0:
+        stripping_ratio = round(float(total_overburden) / float(total_tons), 2)
+    else:
+        stripping_ratio = 0
+
+    context = {
+        'month': month,
+        'year': year,
+        'month_name': month_abbr[month],
+        'months': Payroll.MONTH_CHOICES,
+        'mine_filter': mine_filter,
+        'all_mines': Mine.objects.filter(voided=False),
+
+        'total_tons': total_tons,
+        'total_overburden': total_overburden,
+        'total_workers': total_workers,
+        'record_count': record_count,
+        'trend_pct': trend_pct,
+        'stripping_ratio': stripping_ratio,
+
+        'mine_list': mine_list,
+        'shift_list': shift_list,
+        'coal_list': coal_list,
+
+        'daily_labels': daily_labels,
+        'daily_tons': daily_tons,
+        'daily_overburden': daily_overburden,
+    }
+    return render(request, 'reports/production.html', context)
+
+@role_required('Manager', 'Accountant')
+def report_payroll(request):
+    return render(request, 'reports/coming_soon.html', {'report_name': 'Payroll Report', 'report_icon': 'bi-cash-coin'})
+
+
+@role_required('Manager', 'Accountant')
+def report_inventory(request):
+    return render(request, 'reports/coming_soon.html', {'report_name': 'Inventory Report', 'report_icon': 'bi-box-seam'})
+
+
+@role_required('Manager', 'Accountant')
+def report_attendance(request):
+    return render(request, 'reports/coming_soon.html', {'report_name': 'Attendance Report', 'report_icon': 'bi-calendar-check'})
+
+
+@role_required('Manager', 'Accountant')
+def report_equipment(request):
+    return render(request, 'reports/coming_soon.html', {'report_name': 'Equipment Report', 'report_icon': 'bi-tools'})

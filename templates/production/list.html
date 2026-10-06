@@ -5,6 +5,7 @@
 
 {% block content %}
 
+<!-- Filter Bar -->
 <div class="panel mb-3">
     <form method="get" class="row g-2 align-items-end">
         <div class="col-md-4">
@@ -16,14 +17,14 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <label class="form-label">Show Voided</label>
             <select name="show_voided" class="form-select">
                 <option value="">Hide</option>
                 <option value="1" {% if show_voided %}selected{% endif %}>Show</option>
             </select>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-5">
             <button type="submit" class="btn btn-amber w-100">
                 <i class="bi bi-funnel"></i> Filter
             </button>
@@ -31,27 +32,39 @@
     </form>
 </div>
 
+<!-- KPI Card -->
 <div class="row g-3 mb-3">
     <div class="col-md-4">
         <div class="stat-card stat-amber">
             <i class="bi bi-truck icon"></i>
-            <h2>{{ total }}</h2>
+            <h2>{{ total|floatformat:0 }}</h2>
             <p>Total Tons Produced</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card stat-blue">
+            <i class="bi bi-clipboard-data icon"></i>
+            <h2>{{ records|length }}</h2>
+            <p>Production Records</p>
         </div>
     </div>
 </div>
 
+<!-- Table -->
 <div class="panel">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div class="panel-title mb-0">
             <i class="bi bi-clipboard-data"></i> Records ({{ records|length }})
         </div>
-        <div>
-            <a href="{% url 'export_production' %}" class="btn btn-outline-amber">
+        <div class="d-flex gap-2 flex-wrap">
+            {% if is_manager or is_accountant %}
+            <a href="{% url 'report_production' %}" class="btn btn-outline-amber btn-sm">
+                <i class="bi bi-file-earmark-bar-graph"></i> Report
+            </a>
+            <a href="{% url 'export_production' %}" class="btn btn-outline-amber btn-sm">
                 <i class="bi bi-file-earmark-excel"></i> Export
             </a>
-            {% if is_manager or is_accountant %}
-            <a href="{% url 'production_add' %}" class="btn btn-amber">
+            <a href="{% url 'production_add' %}" class="btn btn-amber btn-sm">
                 <i class="bi bi-plus-lg"></i> Add Record
             </a>
             {% endif %}
@@ -59,48 +72,52 @@
     </div>
 
     {% if records %}
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Shift</th>
-                <th>Mine</th>
-                <th>Coal Type</th>
-                <th>Qty (tons)</th>
-                <th>Overburden</th>
-                <th>Supervisor</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for r in records %}
-            <tr {% if r.voided %}style="opacity:0.5;"{% endif %}>
-                <td>
-                    <span style="color:var(--accent);">{{ r.date }}</span>
-                    {% if r.voided %}
-                        <span class="badge-status badge-inactive" style="margin-left:4px;">VOIDED</span>
-                    {% endif %}
-                </td>
-                <td>{{ r.shift }}</td>
-                <td>{{ r.mine.name }}</td>
-                <td>{{ r.coal_type }}</td>
-                <td>{{ r.quantity_tons }}</td>
-                <td>{{ r.overburden_removed }}</td>
-                <td>{{ r.supervisor|default:"—" }}</td>
-                <td>
-                    {% if is_manager and not r.voided %}
-                    <a href="{% url 'production_edit' r.pk %}" class="btn btn-sm btn-outline-amber" title="Edit">
-                        <i class="bi bi-pencil"></i>
-                    </a>
-                    <a href="{% url 'production_void' r.pk %}" class="btn btn-sm btn-outline-danger" title="Void">
-                        <i class="bi bi-slash-circle"></i>
-                    </a>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div style="overflow-x:auto;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Shift</th>
+                    <th>Mine</th>
+                    <th>Coal Type</th>
+                    <th style="text-align:right;">Qty (tons)</th>
+                    <th style="text-align:right;">Overburden</th>
+                    <th>Supervisor</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in records %}
+                <tr {% if r.voided %}style="opacity:0.5;"{% endif %}>
+                    <td>
+                        <span style="color:var(--accent);">{{ r.date }}</span>
+                        {% if r.voided %}
+                            <span class="badge-status badge-inactive" style="margin-left:4px;">VOIDED</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ r.shift }}</td>
+                    <td>{{ r.mine.name }}</td>
+                    <td>{{ r.coal_type }}</td>
+                    <td style="text-align:right; font-weight:700; color:var(--accent);">{{ r.quantity_tons }}</td>
+                    <td style="text-align:right;">{{ r.overburden_removed }}</td>
+                    <td>{{ r.supervisor|default:"—" }}</td>
+                    <td style="white-space:nowrap;">
+                        {% if is_manager and not r.voided %}
+                        <a href="{% url 'production_edit' r.pk %}" class="btn btn-sm btn-outline-amber" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <a href="{% url 'production_void' r.pk %}" class="btn btn-sm btn-outline-danger" title="Void">
+                            <i class="bi bi-slash-circle"></i>
+                        </a>
+                        {% else %}
+                        <span style="color:var(--text-muted); font-size:12px;">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
     {% else %}
     <p style="color:var(--text-muted); text-align:center; padding:30px;">
         <i class="bi bi-inbox" style="font-size:40px; display:block; margin-bottom:10px; opacity:0.5;"></i>

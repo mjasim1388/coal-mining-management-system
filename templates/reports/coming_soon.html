@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ report_name }} - Coal Mine{% endblock %}
+{% block page_title %}{{ report_name|upper }}{% endblock %}
+
+{% block content %}
+
+<div class="panel" style="max-width: 640px; margin: 40px auto; text-align: center; padding: 50px 40px;">
+    <div style="width: 80px; height: 80px; border-radius: 16px; background: var(--accent-soft); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+        <i class="bi {{ report_icon }}" style="font-size: 38px; color: var(--accent);"></i>
+    </div>
+    <h2 style="color: var(--text-primary); margin: 0 0 8px;">{{ report_name }}</h2>
+    <p style="color: var(--text-muted); font-size: 15px; margin: 0 0 24px; line-height: 1.6;">
+        This report is under construction.<br>
+        It will be available in an upcoming update.
+    </p>
+    <a href="{% url 'reports_hub' %}" class="btn btn-amber">
+        <i class="bi bi-arrow-left"></i> Back to Reports
+    </a>
+</div>
+
+{% endblock %}
