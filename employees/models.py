@@ -376,7 +376,18 @@ class Customer(models.Model):
                                   related_name='customers_voided')
     voided_at = models.DateTimeField(null=True, blank=True)
     voided_reason = models.TextField(blank=True)
-
+    # ----- Dispatch defaults (per-customer memory) -----
+    default_coal_type = models.CharField(max_length=30, blank=True,
+                                         help_text="Pre-fill coal type for this customer")
+    default_rate = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True,
+                                       help_text="Pre-fill price per ton")
+    default_truck_no = models.CharField(max_length=50, blank=True,
+                                        help_text="Pre-fill truck number")
+    default_driver_name = models.CharField(max_length=100, blank=True)
+    default_driver_phone = models.CharField(max_length=20, blank=True)
+    default_mine = models.ForeignKey('Mine', on_delete=models.SET_NULL, null=True, blank=True,
+                                     related_name='default_for_customers',
+                                     help_text="Pre-fill mine for this customer")
     class Meta:
         ordering = ['name']
 

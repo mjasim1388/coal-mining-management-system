@@ -59,6 +59,7 @@ urlpatterns = [
     # Customers
     path('customers/', views.customer_list, name='customer_list'),
     path('customers/add/', views.customer_add, name='customer_add'),
+    path('customers/<int:pk>/autofill/', views.customer_autofill_api, name='customer_autofill_api'),
     path('customers/<int:pk>/edit/', views.customer_edit, name='customer_edit'),
     path('customers/<int:pk>/void/', views.customer_void, name='customer_void'),
 
@@ -70,7 +71,6 @@ urlpatterns = [
     path('sales/<int:pk>/edit/', views.sale_edit, name='sale_edit'),
     path('sales/<int:pk>/void/', views.sale_delete, name='sale_delete'),
     path('sales/<int:pk>/slip/', views.sale_slip, name='sale_slip'),
-
     # Equipment
     path('equipment/', views.equipment_list, name='equipment_list'),
     path('equipment/add/', views.equipment_add, name='equipment_add'),
@@ -118,5 +118,9 @@ urlpatterns = [
     path('reports/inventory/', views.report_inventory, name='report_inventory'),
     path('reports/attendance/', views.report_attendance, name='report_attendance'),
     path('reports/equipment/', views.report_equipment, name='report_equipment'),
+    # Global Search
+    path('search/', views.global_search, name='global_search'),
+
+
 
 ]

@@ -8,9 +8,31 @@
 <div class="panel">
     <div class="panel-title"><i class="bi bi-person-badge"></i> {{ title }}</div>
 
-    <form method="post">
+    <form method="post" id="customerForm">
         {% csrf_token %}
-        <div class="row g-3">
+
+        {% if form.errors %}
+            <div class="alert alert-error-custom mb-3" style="border-radius: 8px;">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <div>
+                    <strong>Please fix these errors:</strong>
+                    <ul style="margin: 8px 0 0; padding-left: 20px;">
+                        {% for field in form %}
+                            {% if field.errors %}
+                                <li><strong>{{ field.label }}:</strong> {{ field.errors|join:", " }}</li>
+                            {% endif %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Basic Info -->
+        <div class="panel-title" style="font-size:13px; margin-bottom:14px; margin-top:0;">
+            <i class="bi bi-person-fill"></i> Basic Information
+        </div>
+
+        <div class="row g-3 mb-4">
             <div class="col-md-6">
                 <label class="form-label">Customer Name *</label>
                 {{ form.name }}
@@ -44,15 +66,82 @@
             </div>
         </div>
 
-        <hr style="border-color:var(--coal-line); margin:25px 0;">
+        <!-- Dispatch Defaults (Memory) -->
+        <div class="panel-title" style="font-size:13px; margin-bottom:14px;">
+            <i class="bi bi-lightning-charge-fill"></i> Dispatch Defaults
+            <span style="font-size:11px; color:var(--text-muted); font-weight:400; margin-left:8px; text-transform:none; letter-spacing:0;">Auto-fill these when creating a dispatch for this customer</span>
+        </div>
 
-        <button type="submit" class="btn btn-amber">
-            <i class="bi bi-check-lg"></i> Save Customer
-        </button>
-        <a href="{% url 'customer_list' %}" class="btn btn-outline-amber">
-            <i class="bi bi-x-lg"></i> Cancel
-        </a>
+        <div class="alert alert-info-custom mb-3" style="border-radius: 8px;">
+            <i class="bi bi-info-circle-fill"></i>
+            <span>Fill these once per customer. When the accountant selects this customer on a new dispatch, these values pre-fill automatically — saving time and preventing wrong rates/trucks.</span>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Default Coal Type</label>
+                {{ form.default_coal_type }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Default Rate (PKR/ton)</label>
+                {{ form.default_rate }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Default Mine</label>
+                {{ form.default_mine }}
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Default Truck No</label>
+                {{ form.default_truck_no }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Default Driver Name</label>
+                {{ form.default_driver_name }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Default Driver Phone</label>
+                {{ form.default_driver_phone }}
+            </div>
+        </div>
+
+        <hr style="border-color:var(--border-light); margin:25px 0;">
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-amber" style="padding: 12px 26px;">
+                <i class="bi bi-check-lg"></i> Save Customer
+            </button>
+            <a href="{% url 'customer_list' %}" class="btn btn-outline-amber" style="padding: 12px 26px;">
+                <i class="bi bi-x-lg"></i> Cancel
+            </a>
+        </div>
     </form>
 </div>
+
+<script>
+    // Enter = next field (not submit)
+    (function() {
+        var form = document.getElementById('customerForm');
+        if (!form) return;
+
+        var focusable = form.querySelectorAll(
+            'input:not([type="hidden"]):not([type="submit"]):not([disabled]), select:not([disabled]), textarea:not([disabled])'
+        );
+
+        form.addEventListener('keydown', function(e) {
+            if (e.key !== 'Enter') return;
+            var target = e.target;
+            if (target.tagName === 'TEXTAREA') return;
+            e.preventDefault();
+            var fields = Array.prototype.slice.call(focusable);
+            var idx = fields.indexOf(target);
+            if (idx > -1 && idx < fields.length - 1) {
+                fields[idx + 1].focus();
+            } else {
+                form.submit();
+            }
+        });
+    })();
+</script>
 
 {% endblock %}

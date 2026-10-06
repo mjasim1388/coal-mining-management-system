@@ -1118,6 +1118,7 @@ def sale_detail(request, pk):
 @role_required('Manager', 'Accountant')
 def sale_add(request):
     from datetime import date as date_today
+    from decimal import Decimal
 
     if request.method == 'POST':
         form = SaleForm(request.POST)
@@ -1126,22 +1127,33 @@ def sale_add(request):
             sale.created_by = request.user
             sale.date = date_today.today()
             sale.dispatch_date = date_today.today()
+
+            # Auto-compute amount_paid based on payment status
+            total = (sale.quantity_tons or Decimal('0')) * (sale.price_per_ton or Decimal('0'))
+            if sale.payment_status == 'Unpaid':
+                sale.amount_paid = Decimal('0')
+            elif sale.payment_status == 'Paid':
+                sale.amount_paid = total
+            else:
+                # Partial — use the value from the form
+                if sale.amount_paid is None:
+                    sale.amount_paid = Decimal('0')
+
             sale.save()
             messages.success(request, f'Dispatch {sale.dispatch_no} created. Print the slip for the driver.')
             return redirect('sale_slip', pk=sale.pk)
     else:
-        # Pre-fill with the last dispatch's settings for quick entry
         initial = {}
-        last_sale = Sale.objects.order_by('-created_at').first()
-        if last_sale:
-            initial['coal_type'] = last_sale.coal_type           # ← auto-select coal type
-            initial['mine'] = last_sale.mine                     # ← same mine
-            initial['price_per_ton'] = last_sale.price_per_ton   # ← same rate
-            initial['customer'] = last_sale.customer             # ← same customer
-            initial['truck_no'] = last_sale.truck_no             # ← same truck
-            initial['driver_name'] = last_sale.driver_name       # ← same driver
-            initial['driver_phone'] = last_sale.driver_phone     # ← same phone
-            initial['payment_status'] = last_sale.payment_status
+        last = Sale.objects.order_by('-created_at').first()
+        if last:
+            initial['coal_type'] = last.coal_type
+            initial['mine'] = last.mine
+            initial['price_per_ton'] = last.price_per_ton
+            initial['customer'] = last.customer
+            initial['truck_no'] = last.truck_no
+            initial['driver_name'] = last.driver_name
+            initial['driver_phone'] = last.driver_phone
+            initial['payment_status'] = last.payment_status
         form = SaleForm(initial=initial)
     return render(request, 'sales/sale_form.html', {'form': form, 'title': 'New Dispatch'})
 @role_required('Manager', 'Accountant')
@@ -3069,3 +3081,128 @@ def report_equipment(request):
         'status_list': status_list,
     }
     return render(request, 'reports/equipment.html', context)
+
+# ---------- CUSTOMER AUTOFILL API ----------
+@role_required('Manager', 'Accountant')
+def customer_autofill_api(request, pk):
+    from django.http import JsonResponse
+
+    try:
+        customer = Customer.objects.get(pk=pk)
+    except Customer.DoesNotExist:
+        return JsonResponse({'error': 'Not found'}, status=404)
+
+    return JsonResponse({
+        'coal_type': customer.default_coal_type or '',
+        'rate': float(customer.default_rate) if customer.default_rate else '',
+        'truck_no': customer.default_truck_no or '',
+        'driver_name': customer.default_driver_name or '',
+        'driver_phone': customer.default_driver_phone or '',
+        'mine_id': customer.default_mine.pk if customer.default_mine else '',
+    })
+
+# ---------- GLOBAL SEARCH ----------
+@role_required('Manager', 'Accountant', 'Viewer')
+def global_search(request):
+    from django.http import JsonResponse
+    from django.db.models import Q
+
+    q = request.GET.get('q', '').strip()
+
+    if len(q) < 2:
+        return JsonResponse({'results': [], 'query': q})
+
+    results = []
+    user_roles = set(request.user.groups.values_list('name', flat=True))
+    is_viewer_only = (user_roles == {'Viewer'}) and not request.user.is_superuser
+
+    # ---------- EMPLOYEES (not for Viewer) ----------
+    if not is_viewer_only:
+        for e in Employee.objects.filter(voided=False).filter(
+            Q(first_name__icontains=q) |
+            Q(last_name__icontains=q) |
+            Q(employee_code__icontains=q) |
+            Q(cnic__icontains=q) |
+            Q(phone__icontains=q)
+        )[:5]:
+            results.append({
+                'type': 'Employee',
+                'icon': 'bi-person-badge',
+                'label': f'{e.employee_code} — {e.first_name} {e.last_name}',
+                'sublabel': e.designation,
+                'url': f'/employees/{e.pk}/',
+            })
+
+    # ---------- CUSTOMERS ----------
+    for c in Customer.objects.filter(voided=False).filter(
+        Q(name__icontains=q) |
+        Q(company__icontains=q) |
+        Q(phone__icontains=q)
+    )[:5]:
+        results.append({
+            'type': 'Customer',
+            'icon': 'bi-person-vcard',
+            'label': c.name,
+            'sublabel': c.company or c.phone or 'Customer',
+            'url': f'/customers/{c.pk}/edit/' if not is_viewer_only else '/customers/',
+        })
+
+    # ---------- DISPATCHES / SALES ----------
+    for s in Sale.objects.filter(voided=False).filter(
+        Q(dispatch_no__icontains=q) |
+        Q(invoice_no__icontains=q) |
+        Q(truck_no__icontains=q) |
+        Q(driver_name__icontains=q) |
+        Q(customer__name__icontains=q)
+    ).select_related('customer')[:5]:
+        results.append({
+            'type': 'Dispatch',
+            'icon': 'bi-receipt',
+            'label': s.dispatch_no or s.invoice_no,
+            'sublabel': f'{s.customer.name} — {s.quantity_tons} tons',
+            'url': f'/sales/{s.pk}/',
+        })
+
+    # ---------- MINES (not for Viewer) ----------
+    if not is_viewer_only:
+        for m in Mine.objects.filter(voided=False).filter(
+            Q(name__icontains=q) |
+            Q(location__icontains=q)
+        )[:4]:
+            results.append({
+                'type': 'Mine',
+                'icon': 'bi-geo-alt-fill',
+                'label': m.name,
+                'sublabel': m.location,
+                'url': f'/mines/{m.pk}/edit/',
+            })
+
+    # ---------- EQUIPMENT ----------
+    for eq in Equipment.objects.filter(voided=False).filter(
+        Q(equipment_code__icontains=q) |
+        Q(name__icontains=q) |
+        Q(serial_number__icontains=q) |
+        Q(model_number__icontains=q)
+    )[:4]:
+        results.append({
+            'type': 'Equipment',
+            'icon': 'bi-tools',
+            'label': f'{eq.equipment_code} — {eq.name}',
+            'sublabel': eq.equipment_type,
+            'url': f'/equipment/{eq.pk}/',
+        })
+
+    # ---------- INVENTORY ITEMS ----------
+    for i in InventoryItem.objects.filter(voided=False).filter(
+        Q(name__icontains=q) |
+        Q(location__icontains=q)
+    )[:4]:
+        results.append({
+            'type': 'Item',
+            'icon': 'bi-box-seam',
+            'label': i.name,
+            'sublabel': f'{i.quantity} {i.unit} — {i.category}',
+            'url': f'/inventory/{i.pk}/edit/' if not is_viewer_only else '/inventory/',
+        })
+
+    return JsonResponse({'results': results, 'query': q})

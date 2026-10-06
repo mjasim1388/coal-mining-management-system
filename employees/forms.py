@@ -231,11 +231,20 @@ class PayrollForm(forms.ModelForm):
             'allowances', 'deductions',
         ])
 
-
+COAL_TYPE_CHOICES = [
+    ('', '— Select —'),
+    ('Anthracite', 'Anthracite'),
+    ('Bituminous', 'Bituminous'),
+    ('Sub-bituminous', 'Sub-bituminous'),
+    ('Lignite', 'Lignite'),
+]
 class CustomerForm(forms.ModelForm):
     class Meta:
         model = Customer
-        fields = ['name', 'company', 'phone', 'email', 'address', 'ntn', 'notes']
+        fields = ['name', 'company', 'phone', 'email', 'address', 'ntn',
+                  'default_coal_type', 'default_rate', 'default_mine',
+                  'default_truck_no', 'default_driver_name', 'default_driver_phone',
+                  'notes']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'company': forms.TextInput(attrs={'class': 'form-control'}),
@@ -243,10 +252,23 @@ class CustomerForm(forms.ModelForm):
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
             'address': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'ntn': forms.TextInput(attrs={'class': 'form-control'}),
+            'default_coal_type': forms.Select(attrs={'class': 'form-control'}, choices=COAL_TYPE_CHOICES),
+            'default_rate': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': 'e.g. 25000'}),
+            'default_mine': forms.Select(attrs={'class': 'form-control'}),
+            'default_truck_no': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. TRK-001'}),
+            'default_driver_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Driver name'}),
+            'default_driver_phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Driver phone'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
 
-
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['default_coal_type'].required = False
+        self.fields['default_rate'].required = False
+        self.fields['default_mine'].required = False
+        self.fields['default_truck_no'].required = False
+        self.fields['default_driver_name'].required = False
+        self.fields['default_driver_phone'].required = False
 class SaleForm(forms.ModelForm):
     class Meta:
         model = Sale
@@ -271,6 +293,31 @@ class SaleForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['customer'].empty_label = 'Select Customer...'
         clear_zeros(self, ['amount_paid'])
+        self.fields['amount_paid'].required = False
+    def clean(self):
+        from decimal import Decimal
+        cleaned_data = super().clean()
+        if cleaned_data.get('amount_paid') in (None, ''):
+            cleaned_data['amount_paid'] = Decimal('0')
+        status = cleaned_data.get('payment_status')
+        amount = cleaned_data.get('amount_paid') or 0
+        qty = cleaned_data.get('quantity_tons') or 0
+        rate = cleaned_data.get('price_per_ton') or 0
+        total = qty * rate
+
+        if status == 'Unpaid':
+            if amount != 0:
+                self.add_error('amount_paid', 'For UNPAID dispatches, Amount Paid should be 0.')
+        elif status == 'Paid':
+            if amount != total:
+                self.add_error('amount_paid', f'For PAID dispatches, Amount Paid must equal the total (PKR {total}).')
+        elif status == 'Partial':
+            if amount <= 0:
+                self.add_error('amount_paid', 'For PARTIAL payment, enter an amount greater than 0.')
+            elif amount >= total:
+                self.add_error('amount_paid', f'For PARTIAL payment, amount must be less than the total (PKR {total}).')
+
+        return cleaned_data
 
 
 class EquipmentForm(forms.ModelForm):
