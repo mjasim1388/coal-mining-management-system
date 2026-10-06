@@ -1,0 +1,455 @@
+{% extends 'base.html' %}
+
+{% block title %}Payroll Report - Coal Mine{% endblock %}
+{% block page_title %}PAYROLL REPORT{% endblock %}
+
+{% block content %}
+
+<!-- ==================== SCREEN VIEW ==================== -->
+
+<div class="panel mb-3">
+    <form method="get">
+        <div class="row g-2 align-items-end">
+            <div class="col-6 col-md-3">
+                <label class="form-label">Month</label>
+                <select name="month" class="form-select">
+                    {% for num, name in months %}
+                    <option value="{{ num }}" {% if month == num %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label">Year</label>
+                <input type="number" name="year" value="{{ year }}" class="form-control">
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All</option>
+                    <option value="Pending" {% if status_filter == 'Pending' %}selected{% endif %}>Pending</option>
+                    <option value="Approved" {% if status_filter == 'Approved' %}selected{% endif %}>Approved</option>
+                    <option value="Paid" {% if status_filter == 'Paid' %}selected{% endif %}>Paid</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <button type="submit" class="btn btn-amber w-100">
+                    <i class="bi bi-funnel"></i> Generate Report
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="panel mb-3" style="border-left:4px solid var(--accent);">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <div style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Report Period</div>
+            <div style="font-size:20px; font-weight:800; color:var(--text-primary); margin-top:2px;">{{ month_name }} {{ year }}</div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'export_payroll' %}" class="btn btn-outline-amber btn-sm">
+                <i class="bi bi-file-earmark-excel"></i> Export
+            </a>
+            <button onclick="window.print()" class="btn btn-amber btn-sm">
+                <i class="bi bi-printer"></i> Print
+            </button>
+            <a href="{% url 'reports_hub' %}" class="btn btn-outline-amber btn-sm">
+                <i class="bi bi-arrow-left"></i> Reports
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row g-2 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-amber">
+            <i class="bi bi-cash-stack icon"></i>
+            <h2>{{ total_net|floatformat:0 }}</h2>
+            <p>Total Net Payroll (PKR)</p>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-blue">
+            <i class="bi bi-people-fill icon"></i>
+            <h2>{{ employee_count }}</h2>
+            <p>Employees</p>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-green">
+            <i class="bi bi-clock-fill icon"></i>
+            <h2>{{ total_overtime|floatformat:0 }}</h2>
+            <p>Overtime Cost (PKR)</p>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-red">
+            <i class="bi bi-hourglass-split icon"></i>
+            <h2>{{ total_overtime_hours|floatformat:1 }}</h2>
+            <p>Overtime Hours</p>
+        </div>
+    </div>
+</div>
+
+<div class="panel mb-3">
+    <div class="panel-title"><i class="bi bi-list-ul"></i> Employee Payroll Details ({{ payrolls|length }})</div>
+    {% if payrolls %}
+    <div style="overflow-x:auto;">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Employee</th>
+                    <th>Department</th>
+                    <th style="text-align:right;">Basic</th>
+                    <th style="text-align:right;">Present</th>
+                    <th style="text-align:right;">Net Pay</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in payrolls %}
+                <tr>
+                    <td style="font-family:monospace; font-size:12px; color:var(--accent);">{{ p.employee.employee_code }}</td>
+                    <td><strong>{{ p.employee.first_name }} {{ p.employee.last_name }}</strong></td>
+                    <td>{{ p.employee.department }}</td>
+                    <td style="text-align:right;">{{ p.basic_salary|floatformat:0 }}</td>
+                    <td style="text-align:right;">{{ p.present_days }}</td>
+                    <td style="text-align:right; color:var(--accent); font-weight:700;">{{ p.net_salary|floatformat:0 }}</td>
+                    <td>
+                        {% if p.status == 'Paid' %}
+                            <span class="badge-status badge-active">PAID</span>
+                        {% elif p.status == 'Approved' %}
+                            <span class="badge-status badge-active">APPROVED</span>
+                        {% else %}
+                            <span class="badge-status badge-inactive">PENDING</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted); text-align:center; padding:24px; margin:0;">No payroll records.</p>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+
+<!-- ==================== PRINT VIEW ==================== -->
+{% block print_view %}
+
+<style>
+    .print-doc { display: none; }
+
+    @media print {
+        /* Hide the entire app */
+        .app-container { display: none !important; }
+
+        /* Show only the print document */
+        .print-doc { display: block !important; }
+
+        /* Reset */
+        html, body {
+            background: #fff !important;
+            color: #000 !important;
+            font-family: Georgia, 'Times New Roman', serif !important;
+            font-size: 10.5pt !important;
+            line-height: 1.4 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        @page {
+            size: A4;
+            margin: 18mm 15mm;
+        }
+
+        /* Kill every colored thing */
+        .print-doc * {
+            background: transparent !important;
+            color: #000 !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+        }
+
+        /* ---------- Header ---------- */
+        .print-doc .company {
+            text-align: center;
+            font-size: 20pt;
+            font-weight: bold;
+            letter-spacing: 4pt;
+            border-bottom: 2pt solid #000;
+            padding-bottom: 8pt;
+            margin-bottom: 4pt;
+        }
+        .print-doc .report-type {
+            text-align: center;
+            font-size: 13pt;
+            font-weight: bold;
+            letter-spacing: 3pt;
+            margin-top: 6pt;
+        }
+        .print-doc .report-period {
+            text-align: center;
+            font-size: 12pt;
+            font-weight: bold;
+            margin-top: 4pt;
+            margin-bottom: 14pt;
+        }
+        .print-doc .meta-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 9pt;
+            border-bottom: 1pt solid #000;
+            padding-bottom: 6pt;
+            margin-bottom: 18pt;
+        }
+
+        /* ---------- Section titles ---------- */
+        .print-doc .section {
+            font-size: 11pt;
+            font-weight: bold;
+            letter-spacing: 2pt;
+            text-transform: uppercase;
+            border-bottom: 1pt solid #000;
+            padding-bottom: 3pt;
+            margin: 16pt 0 10pt 0;
+            page-break-after: avoid;
+        }
+
+        /* ---------- Simple two-column summary rows ---------- */
+        .print-doc .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14pt;
+        }
+        .print-doc .summary-table td {
+            padding: 6pt 8pt;
+            border-bottom: 0.5pt dotted #999;
+            font-size: 10.5pt;
+        }
+        .print-doc .summary-table td:last-child {
+            text-align: right;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .print-doc .summary-table tr.total td {
+            border-top: 1.5pt solid #000;
+            border-bottom: 1.5pt solid #000;
+            padding-top: 8pt;
+            padding-bottom: 8pt;
+            font-size: 11.5pt;
+        }
+
+        /* ---------- Data tables ---------- */
+        .print-doc .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14pt;
+            table-layout: auto;
+        }
+        .print-doc .data-table thead {
+            display: table-header-group;
+        }
+        .print-doc .data-table th {
+            background: #dcdcdc !important;
+            border: 1pt solid #000;
+            padding: 6pt 8pt;
+            font-size: 9.5pt;
+            font-weight: bold;
+            text-align: left;
+            text-transform: uppercase;
+            letter-spacing: 0.5pt;
+        }
+        .print-doc .data-table td {
+            border: 0.5pt solid #333;
+            padding: 5pt 8pt;
+            font-size: 10pt;
+            vertical-align: middle;
+        }
+        .print-doc .data-table tbody tr:nth-child(even) td {
+            background: #f4f4f4 !important;
+        }
+        .print-doc .data-table tfoot td {
+            background: #dcdcdc !important;
+            border: 1pt solid #000;
+            font-weight: bold;
+            font-size: 10pt;
+            padding: 6pt 8pt;
+        }
+        .print-doc .data-table tr {
+            page-break-inside: avoid;
+        }
+
+        /* ---------- Footer ---------- */
+        .print-doc .footer {
+            display: flex;
+            justify-content: space-between;
+            border-top: 1pt solid #000;
+            padding-top: 6pt;
+            margin-top: 24pt;
+            font-size: 8.5pt;
+        }
+
+        /* Right-align numeric cells */
+        .print-doc .num { text-align: right; }
+    }
+</style>
+
+<div class="print-doc">
+
+    <!-- ================= HEADER ================= -->
+    <div class="company">COAL MINE COMPANY</div>
+    <div class="report-type">PAYROLL REPORT</div>
+    <div class="report-period">{{ month_name }} {{ year }}</div>
+
+    <div class="meta-row">
+        <span>Generated: {{ now|date:"d M Y" }}</span>
+        <span>Prepared by: {{ request.user.username }}</span>
+    </div>
+
+    <!-- ================= 1. SUMMARY ================= -->
+    <div class="section">1. Summary</div>
+    <table class="summary-table">
+        <tr>
+            <td>Total Employees</td>
+            <td>{{ employee_count }}</td>
+        </tr>
+        <tr>
+            <td>Total Basic Salary</td>
+            <td>PKR {{ total_basic|floatformat:0 }}</td>
+        </tr>
+        <tr>
+            <td>Total Overtime ({{ total_overtime_hours|floatformat:1 }} hours)</td>
+            <td>PKR {{ total_overtime|floatformat:0 }}</td>
+        </tr>
+        <tr>
+            <td>Total Allowances</td>
+            <td>PKR {{ total_allowances|floatformat:0 }}</td>
+        </tr>
+        <tr>
+            <td>Total Deductions</td>
+            <td>PKR {{ total_deductions|floatformat:0 }}</td>
+        </tr>
+        <tr class="total">
+            <td>TOTAL NET PAYROLL</td>
+            <td>PKR {{ total_net|floatformat:0 }}</td>
+        </tr>
+    </table>
+
+    <!-- ================= 2. PAYMENT STATUS ================= -->
+    <div class="section">2. Payment Status</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Status</th>
+                <th class="num">Employees</th>
+                <th class="num">Amount (PKR)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Paid</td>
+                <td class="num">{{ paid_count }}</td>
+                <td class="num">{{ paid_amount|floatformat:0 }}</td>
+            </tr>
+            <tr>
+                <td>Approved (Awaiting Payment)</td>
+                <td class="num">{{ approved_count }}</td>
+                <td class="num">{{ approved_amount|floatformat:0 }}</td>
+            </tr>
+            <tr>
+                <td>Pending Approval</td>
+                <td class="num">{{ pending_count }}</td>
+                <td class="num">{{ pending_amount|floatformat:0 }}</td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr>
+                <td>TOTAL</td>
+                <td class="num">{{ employee_count }}</td>
+                <td class="num">{{ total_net|floatformat:0 }}</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <!-- ================= 3. BY DEPARTMENT ================= -->
+    {% if dept_list %}
+    <div class="section">3. Payroll by Department</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Department</th>
+                <th class="num">Employees</th>
+                <th class="num">Overtime (PKR)</th>
+                <th class="num">Net Payroll (PKR)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for name, data in dept_list %}
+            <tr>
+                <td>{{ name }}</td>
+                <td class="num">{{ data.count }}</td>
+                <td class="num">{{ data.overtime|floatformat:0 }}</td>
+                <td class="num">{{ data.net|floatformat:0 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- ================= 4. EMPLOYEE DETAILS ================= -->
+    {% if payrolls %}
+    <div class="section">{% if dept_list %}4{% else %}3{% endif %}. Employee Payroll Details</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Code</th>
+                <th>Employee Name</th>
+                <th>Department</th>
+                <th class="num">Basic (PKR)</th>
+                <th class="num">Present</th>
+                <th class="num">OT (h)</th>
+                <th class="num">Net Pay (PKR)</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in payrolls %}
+            <tr>
+                <td>{{ p.employee.employee_code }}</td>
+                <td>{{ p.employee.first_name }} {{ p.employee.last_name }}</td>
+                <td>{{ p.employee.department }}</td>
+                <td class="num">{{ p.basic_salary|floatformat:0 }}</td>
+                <td class="num">{{ p.present_days }}</td>
+                <td class="num">{{ p.overtime_hours|floatformat:1 }}</td>
+                <td class="num">{{ p.net_salary|floatformat:0 }}</td>
+                <td>{{ p.status }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3">TOTAL</td>
+                <td class="num">{{ total_basic|floatformat:0 }}</td>
+                <td></td>
+                <td class="num">{{ total_overtime_hours|floatformat:1 }}</td>
+                <td class="num">{{ total_net|floatformat:0 }}</td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+    {% endif %}
+
+    <!-- ================= FOOTER ================= -->
+    <div class="footer">
+        <span>Coal Mine Management System</span>
+        <span>Generated: {{ now|date:"d M Y" }}</span>
+    </div>
+
+</div>
+
+{% endblock %}

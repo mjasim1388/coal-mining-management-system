@@ -2468,6 +2468,7 @@ def report_sales(request):
         'month': month,
         'year': year,
         'month_name': month_abbr[month],
+        'now': today,
         'months': Payroll.MONTH_CHOICES,  # reuse
         'customer_filter': customer_filter,
         'all_customers': Customer.objects.filter(voided=False),
@@ -2625,8 +2626,103 @@ def report_production(request):
 
 @role_required('Manager', 'Accountant')
 def report_payroll(request):
-    return render(request, 'reports/coming_soon.html', {'report_name': 'Payroll Report', 'report_icon': 'bi-cash-coin'})
+    from datetime import date
+    from calendar import month_abbr
+    from decimal import Decimal
 
+    today = date.today()
+    month_str = request.GET.get('month', '')
+    year_str = request.GET.get('year', '')
+    status_filter = request.GET.get('status', '')
+
+    try:
+        month = int(month_str) if month_str else today.month
+    except ValueError:
+        month = today.month
+    try:
+        year = int(year_str) if year_str else today.year
+    except ValueError:
+        year = today.year
+
+    payrolls = Payroll.objects.filter(
+        voided=False,
+        year=year,
+        month=month,
+    ).select_related('employee')
+
+    if status_filter:
+        payrolls = payrolls.filter(status=status_filter)
+
+    total_basic = sum(p.basic_salary for p in payrolls) or Decimal('0')
+    total_overtime = sum(p.overtime_amount for p in payrolls) or Decimal('0')
+    total_allowances = sum(p.allowances for p in payrolls) or Decimal('0')
+    total_deductions = sum(p.deductions for p in payrolls) or Decimal('0')
+    total_net = sum(p.net_salary for p in payrolls) or Decimal('0')
+    total_overtime_hours = sum(p.overtime_hours for p in payrolls) or Decimal('0')
+    employee_count = payrolls.count()
+
+    # By status
+    paid_count = payrolls.filter(status='Paid').count()
+    pending_count = payrolls.filter(status='Pending').count()
+    approved_count = payrolls.filter(status='Approved').count()
+    paid_amount = sum(p.net_salary for p in payrolls if p.status == 'Paid') or Decimal('0')
+    approved_amount = sum(p.net_salary for p in payrolls if p.status == 'Approved') or Decimal('0')
+    pending_amount = sum(p.net_salary for p in payrolls if p.status == 'Pending') or Decimal('0')
+
+    # Previous month for trend
+    prev_month = month - 1
+    prev_year = year
+    if prev_month <= 0:
+        prev_month = 12
+        prev_year -= 1
+
+    prev_total = sum(
+        p.net_salary for p in Payroll.objects.filter(voided=False, year=prev_year, month=prev_month)
+    ) or Decimal('0')
+
+    trend_pct = None
+    if prev_total > 0:
+        trend_pct = round(((float(total_net) - float(prev_total)) / float(prev_total)) * 100, 1)
+
+    # By department
+    dept_totals = {}
+    for p in payrolls:
+        d = p.employee.department or 'Unassigned'
+        if d not in dept_totals:
+            dept_totals[d] = {'net': 0, 'count': 0, 'overtime': 0}
+        dept_totals[d]['net'] += float(p.net_salary)
+        dept_totals[d]['count'] += 1
+        dept_totals[d]['overtime'] += float(p.overtime_amount)
+    dept_list = sorted(dept_totals.items(), key=lambda x: x[1]['net'], reverse=True)
+
+    context = {
+        'month': month,
+        'year': year,
+        'month_name': month_abbr[month],
+        
+        'months': Payroll.MONTH_CHOICES,
+        'status_filter': status_filter,
+
+        'total_basic': total_basic,
+        'total_overtime': total_overtime,
+        'total_allowances': total_allowances,
+        'total_deductions': total_deductions,
+        'total_net': total_net,
+        'total_overtime_hours': total_overtime_hours,
+        'employee_count': employee_count,
+        'trend_pct': trend_pct,
+
+        'paid_count': paid_count,
+        'pending_count': pending_count,
+        'approved_count': approved_count,
+        'paid_amount': paid_amount,
+        'approved_amount': approved_amount,
+        'pending_amount': pending_amount,
+
+        'dept_list': dept_list,
+        'payrolls': payrolls.order_by('employee__employee_code'),
+    }
+    return render(request, 'reports/payroll.html', context)
 
 @role_required('Manager', 'Accountant')
 def report_inventory(request):
