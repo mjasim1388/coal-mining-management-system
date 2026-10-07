@@ -112,6 +112,16 @@
             </a>
         </div>
     </form>
+    <!-- AUTCOMPLETE SUGGESTIONS -->
+<datalist id="truckList">
+    {% for t in suggestions.truck_numbers %}<option value="{{ t }}">{% endfor %}
+</datalist>
+<datalist id="driverList">
+    {% for d in suggestions.driver_names %}<option value="{{ d }}">{% endfor %}
+</datalist>
+<datalist id="driverPhoneList">
+    {% for p in suggestions.driver_phones %}<option value="{{ p }}">{% endfor %}
+</datalist>
 </div>
 
 <!-- CONFIRMATION MODAL -->

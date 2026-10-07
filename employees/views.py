@@ -23,7 +23,19 @@ from .forms import (
 from .models import (Employee, Mine, ProductionRecord, Attendance,
                      InventoryItem, StockTransaction, Payroll,
                      Customer, Sale, Notification, ApprovalLog,
-                     Equipment, MaintenanceLog, VoidLog)
+                     Equipment, MaintenanceLog, VoidLog, SalePayment)
+
+def distinct_values(queryset, field, limit=30):
+    """Return a list of distinct non-empty values from a model field."""
+    values = queryset.exclude(**{f'{field}__isnull': True}).exclude(**{field: ''})
+    seen = []
+    for v in values.values_list(field, flat=True).distinct():
+        if v and str(v).strip() and str(v).strip() not in seen:
+            seen.append(str(v).strip())
+        if len(seen) >= limit:
+            break
+    return seen
+
 # ---------- VOID HELPER ----------
 def void_record(record, user, reason, request, object_label=''):
     """Void a record: sets void fields + creates VoidLog entry.
@@ -1155,6 +1167,19 @@ def sale_add(request):
             initial['driver_phone'] = last.driver_phone
             initial['payment_status'] = last.payment_status
         form = SaleForm(initial=initial)
+
+        # Autocomplete suggestions
+    suggestions = {
+        'truck_numbers': distinct_values(Sale.objects.filter(voided=False), 'truck_no'),
+        'driver_names': distinct_values(Sale.objects.filter(voided=False), 'driver_name'),
+        'driver_phones': distinct_values(Sale.objects.filter(voided=False), 'driver_phone'),
+    }
+
+    return render(request, 'sales/sale_form.html', {
+        'form': form,
+        'title': 'New Dispatch',
+        'suggestions': suggestions,
+    })    
     return render(request, 'sales/sale_form.html', {'form': form, 'title': 'New Dispatch'})
 @role_required('Manager', 'Accountant')
 def sale_edit(request, pk):
@@ -3206,3 +3231,80 @@ def global_search(request):
         })
 
     return JsonResponse({'results': results, 'query': q})
+
+# ---------- SALE PAYMENT ----------
+@role_required('Manager', 'Accountant')
+def sale_add_payment(request, pk):
+    from datetime import date as date_today
+    from decimal import Decimal
+
+    sale = get_object_or_404(Sale, pk=pk)
+
+    if request.method == 'POST':
+        try:
+            amount = Decimal(request.POST.get('amount', '0'))
+        except Exception:
+            messages.error(request, 'Invalid amount.')
+            return redirect('sale_detail', pk=sale.pk)
+
+        if amount <= 0:
+            messages.error(request, 'Amount must be greater than 0.')
+            return redirect('sale_detail', pk=sale.pk)
+
+        balance = (sale.total_amount or 0) - (sale.amount_paid or 0)
+        if amount > balance:
+            messages.error(request, f'Amount exceeds outstanding balance (PKR {balance}).')
+            return redirect('sale_detail', pk=sale.pk)
+
+        # Create payment record
+        SalePayment.objects.create(
+            sale=sale,
+            date=date_today.today(),
+            amount=amount,
+            method=request.POST.get('method', 'Cash'),
+            reference_no=request.POST.get('reference_no', ''),
+            notes=request.POST.get('notes', ''),
+            received_by=request.user,
+        )
+
+        # Update sale totals
+        sale.amount_paid = (sale.amount_paid or 0) + amount
+        new_balance = (sale.total_amount or 0) - sale.amount_paid
+
+        if new_balance <= 0:
+            sale.payment_status = 'Paid'
+        elif sale.amount_paid > 0:
+            sale.payment_status = 'Partial'
+
+        sale.save()
+
+        messages.success(request, f'Payment of PKR {amount} recorded. Balance: PKR {new_balance}')
+
+    return redirect('sale_detail', pk=sale.pk)
+
+
+@role_required('Manager', 'Accountant')
+def sale_payment_delete(request, pk):
+    """Delete a payment (reverses the balance). Manager only."""
+    if not (request.user.is_superuser or request.user.groups.filter(name='Manager').exists()):
+        messages.error(request, 'Only managers can delete payments.')
+        return redirect('sale_list')
+
+    payment = get_object_or_404(SalePayment, pk=pk)
+    sale = payment.sale
+
+    if request.method == 'POST':
+        sale.amount_paid = (sale.amount_paid or 0) - payment.amount
+        if sale.amount_paid <= 0:
+            sale.amount_paid = 0
+            sale.payment_status = 'Unpaid'
+        elif sale.amount_paid < sale.total_amount:
+            sale.payment_status = 'Partial'
+        else:
+            sale.payment_status = 'Paid'
+        sale.save()
+
+        payment.delete()
+        messages.success(request, f'Payment of PKR {payment.amount} removed.')
+
+    return redirect('sale_detail', pk=sale.pk)

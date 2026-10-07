@@ -70,7 +70,9 @@ urlpatterns = [
     path('sales/<int:pk>/', views.sale_detail, name='sale_detail'),
     path('sales/<int:pk>/edit/', views.sale_edit, name='sale_edit'),
     path('sales/<int:pk>/void/', views.sale_delete, name='sale_delete'),
+    path('sales/<int:pk>/add-payment/', views.sale_add_payment, name='sale_add_payment'),
     path('sales/<int:pk>/slip/', views.sale_slip, name='sale_slip'),
+    path('sales/payment/<int:pk>/delete/', views.sale_payment_delete, name='sale_payment_delete'),
     # Equipment
     path('equipment/', views.equipment_list, name='equipment_list'),
     path('equipment/add/', views.equipment_add, name='equipment_add'),

@@ -1,20 +1,22 @@
 {% extends 'base.html' %}
 
-{% block title %}Invoice {{ sale.invoice_no }} - Coal Mine{% endblock %}
+{% block title %}Dispatch {{ sale.dispatch_no }} - Coal Mine{% endblock %}
 {% block page_title %}SALES INVOICE{% endblock %}
 
 {% block content %}
 
 <div class="panel" style="max-width: 900px; margin: 0 auto;">
-    <div class="d-flex justify-content-between align-items-start mb-4">
+    <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
         <div>
-            <h4 style="color:var(--amber-glow); margin:0;">COALMINE CONTROL SYSTEM</h4>
-            <small style="color:var(--text-dim); letter-spacing:2px;">SALES INVOICE</small>
+            <h4 style="color:var(--accent); margin:0;">COALMINE CONTROL SYSTEM</h4>
+            <small style="color:var(--text-muted); letter-spacing:2px;">DISPATCH INVOICE</small>
         </div>
         <div style="text-align:right;">
-            <div style="font-size:24px; font-weight:700; color:#fff;">{{ sale.invoice_no }}</div>
-            <small style="color:var(--text-dim);">Date: {{ sale.date }}</small><br>
-            {% if sale.payment_status == 'Paid' %}
+            <div style="font-size:22px; font-weight:800; color:var(--text-primary);">{{ sale.dispatch_no|default:sale.invoice_no }}</div>
+            <small style="color:var(--text-muted);">Date: {{ sale.date }}</small><br>
+            {% if sale.voided %}
+                <span class="badge-status badge-inactive" style="margin-top:6px; display:inline-block;">VOIDED</span>
+            {% elif sale.payment_status == 'Paid' %}
                 <span class="badge-status badge-active" style="margin-top:6px; display:inline-block;">PAID</span>
             {% elif sale.payment_status == 'Partial' %}
                 <span class="badge-status badge-leave" style="margin-top:6px; display:inline-block;">PARTIAL</span>
@@ -24,16 +26,27 @@
         </div>
     </div>
 
-    <hr style="border-color:var(--coal-line);">
+    {% if sale.voided %}
+    <div style="padding:12px 16px; background:var(--danger-soft); border:1px solid var(--danger); border-left-width:4px; border-radius:6px; margin-bottom:20px;">
+        <i class="bi bi-slash-circle-fill" style="color:var(--danger);"></i>
+        <strong style="color:var(--danger);">VOIDED DISPATCH</strong>
+        <span style="color:var(--text-secondary); font-size:13px;">
+            — by {{ sale.voided_by.username|default:"—" }}
+            {% if sale.voided_at %}on {{ sale.voided_at|date:"d M Y, H:i" }}{% endif %}
+            {% if sale.voided_reason %}<br>Reason: {{ sale.voided_reason }}{% endif %}
+        </span>
+    </div>
+    {% endif %}
+
+    <hr style="border-color:var(--border-light);">
 
     <div class="row g-4 mb-4">
         <div class="col-md-6">
             <label class="form-label">Bill To</label>
-            <h5 style="color:#fff; margin:0;">{{ sale.customer.name }}</h5>
+            <h5 style="color:var(--text-primary); margin:0;">{{ sale.customer.name }}</h5>
             {% if sale.customer.company %}<p style="margin:4px 0;">{{ sale.customer.company }}</p>{% endif %}
-            {% if sale.customer.address %}<p style="margin:4px 0; color:var(--text-dim);">{{ sale.customer.address }}</p>{% endif %}
-            {% if sale.customer.phone %}<p style="margin:4px 0; color:var(--text-dim);"><i class="bi bi-telephone"></i> {{ sale.customer.phone }}</p>{% endif %}
-            {% if sale.customer.ntn %}<p style="margin:4px 0; color:var(--text-dim);">NTN: {{ sale.customer.ntn }}</p>{% endif %}
+            {% if sale.customer.address %}<p style="margin:4px 0; color:var(--text-muted);">{{ sale.customer.address }}</p>{% endif %}
+            {% if sale.customer.phone %}<p style="margin:4px 0; color:var(--text-muted);"><i class="bi bi-telephone"></i> {{ sale.customer.phone }}</p>{% endif %}
         </div>
         <div class="col-md-6">
             <label class="form-label">Dispatch Details</label>
@@ -41,7 +54,6 @@
             {% if sale.truck_no %}<p style="margin:4px 0;">Truck No: {{ sale.truck_no }}</p>{% endif %}
             {% if sale.driver_name %}<p style="margin:4px 0;">Driver: {{ sale.driver_name }}</p>{% endif %}
             {% if sale.driver_phone %}<p style="margin:4px 0;">Driver Phone: {{ sale.driver_phone }}</p>{% endif %}
-            {% if sale.dispatch_date %}<p style="margin:4px 0;">Dispatch Date: {{ sale.dispatch_date }}</p>{% endif %}
         </div>
     </div>
 
@@ -58,31 +70,32 @@
             <tr>
                 <td>
                     <strong>{{ sale.coal_type }} Coal</strong>
-                    {% if sale.mine %}<br><small style="color:var(--text-dim);">From {{ sale.mine.name }}</small>{% endif %}
+                    {% if sale.mine %}<br><small style="color:var(--text-muted);">From {{ sale.mine.name }}</small>{% endif %}
                 </td>
                 <td style="text-align:right;">{{ sale.quantity_tons }}</td>
-                <td style="text-align:right;">{{ sale.price_per_ton }}</td>
-                <td style="text-align:right;">{{ sale.total_amount }}</td>
+                <td style="text-align:right;">{{ sale.price_per_ton|floatformat:0 }}</td>
+                <td style="text-align:right;">{{ sale.total_amount|floatformat:0 }}</td>
             </tr>
         </tbody>
     </table>
 
+    <!-- Totals -->
     <div class="row justify-content-end mt-4">
-        <div class="col-md-5">
+        <div class="col-md-6">
             <table class="table">
                 <tbody>
                     <tr>
                         <td>Subtotal</td>
-                        <td style="text-align:right;">{{ sale.total_amount }}</td>
+                        <td style="text-align:right;">{{ sale.total_amount|floatformat:0 }}</td>
                     </tr>
                     <tr>
                         <td>Amount Paid</td>
-                        <td style="text-align:right; color:#34d399;">{{ sale.amount_paid }}</td>
+                        <td style="text-align:right; color:var(--success); font-weight:600;">{{ sale.amount_paid|floatformat:0 }}</td>
                     </tr>
-                    <tr style="border-top:2px solid var(--amber);">
+                    <tr style="border-top:2px solid var(--accent);">
                         <td><strong>Balance Due</strong></td>
                         <td style="text-align:right;">
-                            <strong style="color:var(--amber-glow); font-size:18px;">{{ sale.balance }}</strong>
+                            <strong style="color:{% if sale.balance > 0 %}var(--danger){% else %}var(--success){% endif %}; font-size:18px;">{{ sale.balance|floatformat:0 }}</strong>
                         </td>
                     </tr>
                 </tbody>
@@ -93,37 +106,141 @@
     {% if sale.notes %}
     <div class="mt-3">
         <label class="form-label">Notes</label>
-        <p style="color:var(--text-dim);">{{ sale.notes }}</p>
+        <p style="color:var(--text-secondary);">{{ sale.notes }}</p>
     </div>
     {% endif %}
 
-    <hr style="border-color:var(--coal-line); margin:25px 0;">
-
-    <a href="{% url 'sale_slip' sale.pk %}" target="_blank" class="btn btn-amber">
-        <i class="bi bi-printer"></i> Print Dispatch Slip
-    </a>
-    <button onclick="window.print()" class="btn btn-outline-amber">
-        <i class="bi bi-printer"></i> Print Invoice
-    </button>
-    {% if is_manager %}
-    <a href="{% url 'sale_delete' sale.pk %}" class="btn btn-outline-danger">
-        <i class="bi bi-x-circle"></i> Void Dispatch
-    </a>
+    <!-- Payment History -->
+    {% if sale.payments.all %}
+    <div style="margin-top:28px; padding-top:20px; border-top:1px solid var(--border-light);">
+        <div class="panel-title" style="font-size:13px; border:none; padding-bottom:0; margin-bottom:12px;">
+            <i class="bi bi-clock-history"></i> Payment History ({{ sale.payments.count }})
+        </div>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Method</th>
+                    <th>Reference</th>
+                    <th>Received By</th>
+                    <th style="text-align:right;">Amount (PKR)</th>
+                    {% if is_manager %}<th></th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in sale.payments.all %}
+                <tr>
+                    <td>{{ p.date }}</td>
+                    <td><span class="badge-status badge-active">{{ p.method }}</span></td>
+                    <td>{{ p.reference_no|default:"—" }}</td>
+                    <td>{{ p.received_by.username|default:"—" }}</td>
+                    <td style="text-align:right; color:var(--success); font-weight:700;">{{ p.amount|floatformat:0 }}</td>
+                    {% if is_manager %}
+                    <td style="text-align:right;">
+                        <a href="{% url 'sale_payment_delete' p.pk %}"
+                           class="btn btn-sm btn-outline-danger"
+                           onclick="return confirm('Delete this payment of PKR {{ p.amount }}? This will reverse the balance.');">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="border-top:2px solid var(--border-medium);">
+                    <td colspan="4"><strong>TOTAL RECEIVED</strong></td>
+                    <td style="text-align:right;"><strong style="color:var(--accent); font-size:15px;">{{ sale.amount_paid|floatformat:0 }}</strong></td>
+                    {% if is_manager %}<td></td>{% endif %}
+                </tr>
+            </tfoot>
+        </table>
+    </div>
     {% endif %}
-    <a href="javascript:void(0);" onclick="goBack()" class="btn btn-outline-amber">
-        <i class="bi bi-arrow-left"></i> Back
-    </a>
 
-    <script>
-        function goBack() {
-            // If there's history, go back to preserve scroll position
-            if (document.referrer && document.referrer.indexOf(window.location.host) !== -1) {
-                window.history.back();
-            } else {
-                window.location.href = "{% url 'sale_list' %}";
-            }
-        }
-    </script>
+    <hr style="border-color:var(--border-light); margin:25px 0;">
+
+    <div class="d-flex gap-2 flex-wrap">
+        {% if sale.payment_status != 'Paid' and not sale.voided %}
+        <button type="button" class="btn btn-amber" data-bs-toggle="modal" data-bs-target="#addPaymentModal">
+            <i class="bi bi-cash-coin"></i> Add Payment
+        </button>
+        {% endif %}
+        <a href="{% url 'sale_slip' sale.pk %}" target="_blank" class="btn btn-outline-amber">
+            <i class="bi bi-printer"></i> Print Dispatch Slip
+        </a>
+        <button onclick="window.print()" class="btn btn-outline-amber">
+            <i class="bi bi-printer"></i> Print Invoice
+        </button>
+        {% if is_manager and not sale.voided %}
+        <a href="{% url 'sale_delete' sale.pk %}" class="btn btn-outline-danger">
+            <i class="bi bi-slash-circle"></i> Void Dispatch
+        </a>
+        {% endif %}
+        <a href="{% url 'sale_list' %}" class="btn btn-outline-amber">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+    </div>
 </div>
+
+<!-- ============================================================ -->
+<!-- ADD PAYMENT MODAL                                             -->
+<!-- ============================================================ -->
+{% if sale.payment_status != 'Paid' and not sale.voided %}
+<div class="modal fade" id="addPaymentModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--bg-panel); border:1px solid var(--border-light); color:var(--text-primary);">
+            <form method="post" action="{% url 'sale_add_payment' sale.pk %}">
+                {% csrf_token %}
+                <div class="modal-header" style="border-bottom:1px solid var(--border-light);">
+                    <h5 class="modal-title">
+                        <i class="bi bi-cash-coin" style="color:var(--success);"></i>
+                        Record Payment
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div style="padding:14px 16px; background:var(--bg-raised); border:1px solid var(--border-light); border-radius:8px; margin-bottom:18px;">
+                        <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1.5px; font-weight:700;">Outstanding Balance</div>
+                        <div style="font-size:24px; font-weight:800; color:var(--danger); margin-top:4px;">PKR {{ sale.balance|floatformat:0 }}</div>
+                        <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Total {{ sale.total_amount|floatformat:0 }} · Received {{ sale.amount_paid|floatformat:0 }}</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Amount Received (PKR) *</label>
+                        <input type="number" step="0.01" name="amount" class="form-control" required autofocus max="{{ sale.balance }}" placeholder="e.g. {{ sale.balance|floatformat:0 }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Payment Method</label>
+                        <select name="method" class="form-select">
+                            <option value="Cash" selected>Cash</option>
+                            <option value="Bank">Bank Transfer</option>
+                            <option value="Cheque">Cheque</option>
+                            <option value="Online">Online / Mobile Wallet</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Reference No (optional)</label>
+                        <input type="text" name="reference_no" class="form-control" placeholder="e.g. Cheque number, transaction ID">
+                    </div>
+
+                    <div class="mb-0">
+                        <label class="form-label">Notes (optional)</label>
+                        <input type="text" name="notes" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--border-light);">
+                    <button type="button" class="btn btn-outline-amber" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-amber">
+                        <i class="bi bi-check-lg"></i> Record Payment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 {% endblock %}

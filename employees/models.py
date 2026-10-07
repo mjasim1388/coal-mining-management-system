@@ -663,3 +663,27 @@ class VoidLog(models.Model):
 
     def __str__(self):
         return f"{self.object_type} #{self.object_id} voided by {self.voided_by}"
+
+    
+class SalePayment(models.Model):
+    METHOD_CHOICES = [
+        ('Cash', 'Cash'),
+        ('Bank', 'Bank Transfer'),
+        ('Cheque', 'Cheque'),
+        ('Online', 'Online / Mobile Wallet'),
+    ]
+
+    sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name='payments')
+    date = models.DateField()
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    method = models.CharField(max_length=20, choices=METHOD_CHOICES, default='Cash')
+    reference_no = models.CharField(max_length=100, blank=True)
+    notes = models.CharField(max_length=200, blank=True)
+    received_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date', '-created_at']
+
+    def __str__(self):
+        return f"{self.sale.dispatch_no} — PKR {self.amount}"    
