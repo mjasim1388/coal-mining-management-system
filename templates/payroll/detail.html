@@ -64,13 +64,13 @@
                 <div class="panel-title"><i class="bi bi-plus-circle"></i> Earnings</div>
                 <table class="table" style="margin:0;">
                     <tbody>
-                        <tr><td>Basic Salary</td><td style="text-align:right;">{{ payroll.basic_salary }}</td></tr>
-                        <tr><td>Overtime ({{ payroll.overtime_hours }} h)</td><td style="text-align:right;">{{ payroll.overtime_amount }}</td></tr>
-                        <tr><td>Allowances</td><td style="text-align:right;">{{ payroll.allowances }}</td></tr>
+                        <tr><td>Basic Salary</td><td style="text-align:right;">{{ payroll.basic_salary|floatformat:2 }}</td></tr>
+                        <tr><td>Overtime ({{ payroll.overtime_hours }} h × 2×)</td><td style="text-align:right; color:var(--success);">+ {{ payroll.overtime_amount|floatformat:2 }}</td></tr>
+                        <tr><td>Allowances</td><td style="text-align:right;">+ {{ payroll.allowances|floatformat:2 }}</td></tr>
                         <tr style="border-top:2px solid var(--accent);">
-                            <td><strong>Gross</strong></td>
+                            <td><strong>Gross Earnings</strong></td>
                             <td style="text-align:right;"><strong style="color:var(--accent);">
-                                {{ payroll.basic_salary|add:payroll.overtime_amount|add:payroll.allowances }}
+                                {{ payroll.basic_salary|add:payroll.overtime_amount|add:payroll.allowances|floatformat:2 }}
                             </strong></td>
                         </tr>
                     </tbody>
@@ -84,10 +84,20 @@
                 <table class="table" style="margin:0;">
                     <tbody>
                         <tr><td>Present Days</td><td style="text-align:right;">{{ payroll.present_days }}</td></tr>
-                        <tr><td>Absent Days</td><td style="text-align:right;">{{ payroll.absent_days }}</td></tr>
-                        <tr><td>Leave Days</td><td style="text-align:right;">{{ payroll.leave_days }}</td></tr>
+                        <tr><td>Absent Days</td><td style="text-align:right; color:var(--danger);">{{ payroll.absent_days }}</td></tr>
+                        <tr><td>Leave Days (paid)</td><td style="text-align:right;">{{ payroll.leave_days }}</td></tr>
                         <tr><td>Half Days</td><td style="text-align:right;">{{ payroll.half_days }}</td></tr>
-                        <tr><td>Deductions</td><td style="text-align:right;">{{ payroll.deductions }}</td></tr>
+                        <tr style="border-top:1px dashed var(--border-light);">
+                            <td>Absence Deduction</td>
+                            <td style="text-align:right; color:var(--danger);">− {{ payroll.absence_deduction|floatformat:2 }}</td>
+                        </tr>
+                        <tr><td>Other Deductions</td><td style="text-align:right; color:var(--danger);">− {{ payroll.deductions|floatformat:2 }}</td></tr>
+                        <tr style="border-top:2px solid var(--danger);">
+                            <td><strong>Total Deductions</strong></td>
+                            <td style="text-align:right;"><strong style="color:var(--danger);">
+                                − {{ payroll.absence_deduction|add:payroll.deductions|floatformat:2 }}
+                            </strong></td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -171,12 +181,16 @@
             <i class="bi bi-printer"></i> Print
         </button>
         {% if is_manager %}
-        <a href="{% url 'payroll_edit' payroll.pk %}" class="btn btn-outline-amber">
-            <i class="bi bi-pencil"></i> Edit
-        </a>
-        <a href="{% url 'payroll_delete' payroll.pk %}" class="btn btn-outline-danger">
-            <i class="bi bi-trash"></i> Delete
-        </a>
+            {% if payroll.status != 'Paid' and payroll.status != 'Paid Pending' and not payroll.voided %}
+            <a href="{% url 'payroll_edit' payroll.pk %}" class="btn btn-outline-amber">
+                <i class="bi bi-pencil"></i> Edit
+            </a>
+            {% endif %}
+            {% if payroll.status != 'Paid' and not payroll.voided %}
+            <a href="{% url 'payroll_void' payroll.pk %}" class="btn btn-outline-danger">
+                <i class="bi bi-slash-circle"></i> Void
+            </a>
+            {% endif %}
         {% endif %}
         <a href="{% url 'payroll_list' %}" class="btn btn-outline-amber">
             <i class="bi bi-arrow-left"></i> Back

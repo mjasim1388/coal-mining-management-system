@@ -318,6 +318,7 @@ class Payroll(models.Model):
     half_days = models.IntegerField(default=0)
     overtime_hours = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     overtime_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    absence_deduction = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     allowances = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     deductions = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     net_salary = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -354,9 +355,22 @@ class Payroll(models.Model):
         return f"{self.employee.employee_code} - {self.month}/{self.year}"
 
     def save(self, *args, **kwargs):
+        from decimal import Decimal
+        basic = self.basic_salary or Decimal('0')
+        daily = basic / Decimal('30') if basic else Decimal('0')
+
+        # Absence deduction: full absent + half day counts as 0.5
+        absent_ded = (self.absent_days or 0) * daily
+        half_ded = (self.half_days or 0) * daily * Decimal('0.5')
+        self.absence_deduction = absent_ded + half_ded
+
+        # Net salary
         self.net_salary = (
-            self.basic_salary + self.overtime_amount
-            + self.allowances - self.deductions
+            basic
+            - self.absence_deduction
+            + (self.overtime_amount or Decimal('0'))
+            + (self.allowances or Decimal('0'))
+            - (self.deductions or Decimal('0'))
         )
         super().save(*args, **kwargs)
 

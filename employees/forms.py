@@ -204,7 +204,7 @@ class PayrollForm(forms.ModelForm):
         fields = ['employee', 'month', 'year', 'basic_salary',
                   'present_days', 'absent_days', 'leave_days', 'half_days',
                   'overtime_hours', 'overtime_amount', 'allowances',
-                  'deductions', 'status', 'payment_date', 'notes']
+                  'deductions', 'notes']
         widgets = {
             'employee': forms.Select(attrs={'class': 'form-control'}),
             'month': forms.Select(attrs={'class': 'form-control'}),
@@ -218,8 +218,6 @@ class PayrollForm(forms.ModelForm):
             'overtime_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0'}),
             'allowances': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0'}),
             'deductions': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0'}),
-            'status': forms.Select(attrs={'class': 'form-control'}),
-            'payment_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
 

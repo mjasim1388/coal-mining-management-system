@@ -4,6 +4,11 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404, redirect, render
+from datetime import timedelta
+from calendar import month_abbr
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q, Sum, Value
+from django.db.models.functions import Coalesce, TruncMonth
+from django.utils import timezone
 
 from .decorators import role_required
 from .exports import make_excel_response
@@ -74,187 +79,342 @@ def void_record(record, user, reason, request, object_label=''):
 
     return True
 
+# =====================================================================
+# DASHBOARD VIEW  (drop-in replacement for the dashboard() in views.py)
+#
+# 1) ADD these imports at the top of views.py (merge with existing ones):
+#
+#       from datetime import timedelta
+#       from calendar import month_abbr
+#       from django.db.models import (Count, DecimalField, ExpressionWrapper,
+#                                     F, Q, Sum, Value)
+#       from django.db.models.functions import Coalesce, TruncMonth
+#       from django.utils import timezone
+#
+#    (views.py already has `from datetime import date` and `Sum`; keep them.)
+#
+# 2) DELETE the old dashboard() function and paste everything below
+#    (helpers + dashboard) in its place.
+#
+# ASSUMPTION: a sale's total is quantity_tons * price_per_ton.
+# If your Sale model stores `total_amount` as a real database field and it
+# can differ from that (discounts, tax...), change the two lines marked
+# "SALE EXPRESSIONS" to:
+#       SALE_TOTAL   = F('total_amount')
+#       SALE_BALANCE = ExpressionWrapper(F('total_amount') - F('amount_paid'),
+#                                        output_field=_DEC)
+# =====================================================================
+
+# ---------- DASHBOARD HELPERS ----------
+_DEC = DecimalField(max_digits=18, decimal_places=2)
+
+# SALE EXPRESSIONS
+SALE_TOTAL = ExpressionWrapper(F('quantity_tons') * F('price_per_ton'), output_field=_DEC)
+SALE_BALANCE = ExpressionWrapper(
+    F('quantity_tons') * F('price_per_ton') - F('amount_paid'), output_field=_DEC
+)
+
+
+def _zero(expr, **kwargs):
+    """Sum(expr) that returns 0 instead of None when there are no rows."""
+    return Coalesce(Sum(expr, **kwargs), Value(0), output_field=_DEC)
+
+
+def _month_back(today, back):
+    """(year, month) of the month `back` months before today's month."""
+    y, m = today.year, today.month - back
+    while m <= 0:
+        m += 12
+        y -= 1
+    return y, m
+
+
+def _pct_change(current, previous):
+    if not previous:
+        return None
+    try:
+        return round(((float(current) - float(previous)) / float(previous)) * 100, 1)
+    except (ZeroDivisionError, ValueError, TypeError):
+        return None
+
+
+def _daily_sales_series(sales_qs, today, days=30):
+    """Sales per day for the last `days` days, in ONE query."""
+    start = today - timedelta(days=days - 1)
+    rows = (
+        sales_qs.filter(date__gte=start, date__lte=today)
+        .order_by()
+        .values('date')
+        .annotate(t=Sum(SALE_TOTAL))
+    )
+    by_day = {r['date']: r['t'] for r in rows}
+    labels, data = [], []
+    for i in range(days - 1, -1, -1):
+        d = today - timedelta(days=i)
+        labels.append(d.strftime('%d %b'))
+        data.append(float(by_day.get(d) or 0))
+    return labels, data
+
+
+def _top_customers(sales_qs, limit=5):
+    rows = (
+        sales_qs.order_by()
+        .values('customer__name')
+        .annotate(t=Sum(SALE_TOTAL))
+        .order_by('-t')[:limit]
+    )
+    return [(r['customer__name'], float(r['t'] or 0)) for r in rows]
+
+
 # ---------- DASHBOARD ----------
 @role_required('Manager', 'Accountant', 'Viewer')
 def dashboard(request):
-    from datetime import date, timedelta
-    from decimal import Decimal
-
-    # Check role
-    user_roles = set(request.user.groups.values_list('name', flat=True))
-    is_viewer_only = (user_roles == {'Viewer'}) and not request.user.is_superuser
-
-    today = date.today()
+    today = timezone.localdate()          # timezone-aware "today"
     this_month_start = today.replace(day=1)
     last_month_end = this_month_start - timedelta(days=1)
     last_month_start = last_month_end.replace(day=1)
+    days_30_ago = today - timedelta(days=30)
+    days_60_ago = today - timedelta(days=60)
+    days_90_ago = today - timedelta(days=90)
 
-    # ---------- VIEWER DASHBOARD (SALES ONLY) ----------
-    if is_viewer_only:
-        sales = Sale.objects.filter(voided=False)
-        this_month_sales = sales.filter(date__gte=this_month_start)
-        last_month_sales = sales.filter(date__gte=last_month_start, date__lte=last_month_end)
+    user_roles = set(request.user.groups.values_list('name', flat=True))
+    is_superuser = request.user.is_superuser
+    is_viewer_only = (user_roles == {'Viewer'}) and not is_superuser
+    is_manager = is_superuser or 'Manager' in user_roles
 
-        total_sales = sum(s.total_amount for s in sales)
-        total_received = sum(s.amount_paid for s in sales)
-        total_outstanding = total_sales - total_received
-        total_tons_sold = sum(s.quantity_tons for s in sales)
-
-        tm_sales = sum(s.total_amount for s in this_month_sales)
-        lm_sales = sum(s.total_amount for s in last_month_sales)
-        tm_tons = sum(s.quantity_tons for s in this_month_sales)
-
-        recent_sales = sales.order_by('-date')[:10]
-
-        trend_labels, trend_data = [], []
-        for i in range(29, -1, -1):
-            d = today - timedelta(days=i)
-            amount = sum(s.total_amount for s in Sale.objects.filter(date=d, voided=False))
-            trend_labels.append(d.strftime('%d %b'))
-            trend_data.append(float(amount))
-
-        customer_totals = {}
-        for s in sales:
-            customer_totals[s.customer.name] = customer_totals.get(s.customer.name, 0) + float(s.total_amount)
-        top_customers = sorted(customer_totals.items(), key=lambda x: x[1], reverse=True)[:5]
-
-        return render(request, 'viewer_dashboard.html', {
-            'total_sales': total_sales,
-            'total_received': total_received,
-            'total_outstanding': total_outstanding,
-            'total_tons_sold': total_tons_sold,
-            'tm_sales': tm_sales,
-            'lm_sales': lm_sales,
-            'tm_tons': tm_tons,
-            'recent_sales': recent_sales,
-            'trend_labels': trend_labels,
-            'trend_data': trend_data,
-            'top_customers': top_customers,
-        })
-
-    # ---------- FULL DASHBOARD (MANAGER / ACCOUNTANT) ----------
-
-    # Current counts
-    total_employees = Employee.objects.filter(voided=False).count()
-    active_employees = Employee.objects.filter(status='Active', voided=False).count()
-    mine_count = Mine.objects.filter(voided=False, status='Active').count()
-
-    # Sales (this month vs last month)
     all_sales = Sale.objects.filter(voided=False)
     tm_sales_qs = all_sales.filter(date__gte=this_month_start)
     lm_sales_qs = all_sales.filter(date__gte=last_month_start, date__lte=last_month_end)
 
-    tm_sales = sum(s.total_amount for s in tm_sales_qs)
-    lm_sales = sum(s.total_amount for s in lm_sales_qs)
+    # ================================================================
+    # VIEWER DASHBOARD
+    # ================================================================
+    if is_viewer_only:
+        totals = all_sales.aggregate(
+            total=_zero(SALE_TOTAL),
+            received=_zero('amount_paid'),
+            tons=_zero('quantity_tons'),
+        )
+        trend_labels, trend_data = _daily_sales_series(all_sales, today)
 
-    tm_received = sum(s.amount_paid for s in tm_sales_qs)
-    lm_received = sum(s.amount_paid for s in lm_sales_qs)
+        return render(request, 'viewer_dashboard.html', {
+            'total_sales': totals['total'],
+            'total_received': totals['received'],
+            'total_outstanding': totals['total'] - totals['received'],
+            'total_tons_sold': totals['tons'],
+            'tm_sales': tm_sales_qs.aggregate(t=_zero(SALE_TOTAL))['t'],
+            'lm_sales': lm_sales_qs.aggregate(t=_zero(SALE_TOTAL))['t'],
+            'recent_sales': all_sales.select_related('customer', 'mine').order_by('-date')[:10],
+            'trend_labels': trend_labels,
+            'trend_data': trend_data,
+            'top_customers': _top_customers(all_sales),
+        })
 
-    tm_tons_sold = sum(s.quantity_tons for s in tm_sales_qs)
-    lm_tons_sold = sum(s.quantity_tons for s in lm_sales_qs)
+    # ================================================================
+    # FULL DASHBOARD
+    # ================================================================
 
-    total_outstanding = sum(s.balance for s in all_sales.filter(payment_status__in=['Unpaid', 'Partial']))
+    # ----- EMPLOYEES / MINES -----
+    emp = Employee.objects.filter(voided=False).aggregate(
+        total=Count('pk'),
+        active=Count('pk', filter=Q(status='Active')),
+    )
+    total_employees, active_employees = emp['total'], emp['active']
+    mine_count = Mine.objects.filter(voided=False, status='Active').count()
 
-    # Production (this month vs last month)
+    # ----- SALES -----
+    tm = tm_sales_qs.aggregate(
+        total=_zero(SALE_TOTAL),
+        received=_zero('amount_paid'),
+        tons=_zero('quantity_tons'),
+        count=Count('pk'),
+        paid=Count('pk', filter=Q(payment_status='Paid')),
+        partial=Count('pk', filter=Q(payment_status='Partial')),
+        unpaid=Count('pk', filter=Q(payment_status='Unpaid')),
+    )
+    lm = lm_sales_qs.aggregate(total=_zero(SALE_TOTAL), received=_zero('amount_paid'))
+
+    tm_sales, tm_received = tm['total'], tm['received']
+    tm_tons_sold, tm_sales_count = tm['tons'], tm['count']
+    tm_paid, tm_partial, tm_unpaid = tm['paid'], tm['partial'], tm['unpaid']
+
+    # ----- RECEIVABLES + AGING (one query) -----
+    open_sales = all_sales.filter(payment_status__in=['Unpaid', 'Partial'])
+    ag = open_sales.aggregate(
+        a1=_zero(SALE_BALANCE, filter=Q(date__gte=days_30_ago)),
+        a2=_zero(SALE_BALANCE, filter=Q(date__lt=days_30_ago, date__gte=days_60_ago)),
+        a3=_zero(SALE_BALANCE, filter=Q(date__lt=days_60_ago, date__gte=days_90_ago)),
+        a4=_zero(SALE_BALANCE, filter=Q(date__lt=days_90_ago)),
+        c1=Count('pk', filter=Q(date__gte=days_30_ago)),
+        c2=Count('pk', filter=Q(date__lt=days_30_ago, date__gte=days_60_ago)),
+        c3=Count('pk', filter=Q(date__lt=days_60_ago, date__gte=days_90_ago)),
+        c4=Count('pk', filter=Q(date__lt=days_90_ago)),
+    )
+    total_outstanding = ag['a1'] + ag['a2'] + ag['a3'] + ag['a4']
+    overdue_amount = ag['a2'] + ag['a3'] + ag['a4']          # older than 30 days
+    overdue_invoices = ag['c2'] + ag['c3'] + ag['c4']
+
+    aging_rows = [
+        ('0-30 days',  ag['a1'], ag['c1'], 'success'),
+        ('31-60 days', ag['a2'], ag['c2'], 'warning'),
+        ('61-90 days', ag['a3'], ag['c3'], 'danger'),
+        ('90+ days',   ag['a4'], ag['c4'], 'danger'),
+    ]
+    aging = [
+        {
+            'label': label,
+            'amount': amount,
+            'count': count,
+            'tone': tone,
+            'pct': int(round(float(amount) / float(total_outstanding) * 100)) if total_outstanding else 0,
+        }
+        for label, amount, count, tone in aging_rows
+    ]
+
+    # ----- PRODUCTION -----
     all_prod = ProductionRecord.objects.filter(voided=False)
-    tm_prod = all_prod.filter(date__gte=this_month_start)
-    lm_prod = all_prod.filter(date__gte=last_month_start, date__lte=last_month_end)
+    tm_tons = all_prod.filter(date__gte=this_month_start).aggregate(t=_zero('quantity_tons'))['t']
+    lm_tons = all_prod.filter(
+        date__gte=last_month_start, date__lte=last_month_end
+    ).aggregate(t=_zero('quantity_tons'))['t']
 
-    tm_tons = sum(p.quantity_tons for p in tm_prod)
-    lm_tons = sum(p.quantity_tons for p in lm_prod)
-
-    # Payroll (this month vs last month) — use net_salary for the selected period
-    tm_payroll = Payroll.objects.filter(voided=False, year=today.year, month=today.month)
-    lm_payroll = Payroll.objects.filter(voided=False, year=last_month_start.year, month=last_month_start.month)
-
+    # ----- PAYROLL (net_salary is calculated in Python, so one query + sum) -----
+    tm_payroll = list(Payroll.objects.filter(voided=False, year=today.year, month=today.month))
     tm_payroll_total = sum(p.net_salary for p in tm_payroll)
-    lm_payroll_total = sum(p.net_salary for p in lm_payroll)
+    tm_payroll_count = len(tm_payroll)
 
-    # Alerts
-    low_stock_items = [i for i in InventoryItem.objects.filter(voided=False) if i.is_low_stock]
-    pending_approvals = (
-        Employee.objects.filter(approval_status='Pending', voided=False).count() +
-        InventoryItem.objects.filter(approval_status='Pending', voided=False).count() +
-        Payroll.objects.filter(status='Pending', voided=False).count()
+    # ----- TODAY'S PULSE -----
+    td = all_sales.filter(date=today).aggregate(count=Count('pk'), tons=_zero('quantity_tons'))
+    todays_dispatches, todays_tons = td['count'], td['tons']
+    todays_cash = SalePayment.objects.filter(
+        date=today, sale__voided=False
+    ).aggregate(t=_zero('amount'))['t']
+    todays_production = all_prod.filter(date=today).aggregate(t=_zero('quantity_tons'))['t']
+
+    att = Attendance.objects.filter(date=today, voided=False).aggregate(
+        total=Count('pk'),
+        present=Count('pk', filter=Q(status='Present')),
+        absent=Count('pk', filter=Q(status='Absent')),
+        leave=Count('pk', filter=Q(status='Leave')),
     )
 
-    # Monthly comparison (last 6 months) — Production + Sales + Payroll
-    monthly_labels = []
-    monthly_production = []
-    monthly_sales = []
-    monthly_payroll = []
-    from calendar import month_abbr
+    # ----- EQUIPMENT -----
+    eq = Equipment.objects.filter(voided=False).aggregate(
+        total=Count('pk'),
+        working=Count('pk', filter=Q(status='Working')),
+        maint=Count('pk', filter=Q(status='Under Maintenance')),
+        out=Count('pk', filter=Q(status='Out of Service')),
+    )
+
+    # ----- FUEL (this month) -----
+    fuel = StockTransaction.objects.filter(
+        transaction_type='OUT', item__category='Fuel', date__gte=this_month_start,
+    ).aggregate(
+        liters=_zero('quantity'),
+        cost=_zero(ExpressionWrapper(F('quantity') * F('item__unit_price'), output_field=_DEC)),
+    )
+    fuel_liters, fuel_cost = fuel['liters'], fuel['cost']
+
+    # ----- MAINTENANCE (this month) -----
+    maint = MaintenanceLog.objects.filter(
+        voided=False, date__gte=this_month_start
+    ).aggregate(cost=_zero('cost'), count=Count('pk'))
+    maint_cost, maint_count = maint['cost'], maint['count']
+
+    # ----- INVENTORY (is_low_stock is a model property, so load once) -----
+    all_items = list(InventoryItem.objects.filter(voided=False))
+    low_stock_items = [i for i in all_items if i.is_low_stock]
+    low_stock_count = len(low_stock_items)
+    inventory_value = sum(float(i.quantity) * float(i.unit_price) for i in all_items)
+
+    # ----- PENDING APPROVALS (now includes "Paid Pending" payrolls,
+    #       which the approvals page already shows) -----
+    pending_approvals = 0
+    if is_manager:
+        pending_approvals = (
+            Employee.objects.filter(approval_status='Pending', voided=False).count()
+            + InventoryItem.objects.filter(approval_status='Pending', voided=False).count()
+            + Payroll.objects.filter(status__in=['Pending', 'Paid Pending'], voided=False).count()
+        )
+
+    # ----- CUSTOMERS -----
+    total_customers = Customer.objects.filter(voided=False).count()
+    new_customers_month = Customer.objects.filter(
+        voided=False, created_at__date__gte=this_month_start
+    ).count()
+
+    # ----- TOP CUSTOMERS -----
+    top_customers = _top_customers(tm_sales_qs)
+    top_customer = top_customers[0] if top_customers else None
+
+    # ----- TRENDS -----
+    sales_trend_pct = _pct_change(tm_sales, lm['total'])
+    production_trend_pct = _pct_change(tm_tons, lm_tons)
+    received_trend_pct = _pct_change(tm_received, lm['received'])
+
+    # ----- 6-MONTH CHART (2 queries instead of 12) -----
+    first_y, first_m = _month_back(today, 5)
+    window_start = date(first_y, first_m, 1)
+
+    def by_month(qs, expr):
+        rows = (
+            qs.filter(date__gte=window_start)
+            .order_by()
+            .annotate(m=TruncMonth('date'))
+            .values('m')
+            .annotate(t=Sum(expr))
+        )
+        return {(r['m'].year, r['m'].month): float(r['t'] or 0) for r in rows}
+
+    prod_by_month = by_month(all_prod, 'quantity_tons')
+    sales_by_month = by_month(all_sales, SALE_TOTAL)
+
+    monthly_labels, monthly_production, monthly_sales = [], [], []
     for i in range(5, -1, -1):
-        # Compute month start/end for i months ago
-        y = today.year
-        m = today.month - i
-        while m <= 0:
-            m += 12
-            y -= 1
+        y, m = _month_back(today, i)
         monthly_labels.append(f'{month_abbr[m]} {str(y)[-2:]}')
+        monthly_production.append(prod_by_month.get((y, m), 0.0))
+        monthly_sales.append(sales_by_month.get((y, m), 0.0))
 
-        prod = sum(p.quantity_tons for p in ProductionRecord.objects.filter(
-            voided=False, date__year=y, date__month=m
-        ))
-        monthly_production.append(float(prod))
+    # ----- 30-DAY TREND (1 query instead of 30) -----
+    trend_labels, trend_data = _daily_sales_series(all_sales, today)
 
-        sales = sum(s.total_amount for s in Sale.objects.filter(
-            voided=False, date__year=y, date__month=m
-        ))
-        monthly_sales.append(float(sales))
-
-        payroll = sum(p.net_salary for p in Payroll.objects.filter(
-            voided=False, year=y, month=m
-        ))
-        monthly_payroll.append(float(payroll))
-
-    # Sales trend — last 30 days
-    trend_labels = []
-    trend_data = []
-    for i in range(29, -1, -1):
-        d = today - timedelta(days=i)
-        amount = sum(s.total_amount for s in Sale.objects.filter(date=d, voided=False))
-        trend_labels.append(d.strftime('%d %b'))
-        trend_data.append(float(amount))
-
-    # Top customers (this month)
-    customer_totals = {}
-    for s in tm_sales_qs:
-        name = s.customer.name
-        customer_totals[name] = customer_totals.get(name, 0) + float(s.total_amount)
-    top_customers = sorted(customer_totals.items(), key=lambda x: x[1], reverse=True)[:5]
-
-    # Mine performance (this month)
+    # ----- MINE PERFORMANCE (managers only; 3 queries instead of 2 per mine) -----
     mine_performance = []
-    for m in Mine.objects.filter(voided=False):
-        tons = sum(p.quantity_tons for p in ProductionRecord.objects.filter(
-            mine=m, voided=False, date__gte=this_month_start
-        ))
-        revenue = sum(s.total_amount for s in Sale.objects.filter(
-            mine=m, voided=False, date__gte=this_month_start
-        ))
-        mine_performance.append({
-            'mine': m,
-            'tons': tons,
-            'revenue': revenue,
-        })
-    mine_performance.sort(key=lambda x: float(x['tons']), reverse=True)
+    if is_manager:
+        tons_by_mine = dict(
+            all_prod.filter(date__gte=this_month_start)
+            .order_by().values_list('mine').annotate(t=Sum('quantity_tons'))
+        )
+        revenue_by_mine = dict(
+            tm_sales_qs.order_by().values_list('mine').annotate(t=Sum(SALE_TOTAL))
+        )
+        for mine in Mine.objects.filter(voided=False):
+            mine_performance.append({
+                'mine': mine,
+                'tons': tons_by_mine.get(mine.pk) or 0,
+                'revenue': revenue_by_mine.get(mine.pk) or 0,
+            })
+        mine_performance.sort(key=lambda x: float(x['tons']), reverse=True)
 
-    # Recent sales (last 5)
-    recent_sales = all_sales.order_by('-created_at')[:5]
+    recent_sales = all_sales.select_related('customer', 'mine').order_by('-created_at')[:5]
 
-    # Compute trend % helpers
-    def pct(current, previous):
-        if not previous:
-            return None
-        return round(((float(current) - float(previous)) / float(previous)) * 100, 1)
+    # ----- COST BREAKDOWN -----
+    cost_payroll = float(tm_payroll_total or 0)
+    cost_fuel = float(fuel_cost or 0)
+    cost_maintenance = float(maint_cost or 0)
 
-    sales_trend_pct = pct(tm_sales, lm_sales)
-    production_trend_pct = pct(tm_tons, lm_tons)
-    received_trend_pct = pct(tm_received, lm_received)
+    # ----- SALES BY COAL TYPE (1 query) -----
+    coal_type_data = {}
+    rows = tm_sales_qs.order_by().values('coal_type').annotate(t=Sum(SALE_TOTAL))
+    for r in rows:
+        label = r['coal_type'] or 'Other'
+        coal_type_data[label] = coal_type_data.get(label, 0) + float(r['t'] or 0)
 
     context = {
-        # Counts
+        'today': today,                      # template uses it for the attendance link
+
+        # Employees / Mines
         'total_employees': total_employees,
         'active_employees': active_employees,
         'mine_count': mine_count,
@@ -263,6 +423,7 @@ def dashboard(request):
         'tm_sales': tm_sales,
         'tm_received': tm_received,
         'tm_tons_sold': tm_tons_sold,
+        'tm_sales_count': tm_sales_count,
         'total_outstanding': total_outstanding,
 
         # Production
@@ -270,33 +431,77 @@ def dashboard(request):
 
         # Payroll
         'tm_payroll_total': tm_payroll_total,
+        'tm_payroll_count': tm_payroll_count,
 
-        # Alerts
+        # Today
+        'todays_dispatches': todays_dispatches,
+        'todays_tons': todays_tons,
+        'todays_cash': todays_cash,
+        'todays_production': todays_production,
+        'today_present': att['present'],
+        'today_absent': att['absent'],
+        'today_leave': att['leave'],
+        'today_attendance_total': att['total'],
+
+        # Equipment
+        'eq_working': eq['working'],
+        'eq_maint': eq['maint'],
+        'eq_out': eq['out'],
+        'eq_total': eq['total'],
+
+        # Fuel / Maintenance
+        'fuel_liters': fuel_liters,
+        'fuel_cost': fuel_cost,
+        'maint_cost': maint_cost,
+        'maint_count': maint_count,
+
+        # Inventory
         'low_stock_items': low_stock_items,
+        'low_stock_count': low_stock_count,
+        'inventory_value': inventory_value,
+
+        # Approvals
         'pending_approvals': pending_approvals,
-        'low_stock_count': len(low_stock_items),
+
+        # Customers
+        'total_customers': total_customers,
+        'new_customers_month': new_customers_month,
+
+        # Overdue + aging
+        'overdue_invoices': overdue_invoices,
+        'overdue_amount': overdue_amount,
+        'aging': aging,
+
+        # Top customers
+        'top_customers': top_customers,
+        'top_customer': top_customer,
 
         # Trends
         'sales_trend_pct': sales_trend_pct,
         'production_trend_pct': production_trend_pct,
         'received_trend_pct': received_trend_pct,
 
-        # Monthly chart data
+        # Charts
         'monthly_labels': monthly_labels,
         'monthly_production': monthly_production,
         'monthly_sales': monthly_sales,
-        'monthly_payroll': monthly_payroll,
-
-        # 30-day chart
         'trend_labels': trend_labels,
         'trend_data': trend_data,
+        'tm_paid': tm_paid,
+        'tm_partial': tm_partial,
+        'tm_unpaid': tm_unpaid,
+        'cost_payroll': cost_payroll,
+        'cost_fuel': cost_fuel,
+        'cost_maintenance': cost_maintenance,
+        'coal_type_labels': list(coal_type_data.keys()),
+        'coal_type_values': list(coal_type_data.values()),
 
         # Tables
-        'top_customers': top_customers,
         'mine_performance': mine_performance,
         'recent_sales': recent_sales,
     }
     return render(request, 'dashboard.html', context)
+
 # ---------- EMPLOYEES ----------
 @role_required('Manager', 'Accountant')
 def employee_list(request):
@@ -828,26 +1033,39 @@ def stock_transaction_add(request):
         'form': form, 'title': 'Add Stock Transaction',
     })
 
-@login_required
+@role_required('Manager')
 def stock_transaction_delete(request, pk):
+    from django.db import transaction as db_transaction
+
     trans = get_object_or_404(StockTransaction, pk=pk)
     if request.method == 'POST':
         item = trans.item
-        if trans.transaction_type == 'IN':
-            item.quantity -= trans.quantity
-        else:
-            item.quantity += trans.quantity
-        item.save()
-        trans.delete()
+
+        # Deleting a stock-IN would remove stock that may already be used
+        if trans.transaction_type == 'IN' and trans.quantity > item.quantity:
+            messages.error(
+                request,
+                f'Cannot delete this stock-in: only {item.quantity} {item.unit} left, '
+                f'but this transaction added {trans.quantity} {item.unit}.'
+            )
+            return redirect('stock_transaction_list')
+
+        # Both changes succeed together or not at all
+        with db_transaction.atomic():
+            if trans.transaction_type == 'IN':
+                item.quantity -= trans.quantity
+            else:
+                item.quantity += trans.quantity
+            item.save()
+            trans.delete()
+
         messages.success(request, 'Transaction deleted and stock adjusted.')
         return redirect('stock_transaction_list')
     return render(request, 'inventory/transaction_delete.html', {'trans': trans})
 
-
 # ---------- PAYROLL ----------
 @role_required('Manager', 'Accountant')
 def payroll_generate(request):
-    """Auto-generate payroll for all active employees for a given month/year."""
     from decimal import Decimal
 
     if request.method == 'POST':
@@ -855,7 +1073,8 @@ def payroll_generate(request):
         year = int(request.POST.get('year'))
         created = 0
         skipped = 0
-        employees = Employee.objects.filter(status='Active')
+        employees = Employee.objects.filter(status='Active', voided=False)
+        is_manager_user = request.user.is_superuser or request.user.groups.filter(name='Manager').exists()
 
         for emp in employees:
             if Payroll.objects.filter(employee=emp, month=month, year=year).exists():
@@ -863,25 +1082,28 @@ def payroll_generate(request):
                 continue
 
             records = Attendance.objects.filter(
-                employee=emp, date__month=month, date__year=year
+                employee=emp, date__month=month, date__year=year, voided=False
             )
             present = records.filter(status='Present').count()
             absent = records.filter(status='Absent').count()
             leave = records.filter(status='Leave').count()
             half = records.filter(status='Half Day').count()
-
             overtime_hours = sum((r.overtime_hours or Decimal('0')) for r in records)
 
-            emp_salary = emp.salary or Decimal('0')
-            daily_rate = emp_salary / Decimal('30') if emp_salary else Decimal('0')
-            overtime_amount = (overtime_hours * (daily_rate / Decimal('8')) * Decimal('1.5')) if daily_rate else Decimal('0')
+            basic = emp.salary or Decimal('0')
+            # Absence deduction: absent days + half days (0.5 each) at daily rate (basic/30)
+            daily_rate = basic / Decimal('30') if basic else Decimal('0')
+            absence_deduction = (absent * daily_rate) + (half * daily_rate * Decimal('0.5'))
 
-            is_manager_user = request.user.is_superuser or request.user.groups.filter(name='Manager').exists()
+            # Overtime: double rate, hourly = basic / 26 / 8
+            hourly_rate = basic / Decimal('26') / Decimal('8') if basic else Decimal('0')
+            overtime_amount = overtime_hours * hourly_rate * Decimal('2')
+
             Payroll.objects.create(
                 employee=emp,
                 month=month,
                 year=year,
-                basic_salary=emp_salary,
+                basic_salary=basic,
                 present_days=present,
                 absent_days=absent,
                 leave_days=leave,
@@ -895,7 +1117,6 @@ def payroll_generate(request):
             )
             created += 1
 
-        is_manager_user = request.user.is_superuser or request.user.groups.filter(name='Manager').exists()
         if not is_manager_user and created > 0:
             notify_managers(
                 f'{created} payroll record(s) for {month}/{year} were generated by {request.user.username} and are awaiting your approval.',
@@ -908,7 +1129,6 @@ def payroll_generate(request):
     return render(request, 'payroll/generate.html', {
         'months': Payroll.MONTH_CHOICES,
     })
-
 @role_required('Manager', 'Accountant')
 def payroll_list(request):
     month_filter = request.GET.get('month', '')
@@ -973,9 +1193,233 @@ def payroll_add(request):
     return render(request, 'payroll/form.html', {'form': form, 'title': 'Add Payroll'})
 
 
+# ---------------------------------------------------------------------
+# BLOCK 1 - helpers (paste anywhere in the PAYROLL section)
+# ---------------------------------------------------------------------
+def _is_manager_user(user):
+    return user.is_superuser or user.groups.filter(name='Manager').exists()
+
+
+def _client_ip(request):
+    forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
+    if forwarded:
+        return forwarded.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR')
+
+
+def _parse_amount(raw, default):
+    """Turn form text into a Decimal; use `default` if empty or invalid."""
+    from decimal import Decimal, InvalidOperation
+
+    text = str(raw or '').strip()
+    if not text:
+        return default
+    try:
+        return Decimal(text)
+    except InvalidOperation:
+        return default
+
+
+def _record_payroll_payment(request, payroll, amount, note, photo=None):
+    """One place for the payment rules.
+
+    Manager    -> payroll becomes 'Paid' immediately.
+    Accountant -> payroll becomes 'Paid Pending' and managers are notified.
+
+    Returns (level, message). level is 'success', 'info', 'warning' or 'error'
+    and matches a function in django.contrib.messages.
+    """
+    from django.utils import timezone
+
+    if payroll.voided:
+        return 'error', 'This payroll has been voided and cannot be paid.'
+    if payroll.status == 'Paid':
+        return 'warning', 'This payroll is already marked as Paid.'
+    if payroll.status == 'Paid Pending':
+        return 'warning', 'This payment is already waiting for manager approval.'
+    if payroll.status != 'Approved':
+        return 'error', 'This payroll must be approved by a manager before it can be paid.'
+    if not amount.is_finite() or amount <= 0:
+        return 'error', 'Amount must be greater than 0.'
+
+    name = f'{payroll.employee.first_name} {payroll.employee.last_name}'
+    period = f'{payroll.get_month_display()} {payroll.year}'
+
+    payroll.received_amount = amount
+    payroll.confirmation_notes = note
+    payroll.paid_from_ip = _client_ip(request)
+    payroll.payment_method = 'Cash'
+    if photo:
+        payroll.signed_slip_photo = photo
+
+    # ----- Manager: final immediately -----
+    if _is_manager_user(request.user):
+        payroll.status = 'Paid'
+        payroll.payment_date = timezone.localdate()
+        payroll.paid_by = request.user
+        payroll.confirmed_at = timezone.now()
+        payroll.employee_confirmed = True
+        payroll.save()
+
+        if payroll.created_by and payroll.created_by != request.user:
+            create_notification(
+                payroll.created_by,
+                f'Salary for {name} ({period}) has been PAID by {request.user.username}.',
+                link=f'/payroll/{payroll.pk}/',
+            )
+        return 'success', f'Salary paid to {name}. Amount: PKR {amount}'
+
+    # ----- Accountant: needs manager approval -----
+    payroll.status = 'Paid Pending'
+    payroll.paid_requested_by = request.user
+    payroll.save()
+
+    notify_managers(
+        f'Payroll for {name} ({period}) marked as PAID by {request.user.username} '
+        f'- awaiting your approval.',
+        link='/approvals/',
+    )
+    return 'info', 'Payment submitted for manager approval.'
+
+
+# ---------------------------------------------------------------------
+# BLOCK 2 - replaces payroll_mark_paid
+# (used by the "Paid" button + pop-up on the payroll list and detail pages)
+# ---------------------------------------------------------------------
+@role_required('Manager', 'Accountant')
+def payroll_mark_paid(request, pk):
+    payroll = get_object_or_404(Payroll, pk=pk)
+
+    if request.method != 'POST':
+        return redirect('payroll_list')
+
+    amount = _parse_amount(request.POST.get('received_amount'), payroll.net_salary)
+    note = request.POST.get('confirmation_notes', '').strip()
+
+    level, text = _record_payroll_payment(request, payroll, amount, note)
+    getattr(messages, level)(request, text)
+    return redirect('payroll_list')
+
+
+# ---------------------------------------------------------------------
+# BLOCK 3 - replaces payroll_pay_save
+# (the page that uploads the signed slip photo; same rules as above)
+# ---------------------------------------------------------------------
+@role_required('Manager', 'Accountant')
+def payroll_pay_save(request, pk):
+    """Handle the confirm-payment POST (with signed slip photo)."""
+    payroll = get_object_or_404(Payroll, pk=pk)
+
+    if request.method != 'POST':
+        return redirect('payroll_list')
+
+    amount = _parse_amount(request.POST.get('received_amount'), payroll.net_salary)
+    note = request.POST.get('confirmation_notes', '').strip()
+    photo = request.FILES.get('signed_slip_photo')
+
+    level, text = _record_payroll_payment(request, payroll, amount, note, photo)
+    getattr(messages, level)(request, text)
+    return redirect('payroll_detail', pk=payroll.pk)
+
+
+# ---------------------------------------------------------------------
+# BLOCK 4 - replaces approve_payroll
+# (manager approves a new payroll: Pending -> Approved)
+# ---------------------------------------------------------------------
+@role_required('Manager')
+def approve_payroll(request, pk):
+    from django.utils import timezone
+
+    payroll = get_object_or_404(Payroll, pk=pk)
+
+    if request.method == 'POST':
+        # Only a payroll that is waiting for approval can be approved.
+        # (Stops a re-approval from changing a Paid payroll back to Approved.)
+        if payroll.voided or payroll.status != 'Pending':
+            messages.warning(request, 'This payroll is not waiting for approval.')
+            return redirect('approval_list')
+
+        name = f'{payroll.employee.first_name} {payroll.employee.last_name}'
+        period = f'{payroll.get_month_display()} {payroll.year}'
+
+        payroll.status = 'Approved'
+        payroll.approved_by = request.user
+        payroll.approved_at = timezone.now()
+        payroll.save()
+
+        if payroll.created_by:
+            create_notification(
+                payroll.created_by,
+                f'Payroll for {name} ({period}) has been approved by {request.user.username}.',
+                link=f'/payroll/{payroll.pk}/',
+            )
+
+        # Clear the manager's own "pending" notification for this payroll
+        Notification.objects.filter(
+            user=request.user,
+            object_type='Payroll',
+            object_id=payroll.pk,
+            status='Pending',
+        ).update(
+            status='Approved',
+            message=f'You approved payroll for {name} ({period}).',
+            is_read=True,
+        )
+
+        messages.success(request, f'Payroll for {name} approved.')
+    return redirect('approval_list')
+
+
+# ---------------------------------------------------------------------
+# BLOCK 5 - replaces approve_payroll_paid
+# (manager approves an accountant's payment: Paid Pending -> Paid)
+# ---------------------------------------------------------------------
+@role_required('Manager')
+def approve_payroll_paid(request, pk):
+    from django.utils import timezone
+
+    payroll = get_object_or_404(Payroll, pk=pk)
+
+    if request.method == 'POST':
+        if payroll.voided or payroll.status != 'Paid Pending':
+            messages.warning(request, 'This payment is not waiting for approval.')
+            return redirect('approval_list')
+
+        payroll.status = 'Paid'
+        payroll.payment_date = timezone.localdate()
+        payroll.paid_by = request.user
+        payroll.confirmed_at = timezone.now()
+        payroll.employee_confirmed = True
+        payroll.save()
+
+        if payroll.paid_requested_by:
+            create_notification(
+                payroll.paid_requested_by,
+                f'Payment for {payroll.employee.first_name} {payroll.employee.last_name} '
+                f'({payroll.get_month_display()} {payroll.year}) has been approved '
+                f'and marked as PAID by {request.user.username}.',
+                link=f'/payroll/{payroll.pk}/',
+            )
+        messages.success(request, 'Payment approved and marked as PAID.')
+    return redirect('approval_list')
+
+
+# ---------------------------------------------------------------------
+# BLOCK 6 - replaces payroll_edit
+# (Manager only. Paid / waiting-for-approval / voided payrolls are locked.)
+# ---------------------------------------------------------------------
 @role_required('Manager', 'Accountant')
 def payroll_edit(request, pk):
     payroll = get_object_or_404(Payroll, pk=pk)
+
+    if payroll.status == 'Paid':
+        messages.error(request, 'Paid payrolls cannot be edited. Corrections go in the next month as arrears or adjustment.')
+        return redirect('payroll_detail', pk=payroll.pk)
+
+    if payroll.voided:
+        messages.error(request, 'Voided payrolls cannot be edited.')
+        return redirect('payroll_detail', pk=payroll.pk)
+
     if request.method == 'POST':
         form = PayrollForm(request.POST, instance=payroll)
         if form.is_valid():
@@ -985,17 +1429,16 @@ def payroll_edit(request, pk):
     else:
         form = PayrollForm(instance=payroll)
     return render(request, 'payroll/form.html', {'form': form, 'title': 'Edit Payroll'})
-
-
 @role_required('Manager')
 def payroll_void(request, pk):
     payroll = get_object_or_404(Payroll, pk=pk)
+
     if payroll.voided:
-        messages.warning(request, 'This payroll record is already voided.')
+        messages.warning(request, 'This payroll is already voided.')
         return redirect('payroll_list')
 
     if payroll.status == 'Paid':
-        messages.error(request, 'Paid payroll records cannot be voided. Contact the superuser if correction is needed.')
+        messages.error(request, 'Paid payrolls cannot be voided. Corrections go in the next month as arrears or adjustment.')
         return redirect('payroll_list')
 
     if request.method == 'POST':
@@ -1021,7 +1464,6 @@ def payroll_void(request, pk):
         ],
         'cancel_url': 'payroll_list',
     })
-
 
 @role_required('Manager', 'Accountant')
 def payroll_detail(request, pk):
@@ -1481,128 +1923,8 @@ def reject_inventory(request, pk):
     return redirect('approval_list')
 
 
-@role_required('Manager')
-def approve_payroll(request, pk):
-    from django.utils import timezone
-    payroll = get_object_or_404(Payroll, pk=pk)
-    if request.method == 'POST':
-        payroll.status = 'Approved'
-        payroll.approved_by = request.user
-        payroll.approved_at = timezone.now()
-        payroll.save()
-        if payroll.created_by:
-            create_notification(
-                payroll.created_by,
-                f'Payroll for {payroll.employee.first_name} {payroll.employee.last_name} '
-                f'({payroll.get_month_display()} {payroll.year}) has been approved by {request.user.username}.',
-                link=f'/payroll/{payroll.pk}/'
-            )
-            Notification.objects.filter(
-            user=request.user,
-            object_type='Payroll',
-            object_id=payroll.pk,
-            status='Pending',
-        ).update(
-            status='Approved',
-            message=f'You approved payroll for {payroll.employee.first_name} {payroll.employee.last_name} ({payroll.get_month_display()} {payroll.year}).',
-            is_read=True,
-        )
-        messages.success(request, f'Payroll for {payroll.employee.first_name} {payroll.employee.last_name} approved.')
-    return redirect('approval_list')
 
 
-@role_required('Manager')
-def approve_payroll_paid(request, pk):
-    from django.utils import timezone
-    payroll = get_object_or_404(Payroll, pk=pk)
-    if request.method == 'POST':
-        payroll.status = 'Paid'
-        payroll.payment_date = timezone.now().date()   # ← Auto-fill today
-        payroll.paid_by = request.user                 # ← Auto-record
-        payroll.confirmed_at = timezone.now()          # ← Auto-record time
-        payroll.save()
-        if payroll.paid_requested_by:
-            create_notification(
-                payroll.paid_requested_by,
-                f'Payment for {payroll.employee.first_name} {payroll.employee.last_name} '
-                f'({payroll.get_month_display()} {payroll.year}) has been marked as PAID by {request.user.username}.',
-                link=f'/payroll/{payroll.pk}/'
-            )
-        messages.success(request, 'Payment marked as PAID.')
-    return redirect('approval_list')
-@role_required('Manager', 'Accountant')
-def payroll_mark_paid(request, pk):
-    from django.utils import timezone
-    from decimal import Decimal
-
-    payroll = get_object_or_404(Payroll, pk=pk)
-
-    if request.method != 'POST':
-        return redirect('payroll_list')
-
-    # Get client IP
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0].strip()
-    else:
-        ip = request.META.get('REMOTE_ADDR')
-
-    is_manager_user = request.user.is_superuser or request.user.groups.filter(name='Manager').exists()
-
-    # Check if already paid
-    if payroll.status == 'Paid':
-        messages.warning(request, 'This payroll is already marked as Paid.')
-        return redirect('payroll_list')
-
-    # Get amount from form (default = net salary)
-    try:
-        amount = Decimal(request.POST.get('received_amount') or payroll.net_salary)
-    except Exception:
-        amount = payroll.net_salary
-
-    note = request.POST.get('confirmation_notes', '').strip()
-
-    if is_manager_user:
-        # Manager pays directly
-        payroll.status = 'Paid'
-        payroll.received_amount = amount
-        payroll.payment_date = timezone.now().date()
-        payroll.paid_by = request.user
-        payroll.paid_from_ip = ip
-        payroll.payment_method = 'Cash'
-        payroll.confirmed_at = timezone.now()
-        payroll.employee_confirmed = True
-        payroll.confirmation_notes = note
-        payroll.save()
-
-        if payroll.created_by and payroll.created_by != request.user:
-            create_notification(
-                payroll.created_by,
-                f'Salary for {payroll.employee.first_name} {payroll.employee.last_name} '
-                f'({payroll.get_month_display()} {payroll.year}) has been PAID by {request.user.username}.',
-                link=f'/payroll/{payroll.pk}/'
-            )
-
-        messages.success(
-            request,
-            f'✅ Salary paid to {payroll.employee.first_name} {payroll.employee.last_name}. '
-            f'Amount: PKR {amount}'
-        )
-    else:
-        # Accountant requests approval
-        payroll.status = 'Paid Pending'
-        payroll.received_amount = amount
-        payroll.paid_requested_by = request.user
-        payroll.confirmation_notes = note
-        payroll.save()
-        notify_managers(
-            f'Payroll for {payroll.employee.first_name} {payroll.employee.last_name} '
-            f'({payroll.get_month_display()} {payroll.year}) marked as PAID by {request.user.username} — awaiting your approval.',
-            link='/approvals/'
-        )
-        messages.info(request, 'Payment submitted for manager approval.')
-
-    return redirect('payroll_list')
 
 
 # ---------- PUNCH IN / OUT ----------
@@ -1701,12 +2023,20 @@ def backup_now(request):
                 messages.error(request, 'pg_dump.exe not found. Please check PostgreSQL installation path.')
                 return redirect('dashboard')
 
-            # Run pg_dump → write to dated file
+            # Run pg_dump → write to dated file (credentials come from settings.py)
+            db = settings.DATABASES['default']
             env = os.environ.copy()
-            env['PGPASSWORD'] = 'jasim'
+            env['PGPASSWORD'] = str(db.get('PASSWORD', ''))
 
             result = subprocess.run(
-                [pg_dump_path, '-U', 'postgres', '-h', 'localhost', '-Fc', '-f', dated_filepath, 'coalmining_db'],
+                [
+                    pg_dump_path,
+                    '-U', db.get('USER') or 'postgres',
+                    '-h', db.get('HOST') or 'localhost',
+                    '-p', str(db.get('PORT') or '5432'),
+                    '-Fc', '-f', dated_filepath,
+                    db['NAME'],
+                ],
                 env=env,
                 capture_output=True,
                 text=True,
@@ -1826,52 +2156,6 @@ def payroll_pay_confirm(request, pk):
     return render(request, 'payroll/pay_confirm.html', {'payroll': payroll})
 
 
-@role_required('Manager', 'Accountant')
-def payroll_pay_save(request, pk):
-    """Handle the confirm payment POST (with signed slip photo)."""
-    from django.utils import timezone
-    from decimal import Decimal
-
-    payroll = get_object_or_404(Payroll, pk=pk)
-
-    if request.method != 'POST':
-        return redirect('payroll_list')
-
-    received = request.POST.get('received_amount', '').strip()
-    notes = request.POST.get('confirmation_notes', '').strip()
-    photo = request.FILES.get('signed_slip_photo')
-
-    try:
-        payroll.received_amount = Decimal(received) if received else payroll.net_salary
-    except Exception:
-        payroll.received_amount = payroll.net_salary
-
-    payroll.confirmation_notes = notes
-    payroll.paid_by = request.user
-    payroll.confirmed_at = timezone.now()
-    payroll.payment_date = timezone.now().date()
-    payroll.employee_confirmed = True
-    payroll.status = 'Paid'
-
-    if photo:
-        payroll.signed_slip_photo = photo
-
-    payroll.save()
-
-    if payroll.created_by and payroll.created_by != request.user:
-        create_notification(
-            payroll.created_by,
-            f'Salary for {payroll.employee.first_name} {payroll.employee.last_name} '
-            f'({payroll.get_month_display()} {payroll.year}) has been PAID by {request.user.username}.',
-            link=f'/payroll/{payroll.pk}/'
-        )
-
-    messages.success(
-        request,
-        f'✅ Salary paid to {payroll.employee.first_name} {payroll.employee.last_name}. '
-        f'Amount: PKR {payroll.received_amount}'
-    )
-    return redirect('payroll_detail', pk=payroll.pk)
 
 @role_required('Manager', 'Accountant')
 def payroll_slip(request, pk):

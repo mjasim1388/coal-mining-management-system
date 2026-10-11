@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Coal Mining System{% endblock %}</title>
 
-    <!-- Apply saved theme before first paint to avoid a flash -->
     <script>
         (function () {
             var t = 'dark';
@@ -16,8 +15,8 @@
         })();
     </script>
 
-<link href="{% static 'vendor/bootstrap.min.css' %}" rel="stylesheet">
-<link href="{% static 'vendor/icons/bootstrap-icons.min.css' %}" rel="stylesheet">
+    <link href="{% static 'vendor/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="{% static 'vendor/icons/bootstrap-icons.min.css' %}" rel="stylesheet">
     <style>
         /* =========================================================
            DESIGN TOKENS
@@ -53,7 +52,6 @@
             --warning: #e5a11c;
             --warning-soft: rgba(229, 161, 28, 0.15);
             --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-                        /* Sidebar (dark theme) */
             --sb-bg: #0a0e13;
             --sb-hover: #121922;
             --sb-active: #172029;
@@ -89,7 +87,6 @@
             --warning: #b87708;
             --warning-soft: rgba(184, 119, 8, 0.10);
             --shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
-                        /* Sidebar (light theme) */
             --sb-bg: #ffffff;
             --sb-hover: #f3f5f8;
             --sb-active: #eef1f5;
@@ -106,7 +103,8 @@
            BASE
            ========================================================= */
         * { box-sizing: border-box; }
-        html, body { height: 100%; }
+        html { height: 100%; }
+        body { min-height: 100%; }
         body {
             background: var(--bg-app);
             color: var(--text-primary);
@@ -122,11 +120,7 @@
         h1, h2, h3, h4, h5, h6 { color: var(--text-primary); font-weight: 600; }
         .text-muted { color: var(--text-muted) !important; }
         hr { border-color: var(--border-light); opacity: 1; }
-
-        :focus-visible {
-            outline: 2px solid var(--accent);
-            outline-offset: 2px;
-        }
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
         /* =========================================================
            LAYOUT
@@ -270,6 +264,7 @@
             min-width: 0;
             display: flex;
             flex-direction: column;
+            min-height: 0;
         }
         .topbar {
             background: var(--bg-panel);
@@ -364,17 +359,94 @@
            FOOTER
            ========================================================= */
         .app-footer {
+            background: var(--bg-panel);
             border-top: 1px solid var(--border-light);
-            padding: 14px 28px;
+            padding: 24px 32px;
+            flex-shrink: 0;
+        }
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr 1fr;
+            gap: 32px;
+            align-items: start;
+        }
+        .footer-col { min-width: 0; }
+        .footer-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        .footer-brand i {
+            color: var(--accent);
+            font-size: 18px;
+        }
+        .footer-desc {
             font-size: 12.5px;
             color: var(--text-muted);
-            display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 4px 16px;
+            margin-bottom: 4px;
         }
-        .app-footer strong { color: var(--text-secondary); font-weight: 600; }
-
+        .footer-version {
+            font-size: 11.5px;
+            color: var(--text-muted);
+            letter-spacing: 0.3px;
+        }
+        .footer-heading {
+            font-size: 10.5px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .footer-stat {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12.5px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+        .footer-stat i { color: var(--success); font-size: 13px; }
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+        .dot-green {
+            background: var(--success);
+            box-shadow: 0 0 0 3px rgba(47, 182, 124, 0.2);
+            animation: dotPulse 2s ease-in-out infinite;
+        }
+        @keyframes dotPulse {
+            0%, 100% { box-shadow: 0 0 0 3px rgba(47, 182, 124, 0.2); }
+            50% { box-shadow: 0 0 0 6px rgba(47, 182, 124, 0.05); }
+        }
+        .footer-right { text-align: right; }
+        .footer-author {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 4px;
+        }
+        .footer-copyright {
+            font-size: 11.5px;
+            color: var(--text-muted);
+        }
+        @media (max-width: 767.98px) {
+            .footer-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            .footer-right { text-align: left; }
+            .app-footer { padding: 20px 20px; }
+        }
         /* =========================================================
            STAT CARDS
            ========================================================= */
@@ -519,7 +591,7 @@
             padding: 8px 16px;
             transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
         }
-                .btn:hover {
+        .btn:hover {
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
@@ -647,6 +719,109 @@
         [data-theme="light"] .btn-close { opacity: 0.5; }
 
         /* =========================================================
+           INLINE SEARCH
+           ========================================================= */
+        .inline-search {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .inline-search-input {
+            width: 0;
+            opacity: 0;
+            padding: 8px 0;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            background: var(--bg-app);
+            color: var(--text-primary);
+            font-size: 13.5px;
+            font-family: inherit;
+            outline: none;
+            transition: width 0.25s ease, opacity 0.2s ease, padding 0.25s ease, border-color 0.15s ease;
+            margin-left: 6px;
+        }
+        .inline-search.open .inline-search-input {
+            width: 280px;
+            opacity: 1;
+            padding: 8px 12px;
+            border-color: var(--border-medium);
+        }
+        .inline-search-input::placeholder { color: var(--text-muted); }
+        .inline-search-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-soft);
+        }
+        .inline-search-results {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 380px;
+            max-width: calc(100vw - 20px);
+            background: var(--bg-panel);
+            border: 1px solid var(--border-light);
+            border-radius: 10px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+            max-height: 420px;
+            overflow-y: auto;
+            padding: 6px;
+            z-index: 200;
+            display: none;
+        }
+        .inline-search.open.has-results .inline-search-results { display: block; }
+        .inline-search-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 11px;
+            border-radius: 7px;
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+        .inline-search-item:hover,
+        .inline-search-item.selected { background: var(--accent-soft); }
+        .inline-search-item i {
+            color: var(--accent);
+            font-size: 15px;
+            flex-shrink: 0;
+            width: 18px;
+            text-align: center;
+        }
+        .inline-search-item-text { flex: 1; min-width: 0; }
+        .inline-search-item-label {
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .inline-search-item-sub {
+            color: var(--text-muted);
+            font-size: 11.5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .inline-search-item-type {
+            font-size: 9.5px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            padding: 2px 6px;
+            background: var(--bg-raised);
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+        .inline-search-empty {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 24px 16px;
+            font-size: 12.5px;
+        }
+
+        /* =========================================================
            SCROLLBAR
            ========================================================= */
         ::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -769,7 +944,7 @@
                 <i class="bi bi-tools"></i> Equipment
             </a>
             <a href="{% url 'fuel_report' %}" class="{% if 'fuel_report' in request.resolver_match.url_name %}active{% endif %}">
-            <i class="bi bi-fuel-pump-fill"></i> Fuel Report
+                <i class="bi bi-fuel-pump-fill"></i> Fuel Report
             </a>
             <a href="{% url 'inventory_list' %}" class="{% if 'inventory' in request.resolver_match.url_name or 'stock' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-box-seam-fill"></i> Inventory
@@ -788,7 +963,8 @@
                 <i class="bi bi-shield-check"></i> Pending approvals
             </a>
             {% endif %}
-                        {% if is_manager or is_accountant %}
+
+            {% if is_manager or is_accountant %}
             <div class="sidebar-section">Reports</div>
             <a href="{% url 'reports_hub' %}" class="{% if 'report' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-file-earmark-bar-graph"></i> Reports
@@ -826,14 +1002,16 @@
                 </button>
                 <h1 class="page-title m-0">{% block page_title %}Mine management{% endblock %}</h1>
             </div>
-                        <div class="topbar-right">
-                <button type="button" class="icon-btn" id="globalSearchBtn" aria-label="Search" title="Search (Ctrl+K)">
-                    <i class="bi bi-search"></i>
-                </button>
+            <div class="topbar-right">
+                <div class="inline-search" id="inlineSearch">
+                    <button type="button" class="icon-btn" id="globalSearchBtn" aria-label="Search" title="Search (Ctrl+K)">
+                        <i class="bi bi-search"></i>
+                    </button>
+                    <input type="text" id="globalSearchInput" class="inline-search-input" placeholder="Search..." autocomplete="off">
+                </div>
                 <button type="button" class="icon-btn" id="themeToggle" aria-label="Switch between light and dark theme" title="Switch theme">
                     <i class="bi bi-sun-fill" id="themeIcon"></i>
                 </button>
-
                 <a href="{% url 'notification_list' %}" class="icon-btn notification-bell" title="Notifications" aria-label="Notifications">
                     <i class="bi bi-bell-fill"></i>
                     {% if unread_notifications_count > 0 %}
@@ -882,14 +1060,40 @@
 
         <!-- FOOTER -->
         <footer class="app-footer">
-            <span>&copy; 2026 Coal Mine Management System</span>
-            <span>Developed by <strong>Muhammad Jasim</strong></span>
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <div class="footer-brand">
+                        <i class="bi bi-gem"></i>
+                        <span>COALMINE CONTROL SYSTEM</span>
+                    </div>
+                    <div class="footer-desc">Coal Mining Management Platform</div>
+                    <div class="footer-version">Version 1.0 · Built on Django</div>
+                </div>
+                <div class="footer-col">
+                    <div class="footer-heading">System</div>
+                    <div class="footer-stat">
+                        <span class="dot dot-green"></span> All services operational
+                    </div>
+                    <div class="footer-stat">
+                        <i class="bi bi-shield-check"></i> Local network mode
+                    </div>
+                </div>
+                <div class="footer-col footer-right">
+                    <div class="footer-heading">Developed By</div>
+                    <div class="footer-author">Muhammad Jasim</div>
+                    <div class="footer-copyright">&copy; 2026 · All rights reserved</div>
+                </div>
+            </div>
         </footer>
     </div>
 </div>
 
 <script src="{% static 'vendor/bootstrap.bundle.min.js' %}"></script>
+
 <script>
+    /* =========================================================
+       THEME TOGGLE + SIDEBAR
+       ========================================================= */
     (function () {
         var root = document.documentElement;
         var icon = document.getElementById('themeIcon');
@@ -900,20 +1104,31 @@
         }
         syncIcon();
 
-        document.getElementById('themeToggle').addEventListener('click', function () {
-            var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-            root.setAttribute('data-theme', next);
-            root.setAttribute('data-bs-theme', next);
-            try { localStorage.setItem('cm-theme', next); } catch (e) {}
-            syncIcon();
-        });
+        var themeBtn = document.getElementById('themeToggle');
+        if (themeBtn) {
+            themeBtn.addEventListener('click', function () {
+                var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+                root.setAttribute('data-theme', next);
+                root.setAttribute('data-bs-theme', next);
+                try { localStorage.setItem('cm-theme', next); } catch (e) {}
+                syncIcon();
+            });
+        }
 
         function setSidebar(open) { document.body.classList.toggle('sidebar-open', open); }
-        document.getElementById('sidebarToggle').addEventListener('click', function () {
-            setSidebar(!document.body.classList.contains('sidebar-open'));
+        var sidebarToggle = document.getElementById('sidebarToggle');
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', function () {
+                setSidebar(!document.body.classList.contains('sidebar-open'));
+            });
+        }
+        var sidebarBackdrop = document.getElementById('sidebarBackdrop');
+        if (sidebarBackdrop) {
+            sidebarBackdrop.addEventListener('click', function () { setSidebar(false); });
+        }
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') setSidebar(false);
         });
-        document.getElementById('sidebarBackdrop').addEventListener('click', function () { setSidebar(false); });
-        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setSidebar(false); });
     })();
 </script>
 
@@ -922,10 +1137,8 @@
        GLOBAL SCROLL POSITION PRESERVATION
        ========================================================= */
     (function () {
-        // Unique key per page URL (path only, so filters/params are ignored)
         var key = 'scrollPos:' + window.location.pathname;
 
-        // Save scroll position continuously (debounced)
         var saveTimer = null;
         window.addEventListener('scroll', function () {
             clearTimeout(saveTimer);
@@ -934,17 +1147,14 @@
             }, 150);
         }, { passive: true });
 
-        // Save immediately before navigating away (more reliable than beforeunload)
         window.addEventListener('pagehide', function () {
             try { sessionStorage.setItem(key, String(window.scrollY)); } catch (e) {}
         });
 
-        // Restore on load
         window.addEventListener('load', function () {
             try {
                 var saved = sessionStorage.getItem(key);
                 if (saved && parseInt(saved) > 0) {
-                    // Wait one frame so layout completes
                     requestAnimationFrame(function () {
                         window.scrollTo(0, parseInt(saved));
                     });
@@ -952,15 +1162,9 @@
             } catch (e) {}
         });
 
-        // Clear the saved position when the page is reached via a fresh link
-        // (i.e. not via Back button). We detect this with the Navigation API where
-        // supported, otherwise rely on performance.navigation.
         try {
             var navEntries = performance.getEntriesByType('navigation');
             if (navEntries.length && navEntries[0].type !== 'back_forward') {
-                // For fresh navigations we still restore — but only within the same
-                // session. Reset the key when the user clicks any link from the sidebar
-                // or a filter form (those are intentional fresh visits).
                 document.querySelectorAll('.sidebar a, .sidebar form button').forEach(function (el) {
                     el.addEventListener('click', function () {
                         try { sessionStorage.removeItem(key); } catch (e) {}
@@ -970,258 +1174,74 @@
         } catch (e) {}
     })();
 </script>
-<script src="{% static 'vendor/bootstrap.bundle.min.js' %}"></script>
+
 <script>
+    /* =========================================================
+       INLINE GLOBAL SEARCH
+       ========================================================= */
     (function() {
-        // Wait for DOM
         document.addEventListener('DOMContentLoaded', function() {
+            var searchBox = document.getElementById('inlineSearch');
             var searchBtn = document.getElementById('globalSearchBtn');
-            var modalEl = document.getElementById('globalSearchModal');
             var input = document.getElementById('globalSearchInput');
-            var resultsBox = document.getElementById('globalSearchResults');
 
-            if (!searchBtn || !modalEl || !input || !resultsBox) return;
+            if (!searchBox || !searchBtn || !input) return;
 
-            var searchModal = new bootstrap.Modal(modalEl);
+            var resultsContainer = document.createElement('div');
+            resultsContainer.className = 'inline-search-results';
+            resultsContainer.id = 'inlineSearchResults';
+            searchBox.appendChild(resultsContainer);
+
             var currentResults = [];
             var selectedIndex = -1;
             var debounceTimer = null;
 
-            // ---------- OPEN ----------
             function openSearch() {
-                searchModal.show();
-                setTimeout(function() { input.focus(); }, 200);
+                searchBox.classList.add('open');
+                setTimeout(function() { input.focus(); }, 100);
             }
 
-            searchBtn.addEventListener('click', openSearch);
+            function closeSearch() {
+                searchBox.classList.remove('open', 'has-results');
+                input.value = '';
+                resultsContainer.innerHTML = '';
+                currentResults = [];
+                selectedIndex = -1;
+            }
 
-            // Ctrl+K to open
-            document.addEventListener('keydown', function(e) {
-                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-                    e.preventDefault();
+            searchBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (searchBox.classList.contains('open')) {
+                    closeSearch();
+                } else {
                     openSearch();
                 }
             });
 
-            // Reset when modal closes
-            modalEl.addEventListener('hidden.bs.modal', function() {
-                input.value = '';
-                resultsBox.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:30px; font-size:13px;"><i class="bi bi-lightning-charge" style="font-size:32px; display:block; margin-bottom:10px; opacity:0.4;"></i>Type at least 2 characters to search</div>';
-                currentResults = [];
-                selectedIndex = -1;
-            });
-
-            // ---------- SEARCH ----------
-            input.addEventListener('input', function() {
-                clearTimeout(debounceTimer);
-                var q = input.value.trim();
-
-                if (q.length < 2) {
-                    resultsBox.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:30px; font-size:13px;">Type at least 2 characters...</div>';
-                    currentResults = [];
-                    selectedIndex = -1;
-                    return;
-                }
-
-                debounceTimer = setTimeout(function() {
-                    fetch('/search/?q=' + encodeURIComponent(q))
-                        .then(function(r) { return r.json(); })
-                        .then(function(data) {
-                            currentResults = data.results || [];
-                            selectedIndex = -1;
-                            renderResults();
-                        })
-                        .catch(function(err) {
-                            console.error('Search error:', err);
-                        });
-                }, 200);
-            });
-
-            // ---------- RENDER ----------
-            function renderResults() {
-                if (currentResults.length === 0) {
-                    resultsBox.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:30px; font-size:13px;"><i class="bi bi-search" style="font-size:28px; display:block; margin-bottom:8px; opacity:0.4;"></i>No results found</div>';
-                    return;
-                }
-
-                var html = '';
-                currentResults.forEach(function(r, idx) {
-                    html += '<a href="' + r.url + '" class="search-result-item" data-index="' + idx + '" style="display:flex; gap:12px; align-items:center; padding:12px 14px; border-radius:8px; text-decoration:none; color:inherit; transition:background 0.1s;">';
-                    html += '<div style="width:36px; height:36px; border-radius:8px; background:var(--accent-soft); display:flex; align-items:center; justify-content:center; flex-shrink:0;"><i class="bi ' + r.icon + '" style="color:var(--accent); font-size:16px;"></i></div>';
-                    html += '<div style="flex:1; min-width:0;">';
-                    html += '<div style="color:var(--text-primary); font-weight:600; font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + escapeHtml(r.label) + '</div>';
-                    html += '<div style="color:var(--text-muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + escapeHtml(r.sublabel || '') + '</div>';
-                    html += '</div>';
-                    html += '<span style="font-size:10.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; padding:3px 8px; background:var(--bg-raised); border-radius:4px; flex-shrink:0;">' + r.type + '</span>';
-                    html += '</a>';
-                });
-                resultsBox.innerHTML = html;
-            }
-
-            function escapeHtml(s) {
-                var div = document.createElement('div');
-                div.textContent = s || '';
-                return div.innerHTML;
-            }
-
-            // ---------- KEYBOARD NAVIGATION ----------
-            document.addEventListener('keydown', function(e) {
-                if (!modalEl.classList.contains('show')) return;
-
-                var items = resultsBox.querySelectorAll('.search-result-item');
-                if (items.length === 0) return;
-
-                if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    selectedIndex = (selectedIndex + 1) % items.length;
-                    updateSelection(items);
-                } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    selectedIndex = selectedIndex <= 0 ? items.length - 1 : selectedIndex - 1;
-                    updateSelection(items);
-                } else if (e.key === 'Enter') {
-                    if (selectedIndex >= 0 && items[selectedIndex]) {
-                        e.preventDefault();
-                        window.location.href = items[selectedIndex].href;
-                    } else if (items.length > 0) {
-                        e.preventDefault();
-                        window.location.href = items[0].href;
-                    }
-                }
-            });
-
-            function updateSelection(items) {
-                items.forEach(function(item, idx) {
-                    if (idx === selectedIndex) {
-                        item.style.background = 'var(--accent-soft)';
-                        item.scrollIntoView({ block: 'nearest' });
-                    } else {
-                        item.style.background = '';
-                    }
-                });
-            }
-
-            // Hover styling
-            resultsBox.addEventListener('mouseover', function(e) {
-                var item = e.target.closest('.search-result-item');
-                if (item) item.style.background = 'var(--bg-raised)';
-            });
-            resultsBox.addEventListener('mouseout', function(e) {
-                var item = e.target.closest('.search-result-item');
-                if (item && item.dataset.index !== String(selectedIndex)) item.style.background = '';
-            });
-        });
-    })();
-</script>
-{% block extra_js %}{% endblock %}
-
-{% block print_view %}{% endblock %}
-
-<!-- GLOBAL SEARCH MODAL -->
-<div class="modal fade" id="globalSearchModal" tabindex="-1" data-bs-backdrop="true">
-    <div class="modal-dialog modal-dialog-centered" style="max-width: 640px;">
-        <div class="modal-content" style="background:var(--bg-panel); border:1px solid var(--border-light); color:var(--text-primary);">
-            <div class="modal-header" style="border-bottom:1px solid var(--border-light); padding:14px 18px;">
-                <div style="display:flex; align-items:center; gap:10px; width:100%;">
-                    <i class="bi bi-search" style="color:var(--accent); font-size:18px;"></i>
-                    <input type="text" id="globalSearchInput" class="form-control" placeholder="Search employees, customers, dispatches, equipment..." autocomplete="off" style="border:none; background:transparent; font-size:16px; padding:0; color:var(--text-primary); outline:none; box-shadow:none;">
-                    <button type="button" class="search-close-x" data-bs-dismiss="modal" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer; padding:4px 10px; border-radius:4px; line-height:1;" title="Close (Esc)">&times;</button>
-                </div>
-            </div>
-            <div class="modal-body" id="globalSearchResults" style="max-height: 480px; overflow-y:auto; padding: 8px;">
-                <div style="text-align:center; color:var(--text-muted); padding:30px; font-size:13px;">
-                    <i class="bi bi-lightning-charge" style="font-size:32px; display:block; margin-bottom:10px; opacity:0.4;"></i>
-                    Type at least 2 characters to search
-                </div>
-            </div>
-            <div class="modal-footer" style="border-top:1px solid var(--border-light); padding:10px 18px; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-                <div style="display:flex; gap:6px; align-items:center;">
-                    <button type="button" class="search-helper-btn" id="navUpBtn" style="background:var(--bg-raised); color:var(--text-secondary); border:1px solid var(--border-light); padding:5px 12px; border-radius:5px; font-size:12px; cursor:pointer;" title="Previous result">▲ Up</button>
-                    <button type="button" class="search-helper-btn" id="navDownBtn" style="background:var(--bg-raised); color:var(--text-secondary); border:1px solid var(--border-light); padding:5px 12px; border-radius:5px; font-size:12px; cursor:pointer;" title="Next result">▼ Down</button>
-                </div>
-                <div style="display:flex; gap:6px; align-items:center;">
-                    <button type="button" id="openBtn" style="background:var(--accent); color:#1a1a1a; border:1px solid var(--accent); padding:5px 14px; border-radius:5px; font-size:12px; cursor:pointer; font-weight:600;" title="Open selected">
-                        <i class="bi bi-box-arrow-up-right"></i> Open
-                    </button>
-                    <button type="button" class="search-helper-btn" data-bs-dismiss="modal" style="background:var(--bg-raised); color:var(--text-secondary); border:1px solid var(--border-light); padding:5px 14px; border-radius:5px; font-size:12px; cursor:pointer;">
-                        <i class="bi bi-x-lg"></i> Close
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    (function() {
-        document.addEventListener('DOMContentLoaded', function() {
-            var searchBtn = document.getElementById('globalSearchBtn');
-            var modalEl = document.getElementById('globalSearchModal');
-            var input = document.getElementById('globalSearchInput');
-            var resultsBox = document.getElementById('globalSearchResults');
-            var navUpBtn = document.getElementById('navUpBtn');
-            var navDownBtn = document.getElementById('navDownBtn');
-            var openBtn = document.getElementById('openBtn');
-
-            if (!searchBtn || !modalEl || !input || !resultsBox) {
-                console.warn('Global search elements missing');
-                return;
-            }
-
-            // Use getOrCreateInstance to avoid duplicate-instance bugs
-            var searchModal = bootstrap.Modal.getOrCreateInstance(modalEl, {
-                backdrop: true,
-                keyboard: true,
-                focus: true
-            });
-
-            var currentResults = [];
-            var selectedIndex = -1;
-            var debounceTimer = null;
-
-            // ---------- OPEN ----------
-            function openSearch() {
-                searchModal.show();
-                setTimeout(function() { input.focus(); input.select(); }, 200);
-            }
-
-            searchBtn.addEventListener('click', openSearch);
-
-            // Global Ctrl+K — attach ONCE
             document.addEventListener('keydown', function(e) {
                 if ((e.ctrlKey || e.metaKey) && e.key && e.key.toLowerCase() === 'k') {
                     e.preventDefault();
-                    openSearch();
+                    if (searchBox.classList.contains('open')) closeSearch();
+                    else openSearch();
+                } else if (e.key === 'Escape' && searchBox.classList.contains('open')) {
+                    e.preventDefault();
+                    closeSearch();
                 }
             });
 
-            // ---------- RESET ON CLOSE ----------
-            modalEl.addEventListener('hidden.bs.modal', function() {
-                input.value = '';
-                resultsBox.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:30px; font-size:13px;"><i class="bi bi-lightning-charge" style="font-size:32px; display:block; margin-bottom:10px; opacity:0.4;"></i>Type at least 2 characters to search</div>';
-                currentResults = [];
-                selectedIndex = -1;
-            });
-
-            // Belt-and-suspenders: force-clean body state if it ever gets stuck
-            modalEl.addEventListener('hidden.bs.modal', function() {
-                document.body.classList.remove('modal-open');
-                var backdrops = document.querySelectorAll('.modal-backdrop');
-                // Only remove if no other modal is shown
-                if (document.querySelectorAll('.modal.show').length === 0) {
-                    backdrops.forEach(function(b) { b.remove(); });
+            document.addEventListener('click', function(e) {
+                if (searchBox.classList.contains('open') && !searchBox.contains(e.target)) {
+                    closeSearch();
                 }
-                document.body.style.overflow = '';
-                document.body.style.paddingRight = '';
             });
 
-            // ---------- SEARCH ----------
             input.addEventListener('input', function() {
                 clearTimeout(debounceTimer);
                 var q = input.value.trim();
 
                 if (q.length < 2) {
-                    resultsBox.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:30px; font-size:13px;">Type at least 2 characters...</div>';
+                    resultsContainer.innerHTML = '';
+                    searchBox.classList.remove('has-results');
                     currentResults = [];
                     selectedIndex = -1;
                     return;
@@ -1238,28 +1258,28 @@
                 }, 200);
             });
 
-            // ---------- RENDER ----------
             function renderResults() {
                 if (currentResults.length === 0) {
-                    resultsBox.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:30px; font-size:13px;"><i class="bi bi-search" style="font-size:28px; display:block; margin-bottom:8px; opacity:0.4;"></i>No results found</div>';
+                    resultsContainer.innerHTML = '<div class="inline-search-empty"><i class="bi bi-search" style="display:block; font-size:22px; margin-bottom:6px; opacity:0.4;"></i>No results found</div>';
+                    searchBox.classList.add('has-results');
                     selectedIndex = -1;
                     return;
                 }
 
                 var html = '';
                 currentResults.forEach(function(r, idx) {
-                    html += '<a href="' + r.url + '" class="search-result-item" data-index="' + idx + '" style="display:flex; gap:12px; align-items:center; padding:12px 14px; border-radius:8px; text-decoration:none; color:inherit; transition:background 0.1s; cursor:pointer;">';
-                    html += '<div style="width:36px; height:36px; border-radius:8px; background:var(--accent-soft); display:flex; align-items:center; justify-content:center; flex-shrink:0;"><i class="bi ' + r.icon + '" style="color:var(--accent); font-size:16px;"></i></div>';
-                    html += '<div style="flex:1; min-width:0;">';
-                    html += '<div style="color:var(--text-primary); font-weight:600; font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + escapeHtml(r.label) + '</div>';
-                    html += '<div style="color:var(--text-muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + escapeHtml(r.sublabel || '') + '</div>';
+                    html += '<a href="' + r.url + '" class="inline-search-item" data-index="' + idx + '">';
+                    html += '<i class="bi ' + r.icon + '"></i>';
+                    html += '<div class="inline-search-item-text">';
+                    html += '<div class="inline-search-item-label">' + escapeHtml(r.label) + '</div>';
+                    html += '<div class="inline-search-item-sub">' + escapeHtml(r.sublabel || '') + '</div>';
                     html += '</div>';
-                    html += '<span style="font-size:10.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; padding:3px 8px; background:var(--bg-raised); border-radius:4px; flex-shrink:0;">' + r.type + '</span>';
+                    html += '<span class="inline-search-item-type">' + r.type + '</span>';
                     html += '</a>';
                 });
-                resultsBox.innerHTML = html;
+                resultsContainer.innerHTML = html;
 
-                // Auto-select first
+                searchBox.classList.add('has-results');
                 selectedIndex = 0;
                 updateSelection();
             }
@@ -1271,17 +1291,17 @@
             }
 
             function getItems() {
-                return resultsBox.querySelectorAll('.search-result-item');
+                return resultsContainer.querySelectorAll('.inline-search-item');
             }
 
             function updateSelection() {
                 var items = getItems();
                 items.forEach(function(item, idx) {
                     if (idx === selectedIndex) {
-                        item.style.background = 'var(--accent-soft)';
+                        item.classList.add('selected');
                         item.scrollIntoView({ block: 'nearest' });
                     } else {
-                        item.style.background = '';
+                        item.classList.remove('selected');
                     }
                 });
             }
@@ -1302,8 +1322,6 @@
                 if (target) window.location.href = target.getAttribute('href');
             }
 
-            // ---------- KEYBOARD NAV — attached to input, not document ----------
-            // This avoids conflicts with Bootstrap's global handlers.
             input.addEventListener('keydown', function(e) {
                 if (e.key === 'ArrowDown') {
                     e.preventDefault();
@@ -1315,42 +1333,10 @@
                     e.preventDefault();
                     openSelected();
                 }
-                // Let Escape bubble up to Bootstrap (which closes the modal)
             });
 
-            // Also attach to modal itself, in case focus is elsewhere
-            modalEl.addEventListener('keydown', function(e) {
-                if (e.target === input) return; // already handled
-                if (e.key === 'ArrowDown') { e.preventDefault(); moveSelection(1); }
-                else if (e.key === 'ArrowUp') { e.preventDefault(); moveSelection(-1); }
-                else if (e.key === 'Enter') { e.preventDefault(); openSelected(); }
-            });
-
-            // ---------- CLICK NAVIGATION BUTTONS ----------
-            if (navDownBtn) {
-                navDownBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    moveSelection(1);
-                    input.focus();
-                });
-            }
-            if (navUpBtn) {
-                navUpBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    moveSelection(-1);
-                    input.focus();
-                });
-            }
-            if (openBtn) {
-                openBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    openSelected();
-                });
-            }
-
-            // ---------- HOVER SYNC ----------
-            resultsBox.addEventListener('mouseover', function(e) {
-                var item = e.target.closest('.search-result-item');
+            resultsContainer.addEventListener('mouseover', function(e) {
+                var item = e.target.closest('.inline-search-item');
                 if (!item) return;
                 selectedIndex = parseInt(item.dataset.index, 10);
                 updateSelection();
@@ -1358,6 +1344,10 @@
         });
     })();
 </script>
+
+{% block extra_js %}{% endblock %}
+
+{% block print_view %}{% endblock %}
 
 </body>
 </html>
