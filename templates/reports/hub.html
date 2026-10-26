@@ -88,6 +88,23 @@
 </style>
 
 <div class="row g-3">
+        <!-- Daily Operations Report -->
+    <div class="col-md-4">
+        <div class="report-card rc-purple" style="cursor: default;">
+            <div class="report-icon"><i class="bi bi-calendar-day"></i></div>
+            <h3>Daily Operations Report</h3>
+            <p>Download a full multi-sheet Excel file with production, sales, attendance, and safety for any specific day.</p>
+            
+            <form action="{% url 'export_daily_report' %}" method="get" style="margin-top: 18px;">
+                <div class="input-group">
+                    <input type="date" name="date" class="form-control" value="{% now 'Y-m-d' %}" style="background: var(--bg-app); color: var(--text-primary); border: 1px solid var(--border-medium);">
+                    <button type="submit" class="btn btn-amber" style="font-weight: 600;">
+                        <i class="bi bi-download"></i> Export
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
     <!-- Monthly Sales -->
     <div class="col-md-4">
         <a href="{% url 'report_sales' %}" class="report-card rc-green">

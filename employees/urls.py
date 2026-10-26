@@ -2,6 +2,7 @@ from django.urls import path
 
 from . import views
 
+
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
 
@@ -52,10 +53,7 @@ urlpatterns = [
     path('payroll/<int:pk>/edit/', views.payroll_edit, name='payroll_edit'),
     path('payroll/<int:pk>/void/', views.payroll_void, name='payroll_void'),
     path('payroll/<int:pk>/mark-paid/', views.payroll_mark_paid, name='payroll_mark_paid'),
-    path('payroll/<int:pk>/pay-confirm/', views.payroll_pay_confirm, name='payroll_pay_confirm'),
-    path('payroll/<int:pk>/pay-save/', views.payroll_pay_save, name='payroll_pay_save'),
     path('payroll/<int:pk>/slip/', views.payroll_slip, name='payroll_slip'),
-
     # Customers
     path('customers/', views.customer_list, name='customer_list'),
     path('customers/add/', views.customer_add, name='customer_add'),
@@ -95,6 +93,7 @@ urlpatterns = [
     path('export/inventory/', views.export_inventory, name='export_inventory'),
     path('export/payroll/', views.export_payroll, name='export_payroll'),
     path('export/sales/', views.export_sales, name='export_sales'),
+    path('export/daily-report/', views.export_daily_report, name='export_daily_report'),
 
     # Notifications
     path('notifications/', views.notification_list, name='notification_list'),
@@ -105,8 +104,6 @@ urlpatterns = [
     path('approvals/employee/<int:pk>/reject/', views.reject_employee, name='reject_employee'),
     path('approvals/inventory/<int:pk>/approve/', views.approve_inventory, name='approve_inventory'),
     path('approvals/inventory/<int:pk>/reject/', views.reject_inventory, name='reject_inventory'),
-    path('approvals/payroll/<int:pk>/approve/', views.approve_payroll, name='approve_payroll'),
-    path('approvals/payroll/<int:pk>/paid/', views.approve_payroll_paid, name='approve_payroll_paid'),
 
     # Backup
     path('backup/', views.backup_now, name='backup_now'),
@@ -123,6 +120,40 @@ urlpatterns = [
     # Global Search
     path('search/', views.global_search, name='global_search'),
 
+    # ============================================================
+    # SAFETY MODULE
+    # ============================================================
+    path('safety/', views.safety_hub, name='safety_hub'),
 
+    # Incidents
+    path('safety/incidents/', views.incident_list, name='incident_list'),
+    path('safety/incidents/add/', views.incident_add, name='incident_add'),
+    path('safety/incidents/<int:pk>/', views.incident_detail, name='incident_detail'),
+    path('safety/incidents/<int:pk>/edit/', views.incident_edit, name='incident_edit'),
+    path('safety/incidents/<int:pk>/close/', views.incident_close, name='incident_close'),
+
+    # Hazards
+    path('safety/hazards/', views.hazard_list, name='hazard_list'),
+    path('safety/hazards/add/', views.hazard_add, name='hazard_add'),
+    path('safety/hazards/<int:pk>/', views.hazard_detail, name='hazard_detail'),
+    path('safety/hazards/<int:pk>/edit/', views.hazard_edit, name='hazard_edit'),
+    path('safety/hazards/<int:pk>/resolve/', views.hazard_resolve, name='hazard_resolve'),
+
+    # Inspections
+    path('safety/inspections/', views.inspection_list, name='inspection_list'),
+    path('safety/inspections/add/', views.inspection_add, name='inspection_add'),
+    path('safety/inspections/<int:pk>/', views.inspection_detail, name='inspection_detail'),
+    path('safety/inspections/<int:pk>/edit/', views.inspection_edit, name='inspection_edit'),
+
+    # PPE
+    path('safety/ppe/', views.ppe_list, name='ppe_list'),
+    path('safety/ppe/add/', views.ppe_add, name='ppe_add'),
+    path('safety/ppe/<int:pk>/edit/', views.ppe_edit, name='ppe_edit'),
+    path('safety/ppe/<int:pk>/return/', views.ppe_return, name='ppe_return'),
+
+    # Training
+    path('safety/trainings/', views.training_list, name='training_list'),
+    path('safety/trainings/add/', views.training_add, name='training_add'),
+    path('safety/trainings/<int:pk>/edit/', views.training_edit, name='training_edit'),
 
 ]

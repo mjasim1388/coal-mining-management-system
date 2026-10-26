@@ -1,12 +1,12 @@
 """
 Django settings for coalmining project.
 """
-
 import os
 from pathlib import Path
 
 import dj_database_url
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 load_dotenv()
 
@@ -14,15 +14,21 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # SECURITY
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-fallback-for-local-dev-only')
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    raise ImproperlyConfigured(
+        "SECRET_KEY is missing. Add SECRET_KEY=<long-random-string> to your .env file. "
+        "Generate one with: python -c \"from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())\""
+    )
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 # Local network access
-ALLOWED_HOSTS = ['192.168.1.23', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['192.168.1.26', 'localhost', '127.0.0.1']
 
 
 # Application definition
 INSTALLED_APPS = [
+    'axes',
     'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -32,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.humanize',
     'employees',
+
 ]
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -42,6 +49,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'axes.middleware.AxesMiddleware',
 ]
 
 ROOT_URLCONF = 'coalmining.urls'
@@ -64,6 +72,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'coalmining.wsgi.application'
 
+# Primary key type — matches existing migrations (BigAutoField)
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 
 # Database
 DATABASES = {
@@ -82,7 +93,24 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+# ---------------------------------------------------------------
+# django-axes: authentication backends
+# ---------------------------------------------------------------
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
 
+# ---------------------------------------------------------------
+# django-axes: rate limiting thresholds
+# ---------------------------------------------------------------
+from datetime import timedelta
+
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = timedelta(minutes=5)
+AXES_RESET_ON_SUCCESS = True
+AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address']]
+AXES_LOCKOUT_CALLABLE = 'employees.axes_hooks.lockout_response'
 # Internationalization
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Asia/Karachi'
@@ -192,7 +220,7 @@ SESSION_SAVE_EVERY_REQUEST = True
 
 # CSRF — allow local network requests
 CSRF_TRUSTED_ORIGINS = [
-    'http://192.168.1.23:8000',
+    'http://192.168.1.26:8000',
     'http://localhost:8000',
     'http://127.0.0.1:8000',
 ]
@@ -218,3 +246,18 @@ LOGGING = {
         'level': 'ERROR',
     },
 }
+
+# ---------------------------------------------------------------
+# SECURITY HEADERS
+# ---------------------------------------------------------------
+# Active now:
+SECURE_CONTENT_TYPE_NOSNIFF = True   # Browsers won't guess MIME types
+X_FRAME_OPTIONS = 'DENY'             # Page can't be embedded in an iframe (clickjacking protection)
+
+# Deferred to Step 5 (enable once HTTPS is running):
+# SESSION_COOKIE_SECURE = True
+# CSRF_COOKIE_SECURE = True
+# SECURE_SSL_REDIRECT = True
+# SECURE_HSTS_SECONDS = 31536000
+# SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+# SECURE_HSTS_PRELOAD = True

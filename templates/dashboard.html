@@ -404,6 +404,11 @@
 <div class="dash-toolbar">
     <div class="dash-date"><i class="bi bi-calendar3"></i> <strong>{% now "l, d F Y" %}</strong></div>
     <div class="dash-refresh">
+        {% if is_manager or is_accountant %}
+        <a href="{% url 'export_daily_report' %}" class="btn btn-sm btn-amber" style="margin-right: 12px;">
+            <i class="bi bi-file-earmark-excel"></i> Export Today's Report
+        </a>
+        {% endif %}
         <span>Updated {% now "H:i" %}</span>
         <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.location.reload()">
             <i class="bi bi-arrow-clockwise"></i> Refresh
@@ -676,6 +681,80 @@
             <div class="tile-sub">{{ eq_maint }} in maintenance · {{ eq_out }} out</div>
         </div>
     </a>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- SAFETY                                                        -->
+<!-- ============================================================ -->
+<div class="dash-section">
+    <i class="bi bi-shield-fill-check"></i> Safety
+</div>
+
+<div class="row g-3 mb-0">
+    <!-- Days since incident — the star metric -->
+    <div class="col-12 col-md-4">
+        <a href="{% url 'incident_list' %}" class="kpi-link">
+            <div class="kpi-card kpi-green">
+                <div class="kpi-head">
+                    <div class="kpi-label">Days since last incident</div>
+                    <div class="kpi-icon"><i class="bi bi-shield-check"></i></div>
+                </div>
+                <div class="kpi-value">
+                    {% if days_since_incident is not None %}
+                        {{ days_since_incident }}
+                    {% else %}
+                        <span style="color:var(--text-muted); font-size:20px;">—</span>
+                    {% endif %}
+                </div>
+                <div class="kpi-sub">
+                    {% if days_since_incident is None %}
+                        No incidents on record
+                    {% elif incidents_this_month > 0 %}
+                        {{ incidents_this_month }} this month
+                    {% else %}
+                        Clean month so far
+                    {% endif %}
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Open hazards -->
+    <div class="col-6 col-md-4">
+        <a href="{% url 'hazard_list' %}?status=Open" class="kpi-link">
+            <div class="kpi-card {% if critical_hazards_count > 0 %}kpi-red{% else %}kpi-amber{% endif %}">
+                <div class="kpi-head">
+                    <div class="kpi-label">Open hazards</div>
+                    <div class="kpi-icon"><i class="bi bi-search"></i></div>
+                </div>
+                <div class="kpi-value">{{ open_hazards_count }}</div>
+                <div class="kpi-sub">
+                    {% if critical_hazards_count > 0 %}
+                        <span style="color:var(--danger); font-weight:600;">⚠️ {{ critical_hazards_count }} high/critical</span>
+                    {% else %}
+                        No high-risk items
+                    {% endif %}
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Compliance alerts -->
+    <div class="col-6 col-md-4">
+        <a href="{% url 'safety_hub' %}" class="kpi-link">
+            <div class="kpi-card kpi-purple">
+                <div class="kpi-head">
+                    <div class="kpi-label">Compliance alerts</div>
+                    <div class="kpi-icon"><i class="bi bi-clipboard-pulse"></i></div>
+                </div>
+                <div class="kpi-value">{{ ppe_due_soon|add:training_due_soon }}</div>
+                <div class="kpi-sub">
+                    {{ ppe_due_soon }} PPE · {{ training_due_soon }} training expiring in 30 days
+                </div>
+            </div>
+        </a>
+    </div>
 </div>
 
 <!-- ============================================================ -->

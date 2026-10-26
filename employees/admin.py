@@ -6,12 +6,17 @@ from .models import (
     Customer,
     Employee,
     Equipment,
+    Hazard,
     InventoryItem,
     MaintenanceLog,
     Mine,
     Notification,
     Payroll,
+    PPEIssuance,
     ProductionRecord,
+    SafetyIncident,
+    SafetyInspection,
+    SafetyTraining,
     Sale,
     StockTransaction,
 )
@@ -124,3 +129,62 @@ class MaintenanceLogAdmin(admin.ModelAdmin):
     list_filter = ('maintenance_type', 'status', 'date', 'equipment')
     search_fields = ('equipment__name', 'equipment__equipment_code', 'description', 'performed_by')
     date_hierarchy = 'date'
+
+
+@admin.register(SafetyIncident)
+class SafetyIncidentAdmin(admin.ModelAdmin):
+    list_display = ('incident_no', 'date', 'mine', 'incident_type', 'severity',
+                    'employee', 'status', 'reported_to_government')
+    list_filter = ('incident_type', 'severity', 'status', 'mine',
+                   'reported_to_government', 'date')
+    search_fields = ('incident_no', 'description', 'location',
+                     'employee__first_name', 'employee__last_name')
+    date_hierarchy = 'date'
+    list_per_page = 25
+    readonly_fields = ('incident_no', 'created_at', 'updated_at')
+
+
+@admin.register(Hazard)
+class HazardAdmin(admin.ModelAdmin):
+    list_display = ('hazard_no', 'date_observed', 'mine', 'hazard_type',
+                    'risk_level', 'location', 'status', 'assigned_to')
+    list_filter = ('hazard_type', 'risk_level', 'status', 'mine', 'date_observed')
+    search_fields = ('hazard_no', 'description', 'location')
+    date_hierarchy = 'date_observed'
+    list_per_page = 25
+    readonly_fields = ('hazard_no', 'created_at', 'updated_at')
+
+
+@admin.register(SafetyInspection)
+class SafetyInspectionAdmin(admin.ModelAdmin):
+    list_display = ('inspection_no', 'date', 'mine', 'inspection_type',
+                    'inspector', 'overall_status', 'issues_count',
+                    'follow_up_required')
+    list_filter = ('inspection_type', 'overall_status', 'follow_up_required',
+                   'mine', 'date')
+    search_fields = ('inspection_no', 'inspector', 'findings', 'location')
+    date_hierarchy = 'date'
+    list_per_page = 25
+    readonly_fields = ('inspection_no', 'created_at')
+
+
+@admin.register(PPEIssuance)
+class PPEIssuanceAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'date_issued', 'ppe_type', 'quantity',
+                    'condition', 'replacement_due', 'returned')
+    list_filter = ('ppe_type', 'condition', 'returned', 'date_issued')
+    search_fields = ('employee__employee_code', 'employee__first_name',
+                     'employee__last_name', 'size')
+    date_hierarchy = 'date_issued'
+    list_per_page = 25
+
+
+@admin.register(SafetyTraining)
+class SafetyTrainingAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'training_type', 'training_date', 'expiry_date',
+                    'duration_hours', 'passed')
+    list_filter = ('training_type', 'passed', 'training_date', 'expiry_date')
+    search_fields = ('employee__employee_code', 'employee__first_name',
+                     'employee__last_name', 'trainer_name', 'certificate_no')
+    date_hierarchy = 'training_date'
+    list_per_page = 25

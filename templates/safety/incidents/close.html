@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block title %}Close Incident {{ incident.incident_no }} - Coal Mine{% endblock %}
+{% block page_title %}CLOSE INCIDENT{% endblock %}
+
+{% block content %}
+
+<div class="panel" style="max-width: 700px;">
+    <div class="panel-title"><i class="bi bi-check-circle"></i> Close Incident {{ incident.incident_no }}</div>
+
+    <div style="padding:16px; background:var(--bg-raised); border-radius:8px; margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; padding:4px 0;">
+            <span style="color:var(--text-muted);">Type:</span>
+            <strong>{{ incident.get_incident_type_display }}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:4px 0;">
+            <span style="color:var(--text-muted);">Severity:</span>
+            <strong>{{ incident.get_severity_display }}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:4px 0;">
+            <span style="color:var(--text-muted);">Date:</span>
+            <strong>{{ incident.date|date:"d M Y" }}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:4px 0;">
+            <span style="color:var(--text-muted);">Mine:</span>
+            <strong>{{ incident.mine.name }}</strong>
+        </div>
+    </div>
+
+    <div style="padding:14px 16px; background:var(--info-soft); border-left:3px solid var(--info); border-radius:6px; margin-bottom:20px; font-size:13px;">
+        <i class="bi bi-info-circle-fill" style="color:var(--info);"></i>
+        Closing this incident means the investigation and corrective actions are complete.
+        This action is <strong>permanent</strong> — safety records cannot be re-opened.
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label">Closure Notes *</label>
+            <textarea name="closure_notes" class="form-control" rows="4" required
+                      placeholder="What was the outcome? What was the final resolution? Any lessons learned?"></textarea>
+            <small style="color:var(--text-muted); font-size:11px;">This will be appended to corrective actions.</small>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-amber" style="padding:12px 26px;">
+                <i class="bi bi-check-lg"></i> Close Incident
+            </button>
+            <a href="{% url 'incident_detail' incident.pk %}" class="btn btn-outline-amber" style="padding:12px 26px;">
+                <i class="bi bi-arrow-left"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

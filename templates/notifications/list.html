@@ -10,7 +10,23 @@
 
     {% if notifications %}
         {% for n in notifications %}
-        <div style="padding:16px; border-bottom:1px solid var(--border-light); display:flex; justify-content:space-between; align-items:center; gap:12px;">
+        <div style="
+            padding:16px;
+            border-bottom:1px solid var(--border-light);
+            display:flex; justify-content:space-between; align-items:center; gap:12px;
+            {% if n.status == 'Approved' %}
+                border-left:3px solid #10b981;
+                background: rgba(16,185,129,0.05);
+            {% elif n.status == 'Rejected' %}
+                border-left:3px solid #ef4444;
+                background: rgba(239,68,68,0.05);
+            {% elif n.status == 'Pending' %}
+                border-left:3px solid #f59e0b;
+                background: rgba(245,158,11,0.06);
+            {% else %}
+                border-left:3px solid #3b82f6;
+            {% endif %}
+        ">
             <div style="display:flex; align-items:center; gap:14px; flex:1;">
                 {% if n.status == 'Approved' %}
                     <i class="bi bi-check-circle-fill" style="font-size:22px; color:#10b981; flex-shrink:0;"></i>
@@ -21,11 +37,36 @@
                 {% else %}
                     <i class="bi bi-info-circle-fill" style="font-size:22px; color:#3b82f6; flex-shrink:0;"></i>
                 {% endif %}
+
                 <div>
-                    <div style="color:var(--text-primary); margin-bottom:4px;">{{ n.message }}</div>
-                    <small style="color:var(--text-muted);">{{ n.created_at|date:"d M Y, H:i" }}</small>
+                    <div style="
+                        color:var(--text-primary); margin-bottom:4px;
+                        {% if n.status == 'Approved' or n.status == 'Rejected' %}
+                            opacity:0.78;
+                        {% endif %}
+                    ">{{ n.message }}</div>
+
+                    <small style="color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+                        <i class="bi bi-clock"></i>
+                        {{ n.created_at|date:"d M Y, H:i" }}
+                        {% if n.status == 'Approved' or n.status == 'Rejected' %}
+                            <span style="
+                                margin-left:8px; font-size:10.5px; padding:2px 7px;
+                                border-radius:10px; letter-spacing:0.5px; text-transform:uppercase;
+                                font-weight:700;
+                                {% if n.status == 'Approved' %}
+                                    background: rgba(16,185,129,0.15); color:#10b981;
+                                {% else %}
+                                    background: rgba(239,68,68,0.15); color:#ef4444;
+                                {% endif %}
+                            ">
+                                {% if n.status == 'Approved' %}✓ Resolved{% else %}✗ Resolved{% endif %}
+                            </span>
+                        {% endif %}
+                    </small>
                 </div>
             </div>
+
             <div style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
                 {% if n.status == 'Approved' %}
                     <span class="badge-status badge-active">APPROVED</span>

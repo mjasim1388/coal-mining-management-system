@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block title %}Return PPE - Coal Mine{% endblock %}
+{% block page_title %}MARK PPE AS RETURNED{% endblock %}
+
+{% block content %}
+
+<div class="panel" style="max-width: 700px;">
+    <div class="panel-title"><i class="bi bi-arrow-return-left"></i> Mark PPE as Returned</div>
+
+    <div style="padding:16px; background:var(--bg-raised); border-radius:8px; margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; padding:4px 0;">
+            <span style="color:var(--text-muted);">Employee:</span>
+            <strong>{{ issuance.employee.first_name }} {{ issuance.employee.last_name }}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:4px 0;">
+            <span style="color:var(--text-muted);">PPE Type:</span>
+            <strong>{{ issuance.get_ppe_type_display }}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:4px 0;">
+            <span style="color:var(--text-muted);">Quantity:</span>
+            <strong>{{ issuance.quantity }}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:4px 0;">
+            <span style="color:var(--text-muted);">Issued On:</span>
+            <strong>{{ issuance.date_issued|date:"d M Y" }}</strong>
+        </div>
+    </div>
+
+    <div style="padding:14px 16px; background:var(--info-soft); border-left:3px solid var(--info); border-radius:6px; margin-bottom:20px; font-size:13px;">
+        <i class="bi bi-info-circle-fill" style="color:var(--info);"></i>
+        Marking as returned is used when an employee leaves the company or returns items at end of service. This is permanent.
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label">Return Notes</label>
+            <textarea name="return_notes" class="form-control" rows="3"
+                      placeholder="Condition when returned? Any damage? Why returned?"></textarea>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-amber" style="padding:12px 26px;">
+                <i class="bi bi-check-lg"></i> Mark as Returned
+            </button>
+            <a href="{% url 'ppe_list' %}" class="btn btn-outline-amber" style="padding:12px 26px;">
+                <i class="bi bi-arrow-left"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

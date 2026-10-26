@@ -6,3 +6,5 @@ whitenoise
 gunicorn
 django-jazzmin
 Pillow
+django-axes>=6.0
+openpyxl>=3.1

@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - Coal Mine{% endblock %}
+{% block page_title %}{{ title|upper }}{% endblock %}
+
+{% block content %}
+
+<div class="panel" style="max-width: 900px;">
+    <div class="panel-title"><i class="bi bi-clipboard-pulse"></i> {{ title }}</div>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        {% if form.errors %}
+        <div class="alert alert-error-custom mb-3" style="border-radius:8px;">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <div>
+                <strong>Please fix these errors:</strong>
+                <ul style="margin: 8px 0 0; padding-left: 20px;">
+                    {% for field in form %}{% if field.errors %}
+                    <li><strong>{{ field.label }}:</strong> {{ field.errors|join:", " }}</li>
+                    {% endif %}{% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="row g-3">
+            <div class="col-md-3"><label class="form-label">Date *</label>{{ form.date }}</div>
+            <div class="col-md-3"><label class="form-label">Mine *</label>{{ form.mine }}</div>
+            <div class="col-md-3"><label class="form-label">Type *</label>{{ form.inspection_type }}</div>
+            <div class="col-md-3"><label class="form-label">Overall Status *</label>{{ form.overall_status }}</div>
+
+            <div class="col-md-6"><label class="form-label">Location</label>{{ form.location }}</div>
+            <div class="col-md-3"><label class="form-label">Inspector *</label>{{ form.inspector }}</div>
+            <div class="col-md-3"><label class="form-label">Issues Count</label>{{ form.issues_count }}</div>
+
+            <div class="col-12"><label class="form-label">Findings *</label>{{ form.findings }}</div>
+
+            <div class="col-md-3">
+                <label class="form-label">Follow-Up Required</label>
+                <div class="form-check form-switch" style="padding-left: 3rem; margin-top: 10px;">
+                    {{ form.follow_up_required }}
+                    <label class="form-check-label" for="{{ form.follow_up_required.id_for_label }}" style="font-size:13.5px; cursor:pointer; margin-top: 3px;">Yes</label>
+                </div>
+            </div>
+            <div class="col-md-3"><label class="form-label">Follow-Up Deadline</label>{{ form.follow_up_deadline }}</div>
+            <div class="col-md-6"><label class="form-label">Follow-Up Notes</label>{{ form.follow_up_notes }}</div>
+
+            <div class="col-md-6"><label class="form-label">Photo</label>{{ form.photo }}</div>
+        </div>
+
+        <hr style="border-color:var(--border-light); margin:25px 0;">
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-amber" style="padding:12px 26px;">
+                <i class="bi bi-check-lg"></i> Save Inspection
+            </button>
+            <a href="{% if inspection %}{% url 'inspection_detail' inspection.pk %}{% else %}{% url 'inspection_list' %}{% endif %}" class="btn btn-outline-amber" style="padding:12px 26px;">
+                <i class="bi bi-x-lg"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

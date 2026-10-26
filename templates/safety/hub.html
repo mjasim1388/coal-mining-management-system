@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+
+{% block title %}Safety Hub - Coal Mine{% endblock %}
+{% block page_title %}SAFETY DASHBOARD{% endblock %}
+
+{% block content %}
+
+<!-- ==================== STAR METRIC ==================== -->
+<div class="row g-3 mb-3">
+    <div class="col-md-6">
+        <div class="panel" style="background:linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.02)); border-left:4px solid var(--success);">
+            <div style="display:flex; align-items:center; gap:20px;">
+                <div style="width:80px; height:80px; border-radius:50%; background:var(--success); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <i class="bi bi-shield-check" style="font-size:38px; color:#fff;"></i>
+                </div>
+                <div>
+                    <div style="font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Days Since Last Incident</div>
+                    <div style="font-size:52px; font-weight:800; color:var(--success); line-height:1;">
+                        {% if days_since_incident is not None %}{{ days_since_incident }}{% else %}—{% endif %}
+                    </div>
+                    {% if days_since_incident is None %}
+                    <div style="font-size:12px; color:var(--text-muted);">No incidents recorded yet</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="panel" style="background:linear-gradient(135deg, rgba(229,161,28,0.12), rgba(229,161,28,0.02)); border-left:4px solid var(--accent);">
+            <div style="display:flex; align-items:center; gap:20px;">
+                <div style="width:80px; height:80px; border-radius:50%; background:var(--accent); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <i class="bi bi-heart-pulse" style="font-size:38px; color:#1a1200;"></i>
+                </div>
+                <div>
+                    <div style="font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Days Since Last Lost-Time Injury</div>
+                    <div style="font-size:52px; font-weight:800; color:var(--accent); line-height:1;">
+                        {% if days_since_lti is not None %}{{ days_since_lti }}{% else %}—{% endif %}
+                    </div>
+                    {% if days_since_lti is None %}
+                    <div style="font-size:12px; color:var(--text-muted);">No serious injuries recorded</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== COUNTERS ==================== -->
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-red">
+            <i class="bi bi-exclamation-triangle-fill icon"></i>
+            <h2>{{ open_hazards_count }}</h2>
+            <p>Open Hazards</p>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-amber">
+            <i class="bi bi-fire icon"></i>
+            <h2>{{ critical_hazards_count }}</h2>
+            <p>High / Critical Risk</p>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-blue">
+            <i class="bi bi-clipboard-pulse icon"></i>
+            <h2>{{ incidents_this_month }}</h2>
+            <p>Incidents This Month</p>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card stat-green">
+            <i class="bi bi-search icon"></i>
+            <h2>{{ hazards_this_month }}</h2>
+            <p>Hazards Reported This Month</p>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== WARNINGS ==================== -->
+<div class="row g-3 mb-3">
+    {% if ppe_expiring %}
+    <div class="col-md-4">
+        <div class="panel h-100" style="border-left:3px solid var(--warning);">
+            <div class="panel-title">
+                <i class="bi bi-shield-exclamation" style="color:var(--warning);"></i> PPE Due for Replacement
+            </div>
+            {% for p in ppe_expiring %}
+            <div style="padding:8px 0; border-bottom:1px solid var(--border-light); font-size:13px;">
+                <strong>{{ p.employee.first_name }} {{ p.employee.last_name }}</strong>
+                <div style="color:var(--text-muted); font-size:12px;">{{ p.get_ppe_type_display }} — due {{ p.replacement_due|date:"d M" }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if training_expiring %}
+    <div class="col-md-4">
+        <div class="panel h-100" style="border-left:3px solid var(--info);">
+            <div class="panel-title">
+                <i class="bi bi-mortarboard" style="color:var(--info);"></i> Training Expiring Soon
+            </div>
+            {% for t in training_expiring %}
+            <div style="padding:8px 0; border-bottom:1px solid var(--border-light); font-size:13px;">
+                <strong>{{ t.employee.first_name }} {{ t.employee.last_name }}</strong>
+                <div style="color:var(--text-muted); font-size:12px;">{{ t.get_training_type_display }} — expires {{ t.expiry_date|date:"d M" }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if inspections_upcoming %}
+    <div class="col-md-4">
+        <div class="panel h-100" style="border-left:3px solid var(--danger);">
+            <div class="panel-title">
+                <i class="bi bi-calendar-x" style="color:var(--danger);"></i> Inspections Due
+            </div>
+            {% for i in inspections_upcoming %}
+            <div style="padding:8px 0; border-bottom:1px solid var(--border-light); font-size:13px;">
+                <strong>{{ i.inspection_no }}</strong>
+                <div style="color:var(--text-muted); font-size:12px;">{{ i.mine.name }} — due {{ i.follow_up_deadline|date:"d M" }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ==================== QUICK ACCESS ==================== -->
+<div class="panel mb-3">
+    <div class="panel-title"><i class="bi bi-grid-3x3-gap-fill"></i> Quick Access</div>
+    <div class="row g-2">
+        <div class="col-6 col-md-3">
+            <a href="{% url 'incident_add' %}" class="btn btn-danger w-100" style="padding:14px;">
+                <i class="bi bi-exclamation-triangle"></i> Report Incident
+            </a>
+        </div>
+        <div class="col-6 col-md-3">
+            <a href="{% url 'hazard_add' %}" class="btn btn-amber w-100" style="padding:14px;">
+                <i class="bi bi-search"></i> Report Hazard
+            </a>
+        </div>
+        <div class="col-6 col-md-3">
+            <a href="{% url 'inspection_add' %}" class="btn btn-outline-amber w-100" style="padding:14px;">
+                <i class="bi bi-clipboard-pulse"></i> New Inspection
+            </a>
+        </div>
+        <div class="col-6 col-md-3">
+            <a href="{% url 'ppe_add' %}" class="btn btn-outline-amber w-100" style="padding:14px;">
+                <i class="bi bi-shield-check"></i> Issue PPE
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== RECENT INCIDENTS ==================== -->
+<div class="panel">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="panel-title mb-0"><i class="bi bi-clock-history"></i> Recent Incidents</div>
+        <a href="{% url 'incident_list' %}" class="btn btn-sm btn-outline-amber">View All <i class="bi bi-arrow-right"></i></a>
+    </div>
+    {% if recent_incidents %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>No</th>
+                <th>Date</th>
+                <th>Mine</th>
+                <th>Type</th>
+                <th>Severity</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for i in recent_incidents %}
+            <tr>
+                <td><a href="{% url 'incident_detail' i.pk %}" style="color:var(--accent); font-family:monospace;">{{ i.incident_no }}</a></td>
+                <td>{{ i.date|date:"d M Y" }}</td>
+                <td>{{ i.mine.name }}</td>
+                <td>{{ i.get_incident_type_display }}</td>
+                <td>
+                    {% if i.severity == 'Fatal' or i.severity == 'Critical' %}
+                        <span class="badge-status badge-inactive">{{ i.get_severity_display }}</span>
+                    {% elif i.severity == 'Serious' or i.severity == 'Moderate' %}
+                        <span class="badge-status badge-leave">{{ i.get_severity_display }}</span>
+                    {% else %}
+                        <span class="badge-status badge-active">{{ i.get_severity_display }}</span>
+                    {% endif %}
+                </td>
+                <td><span class="badge-status badge-leave">{{ i.get_status_display }}</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--text-muted); text-align:center; padding:30px;">
+        <i class="bi bi-shield-check" style="font-size:40px; display:block; margin-bottom:10px; color:var(--success); opacity:0.5;"></i>
+        No incidents recorded. Keep it that way! 🎯
+    </p>
+    {% endif %}
+</div>
+
+{% endblock %}

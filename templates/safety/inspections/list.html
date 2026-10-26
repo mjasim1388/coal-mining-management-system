@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block title %}Inspections - Coal Mine{% endblock %}
+{% block page_title %}SAFETY INSPECTIONS{% endblock %}
+
+{% block content %}
+
+<div class="panel mb-3">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-6 col-md-3">
+            <label class="form-label">Status</label>
+            <select name="status" class="form-select">
+                <option value="">All</option>
+                {% for val, label in status_choices %}
+                <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label">Type</label>
+            <select name="type" class="form-select">
+                <option value="">All</option>
+                {% for val, label in type_choices %}
+                <option value="{{ val }}" {% if type_filter == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label">Mine</label>
+            <select name="mine" class="form-select">
+                <option value="">All</option>
+                {% for m in mines %}
+                <option value="{{ m.pk }}" {% if mine_filter == m.pk|stringformat:"s" %}selected{% endif %}>{{ m.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <button type="submit" class="btn btn-amber w-100"><i class="bi bi-funnel"></i> Filter</button>
+        </div>
+    </form>
+</div>
+
+<div class="panel">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="panel-title mb-0"><i class="bi bi-clipboard-pulse"></i> Inspections ({{ inspections|length }})</div>
+        {% if is_manager or is_accountant %}
+        <a href="{% url 'inspection_add' %}" class="btn btn-amber btn-sm"><i class="bi bi-plus-lg"></i> New Inspection</a>
+        {% endif %}
+    </div>
+
+    {% if inspections %}
+    <div style="overflow-x:auto;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Date</th>
+                    <th>Mine</th>
+                    <th>Type</th>
+                    <th>Inspector</th>
+                    <th>Status</th>
+                    <th>Issues</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in inspections %}
+                <tr>
+                    <td><a href="{% url 'inspection_detail' i.pk %}" style="color:var(--accent); font-family:monospace; font-weight:600;">{{ i.inspection_no }}</a></td>
+                    <td>{{ i.date|date:"d M Y" }}</td>
+                    <td>{{ i.mine.name }}</td>
+                    <td>{{ i.get_inspection_type_display }}</td>
+                    <td>{{ i.inspector }}</td>
+                    <td>
+                        {% if i.overall_status == 'Pass' %}
+                            <span class="badge-status badge-active">PASS</span>
+                        {% elif i.overall_status == 'Conditional' %}
+                            <span class="badge-status badge-leave">CONDITIONAL</span>
+                        {% else %}
+                            <span class="badge-status badge-inactive">FAIL</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ i.issues_count }}</td>
+                    <td>
+                        <a href="{% url 'inspection_detail' i.pk %}" class="btn btn-sm btn-outline-amber"><i class="bi bi-eye"></i></a>
+                        {% if is_manager %}
+                        <a href="{% url 'inspection_edit' i.pk %}" class="btn btn-sm btn-outline-amber"><i class="bi bi-pencil"></i></a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted); text-align:center; padding:30px;">
+        <i class="bi bi-clipboard-pulse" style="font-size:40px; display:block; margin-bottom:10px; opacity:0.5;"></i>
+        No inspections match your filter.
+    </p>
+    {% endif %}
+</div>
+
+{% endblock %}

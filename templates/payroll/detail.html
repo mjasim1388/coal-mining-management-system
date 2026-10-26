@@ -1,219 +1,208 @@
 {% extends 'base.html' %}
 
-{% block title %}Payslip - Coal Mine{% endblock %}
+{% block title %}Payslip - {{ payroll.employee.first_name }}{% endblock %}
 {% block page_title %}PAYSLIP{% endblock %}
 
 {% block content %}
 
-<div class="panel" style="max-width: 800px; margin: 0 auto;">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="panel" style="max-width: 820px; margin: 0 auto;">
+
+
+    {% if not is_manager %}
+    <div style="margin-bottom:18px; padding:10px 14px; background:var(--info-soft); border:1px solid color-mix(in srgb, var(--info) 30%, transparent); border-left:3px solid var(--info); border-radius:6px; font-size:12.5px; display:flex; align-items:center; gap:10px;">
+        <i class="bi bi-eye-fill" style="color:var(--info); font-size:16px;"></i>
+        <span style="color:var(--text-secondary);">
+            <strong style="color:var(--text-primary);">View-only.</strong>
+            Only a Manager can mark this salary as paid.
+        </span>
+    </div>
+    {% endif %}
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
         <div>
-            <h4 style="color:var(--accent); margin:0;">COALMINE CONTROL SYSTEM</h4>
+            <h4 style="color:var(--accent); margin:0;">COAL MINE COMPANY</h4>
             <small style="color:var(--text-muted); letter-spacing:2px;">EMPLOYEE PAYSLIP</small>
         </div>
         <div style="text-align:right;">
             {% if payroll.status == 'Paid' %}
                 <span class="badge-status badge-active">PAID</span>
             {% elif payroll.status == 'Approved' %}
-                <span class="badge-status badge-active">APPROVED</span>
-            {% elif payroll.status == 'Paid Pending' %}
-                <span class="badge-status badge-leave">PAID PENDING</span>
+                <span class="badge-status badge-leave">READY TO PAY</span>
             {% else %}
-                <span class="badge-status badge-inactive">PENDING</span>
+                <span class="badge-status badge-inactive">{{ payroll.status|upper }}</span>
+            {% endif %}
+            {% if payroll.voided %}
+                <br><span class="badge-status badge-inactive" style="margin-top:6px;">VOIDED</span>
             {% endif %}
         </div>
     </div>
 
     <hr style="border-color:var(--border-light);">
 
+    <!-- EMPLOYEE INFO -->
     <div class="row g-3 mb-4">
         <div class="col-md-6">
             <label class="form-label">Employee</label>
-            <p style="font-size:16px; color:var(--text-primary);">{{ payroll.employee.first_name }} {{ payroll.employee.last_name }}</p>
+            <p style="font-size:16px; font-weight:600; margin:0;">{{ payroll.employee.first_name }} {{ payroll.employee.last_name }}</p>
         </div>
         <div class="col-md-3">
             <label class="form-label">Code</label>
-            <p style="color:var(--accent);">{{ payroll.employee.employee_code }}</p>
+            <p style="color:var(--accent); font-weight:600; margin:0;">{{ payroll.employee.employee_code }}</p>
         </div>
-        <div class="col-md-3">
-            <label class="form-label">Designation</label>
-            <p>{{ payroll.employee.designation }}</p>
-        </div>
-
         <div class="col-md-3">
             <label class="form-label">Period</label>
-            <p>{{ payroll.get_month_display }} {{ payroll.year }}</p>
+            <p style="margin:0;">{{ payroll.get_month_display }} {{ payroll.year }}</p>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
+            <label class="form-label">Designation</label>
+            <p style="margin:0;">{{ payroll.employee.designation }}</p>
+        </div>
+        <div class="col-md-4">
             <label class="form-label">Department</label>
-            <p>{{ payroll.employee.department }}</p>
+            <p style="margin:0;">{{ payroll.employee.department }}</p>
         </div>
-        <div class="col-md-3">
-            <label class="form-label">Shift</label>
-            <p>{{ payroll.employee.shift }}</p>
-        </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
             <label class="form-label">Payment Date</label>
-            <p>{{ payroll.payment_date|default:"—" }}</p>
+            <p style="margin:0;">{{ payroll.payment_date|default:"—" }}</p>
         </div>
     </div>
 
-    <div class="row g-3">
-        <div class="col-md-6">
-            <div class="panel" style="background:var(--bg-raised);">
-                <div class="panel-title"><i class="bi bi-plus-circle"></i> Earnings</div>
-                <table class="table" style="margin:0;">
-                    <tbody>
-                        <tr><td>Basic Salary</td><td style="text-align:right;">{{ payroll.basic_salary|floatformat:2 }}</td></tr>
-                        <tr><td>Overtime ({{ payroll.overtime_hours }} h × 2×)</td><td style="text-align:right; color:var(--success);">+ {{ payroll.overtime_amount|floatformat:2 }}</td></tr>
-                        <tr><td>Allowances</td><td style="text-align:right;">+ {{ payroll.allowances|floatformat:2 }}</td></tr>
-                        <tr style="border-top:2px solid var(--accent);">
-                            <td><strong>Gross Earnings</strong></td>
-                            <td style="text-align:right;"><strong style="color:var(--accent);">
-                                {{ payroll.basic_salary|add:payroll.overtime_amount|add:payroll.allowances|floatformat:2 }}
-                            </strong></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    <!-- BREAKDOWN -->
+    <table class="table" style="margin-bottom:22px;">
+        <tbody>
+            <tr><td>Basic Salary</td><td style="text-align:right;">{{ payroll.basic_salary|floatformat:2 }}</td></tr>
+            <tr style="background:var(--bg-raised);"><td colspan="2"><strong>Earnings</strong></td></tr>
+            <tr>
+                <td style="padding-left:30px;">Overtime ({{ payroll.overtime_hours }} h × 2×)</td>
+                <td style="text-align:right; color:var(--success);">+ {{ payroll.overtime_amount|floatformat:2 }}</td>
+            </tr>
+            <tr>
+                <td style="padding-left:30px;">Allowances</td>
+                <td style="text-align:right; color:var(--success);">+ {{ payroll.allowances|floatformat:2 }}</td>
+            </tr>
+            <tr style="background:var(--bg-raised);">
+                <td><strong>Gross Earnings</strong></td>
+                <td style="text-align:right;">
+                    <strong>{{ payroll.basic_salary|add:payroll.overtime_amount|add:payroll.allowances|floatformat:2 }}</strong>
+                </td>
+            </tr>
+            <tr><td colspan="2"><strong>Deductions</strong></td></tr>
+            <tr>
+                <td style="padding-left:30px;">Absence ({{ payroll.absent_days }} absent + {{ payroll.half_days }} half)</td>
+                <td style="text-align:right; color:var(--danger);">− {{ payroll.absence_deduction|floatformat:2 }}</td>
+            </tr>
+            <tr>
+                <td style="padding-left:30px;">Other Deductions</td>
+                <td style="text-align:right; color:var(--danger);">− {{ payroll.deductions|floatformat:2 }}</td>
+            </tr>
+        </tbody>
+    </table>
 
-        <div class="col-md-6">
-            <div class="panel" style="background:var(--bg-raised);">
-                <div class="panel-title"><i class="bi bi-dash-circle"></i> Attendance &amp; Deductions</div>
-                <table class="table" style="margin:0;">
-                    <tbody>
-                        <tr><td>Present Days</td><td style="text-align:right;">{{ payroll.present_days }}</td></tr>
-                        <tr><td>Absent Days</td><td style="text-align:right; color:var(--danger);">{{ payroll.absent_days }}</td></tr>
-                        <tr><td>Leave Days (paid)</td><td style="text-align:right;">{{ payroll.leave_days }}</td></tr>
-                        <tr><td>Half Days</td><td style="text-align:right;">{{ payroll.half_days }}</td></tr>
-                        <tr style="border-top:1px dashed var(--border-light);">
-                            <td>Absence Deduction</td>
-                            <td style="text-align:right; color:var(--danger);">− {{ payroll.absence_deduction|floatformat:2 }}</td>
-                        </tr>
-                        <tr><td>Other Deductions</td><td style="text-align:right; color:var(--danger);">− {{ payroll.deductions|floatformat:2 }}</td></tr>
-                        <tr style="border-top:2px solid var(--danger);">
-                            <td><strong>Total Deductions</strong></td>
-                            <td style="text-align:right;"><strong style="color:var(--danger);">
-                                − {{ payroll.absence_deduction|add:payroll.deductions|floatformat:2 }}
-                            </strong></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <div class="panel mt-3" style="background:linear-gradient(135deg, var(--bg-raised), var(--bg-app)); border:2px solid var(--accent);">
-        <div class="d-flex justify-content-between align-items-center">
+    <!-- NET SALARY BOX -->
+    <div class="panel" style="background:linear-gradient(135deg, var(--bg-raised), var(--bg-app)); border:2px solid var(--accent); padding:20px 24px;">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div>
-                <div class="panel-title" style="margin:0;">NET SALARY</div>
+                <div style="font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Net Salary</div>
                 <small style="color:var(--text-muted);">Basic + Overtime + Allowances − Deductions</small>
             </div>
-            <div style="font-size:32px; font-weight:700; color:var(--accent);">
-                {{ payroll.net_salary }}
+            <div style="font-size:32px; font-weight:800; color:var(--accent);">
+                PKR {{ payroll.net_salary|floatformat:2 }}
             </div>
         </div>
     </div>
 
+    <!-- ATTENDANCE SUMMARY -->
+    <div style="margin-top:18px; padding:12px 16px; background:var(--bg-raised); border:1px solid var(--border-light); border-radius:8px; font-size:13px;">
+        <strong>Attendance:</strong>
+        Present {{ payroll.present_days }} · Absent {{ payroll.absent_days }} · Leave {{ payroll.leave_days }} · Half Day {{ payroll.half_days }}
+    </div>
+
+    <!-- PAYMENT CONFIRMATION -->
     {% if payroll.status == 'Paid' %}
-    <!-- ============ PAYMENT CONFIRMATION PANEL ============ -->
-    <div class="panel mt-3" style="background:var(--bg-app); border:1px solid #10b981; border-radius:10px;">
-        <div class="panel-title" style="color:#34d399;">
+    <div class="panel mt-3" style="background:var(--bg-app); border:1px solid var(--success);">
+        <div class="panel-title" style="color:var(--success); border-bottom-color:var(--border-light);">
             <i class="bi bi-patch-check-fill"></i> Payment Confirmation
         </div>
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label">Paid By</label>
-                <p style="font-weight:600;">{{ payroll.paid_by.username|default:"—" }}</p>
+                <p style="font-weight:600; margin:0;">{{ payroll.paid_by.username|default:"—" }}</p>
             </div>
             <div class="col-md-6">
                 <label class="form-label">Paid On</label>
-                <p>{{ payroll.confirmed_at|date:"d M Y, H:i"|default:"—" }}</p>
+                <p style="margin:0;">{{ payroll.confirmed_at|date:"d M Y, H:i"|default:"—" }}</p>
             </div>
             <div class="col-md-6">
                 <label class="form-label">Amount Received</label>
-                <p style="color:#34d399; font-weight:700; font-size:16px;">
+                <p style="color:var(--success); font-weight:700; font-size:16px; margin:0;">
                     PKR {{ payroll.received_amount|default:payroll.net_salary }}
                 </p>
             </div>
             <div class="col-md-6">
-                <label class="form-label">Payment Method</label>
-                <p><span class="badge-status badge-active">CASH</span></p>
+                <label class="form-label">Method</label>
+                <p style="margin:0;"><span class="badge-status badge-active">{{ payroll.payment_method|default:"CASH" }}</span></p>
             </div>
-            {% if payroll.paid_from_ip %}
-            <div class="col-md-6">
-                <label class="form-label">Recorded From IP</label>
-                <p style="font-family:monospace; font-size:12px; color:var(--text-muted);">{{ payroll.paid_from_ip }}</p>
-            </div>
-            {% endif %}
             {% if payroll.confirmation_notes %}
             <div class="col-12">
                 <label class="form-label">Note</label>
-                <p>{{ payroll.confirmation_notes }}</p>
+                <p style="margin:0;">{{ payroll.confirmation_notes }}</p>
             </div>
             {% endif %}
-            <div class="col-12">
-                <p style="margin:0; font-size:12px; color:var(--text-muted);">
-                    <i class="bi bi-shield-check"></i>
-                    This record is permanent and cannot be edited.
-                </p>
-            </div>
         </div>
     </div>
     {% endif %}
 
-    <hr style="border-color:var(--border-light); margin:25px 0;">
+    <hr style="border-color:var(--border-light); margin:22px 0;">
 
+    <!-- ACTIONS -->
     <div class="d-flex gap-2 flex-wrap">
-        {% if payroll.status == 'Approved' %}
-        <button type="button"
-                class="btn btn-amber mark-paid-btn"
-                data-pk="{{ payroll.pk }}"
-                data-name="{{ payroll.employee.first_name }} {{ payroll.employee.last_name }}"
-                data-code="{{ payroll.employee.employee_code }}"
-                data-period="{{ payroll.get_month_display }} {{ payroll.year }}"
-                data-net="{{ payroll.net_salary }}">
-            <i class="bi bi-cash-coin"></i> Mark Paid
-        </button>
-        {% endif %}
-        <button onclick="window.print()" class="btn btn-outline-amber">
-            <i class="bi bi-printer"></i> Print
-        </button>
         {% if is_manager %}
-            {% if payroll.status != 'Paid' and payroll.status != 'Paid Pending' and not payroll.voided %}
+            {% if payroll.status != 'Paid' and not payroll.voided %}
+            <button type="button"
+                    class="btn btn-amber mark-paid-btn"
+                    data-pk="{{ payroll.pk }}"
+                    data-name="{{ payroll.employee.first_name }} {{ payroll.employee.last_name }}"
+                    data-code="{{ payroll.employee.employee_code }}"
+                    data-period="{{ payroll.get_month_display }} {{ payroll.year }}"
+                    data-net="{{ payroll.net_salary }}">
+                <i class="bi bi-cash-coin"></i> Mark Paid
+            </button>
             <a href="{% url 'payroll_edit' payroll.pk %}" class="btn btn-outline-amber">
                 <i class="bi bi-pencil"></i> Edit
             </a>
-            {% endif %}
-            {% if payroll.status != 'Paid' and not payroll.voided %}
             <a href="{% url 'payroll_void' payroll.pk %}" class="btn btn-outline-danger">
                 <i class="bi bi-slash-circle"></i> Void
             </a>
             {% endif %}
         {% endif %}
+
+        <a href="{% url 'payroll_slip' payroll.pk %}" target="_blank" class="btn btn-outline-amber">
+            <i class="bi bi-printer"></i> Print Slip
+        </a>
+
         <a href="{% url 'payroll_list' %}" class="btn btn-outline-amber">
             <i class="bi bi-arrow-left"></i> Back
         </a>
     </div>
+
+
 </div>
 
-<!-- ============ MARK PAID MODAL ============ -->
+<!-- MARK PAID MODAL (manager only) -->
+{% if is_manager and payroll.status != 'Paid' and not payroll.voided %}
 <div class="modal fade" id="markPaidModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="background:var(--bg-panel); border:1px solid var(--border-light); color:var(--text-primary);">
             <form method="post" id="markPaidForm">
                 {% csrf_token %}
                 <div class="modal-header" style="border-bottom:1px solid var(--border-light);">
-                    <h5 class="modal-title">
-                        <i class="bi bi-cash-coin" style="color:var(--success);"></i>
-                        Mark Salary as Paid
-                    </h5>
+                    <h5 class="modal-title"><i class="bi bi-cash-coin" style="color:var(--success);"></i> Confirm Payment</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div style="padding:14px 16px; background:var(--bg-raised); border:1px solid var(--border-light); border-radius:8px; margin-bottom:18px;">
-                        <div style="font-size:16px; font-weight:700; color:var(--text-primary);" id="paidEmpName">—</div>
+                        <div style="font-size:16px; font-weight:700;" id="paidEmpName">—</div>
                         <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
                             <span id="paidEmpCode"></span> · <span id="paidPeriod"></span>
                         </div>
@@ -221,64 +210,47 @@
                             PKR <span id="paidNet">0</span>
                         </div>
                     </div>
-
                     <div class="mb-3">
                         <label class="form-label">Amount Handed Over (PKR) *</label>
                         <input type="number" step="0.01" name="received_amount" id="paidAmountInput" class="form-control" required>
-                        <small style="color:var(--text-muted); font-size:11px;">
-                            Pre-filled with net salary. Change only for partial payment.
-                        </small>
                     </div>
-
                     <div class="mb-0">
                         <label class="form-label">Note (optional)</label>
-                        <input type="text" name="confirmation_notes" class="form-control"
-                               placeholder="e.g. partial payment, balance next week">
-                    </div>
-
-                    <div style="margin-top:16px; padding:12px 14px; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.35); border-radius:8px; font-size:12.5px; color:#6ee7b7;">
-                        <i class="bi bi-info-circle-fill"></i>
-                        Payment method: <strong>CASH</strong>. The system records the date, time, and who marked it — this cannot be undone.
+                        <input type="text" name="confirmation_notes" class="form-control" placeholder="e.g. balance next week">
                     </div>
                 </div>
                 <div class="modal-footer" style="border-top:1px solid var(--border-light);">
                     <button type="button" class="btn btn-outline-amber" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-amber">
-                        <i class="bi bi-check-lg"></i> Confirm Payment
-                    </button>
+                    <button type="submit" class="btn btn-amber"><i class="bi bi-check-lg"></i> Confirm</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+{% endif %}
 
 <script>
-    (function() {
-        document.addEventListener('DOMContentLoaded', function() {
-            var modalEl = document.getElementById('markPaidModal');
-            if (!modalEl) return;
-            var modal = new bootstrap.Modal(modalEl);
+(function() {
+    document.addEventListener('DOMContentLoaded', function() {
+        var modalEl = document.getElementById('markPaidModal');
+        if (!modalEl) return;
+        var modal = new bootstrap.Modal(modalEl);
 
-            document.querySelectorAll('.mark-paid-btn').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    var pk = this.dataset.pk;
-                    var name = this.dataset.name;
-                    var code = this.dataset.code;
-                    var period = this.dataset.period;
-                    var net = parseFloat(this.dataset.net) || 0;
-
-                    document.getElementById('markPaidForm').action = '/payroll/' + pk + '/mark-paid/';
-                    document.getElementById('paidEmpName').textContent = name;
-                    document.getElementById('paidEmpCode').textContent = code;
-                    document.getElementById('paidPeriod').textContent = period;
-                    document.getElementById('paidNet').textContent = net.toLocaleString();
-                    document.getElementById('paidAmountInput').value = net;
-
-                    modal.show();
-                });
+        document.querySelectorAll('.mark-paid-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var pk = this.dataset.pk;
+                var net = parseFloat(this.dataset.net) || 0;
+                document.getElementById('markPaidForm').action = '/payroll/' + pk + '/mark-paid/';
+                document.getElementById('paidEmpName').textContent = this.dataset.name;
+                document.getElementById('paidEmpCode').textContent = this.dataset.code;
+                document.getElementById('paidPeriod').textContent = this.dataset.period;
+                document.getElementById('paidNet').textContent = net.toLocaleString();
+                document.getElementById('paidAmountInput').value = net;
+                modal.show();
             });
         });
-    })();
+    });
+})();
 </script>
 
 {% endblock %}

@@ -170,7 +170,13 @@ class Attendance(models.Model):
 
     class Meta:
         ordering = ['-date', 'employee__employee_code']
-        unique_together = ('employee', 'date', 'shift')
+        constraints = [
+            models.UniqueConstraint(
+                fields=['employee', 'date', 'shift'],
+                condition=models.Q(voided=False),
+                name='unique_attendance_active',
+            )
+        ]
 
     def __str__(self):
         return f"{self.employee.employee_code} - {self.date} ({self.shift})"
@@ -215,9 +221,6 @@ class InventoryItem(models.Model):
     approval_status = models.CharField(max_length=20, default='Approved')
     added_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
                                  related_name='inventory_added')
-    approved_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
-                                    related_name='employees_approved')
-    approved_at = models.DateTimeField(null=True, blank=True)
     approved_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
                                     related_name='inventory_approved')
     approved_at = models.DateTimeField(null=True, blank=True)
@@ -296,10 +299,11 @@ class StockTransaction(models.Model):
 
 class Payroll(models.Model):
     STATUS_CHOICES = [
-        ('Pending', 'Pending Approval'),
-        ('Approved', 'Approved'),
-        ('Paid Pending', 'Paid (Awaiting Approval)'),
+        ('Approved', 'Ready to Pay'),
         ('Paid', 'Paid'),
+        # ---- Legacy (old records only, never set going forward) ----
+        ('Pending', 'Pending (legacy)'),
+        ('Paid Pending', 'Paid Pending (legacy)'),
     ]
 
     MONTH_CHOICES = [
@@ -322,7 +326,7 @@ class Payroll(models.Model):
     allowances = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     deductions = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     net_salary = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Approved')
     payment_date = models.DateField(null=True, blank=True)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -701,3 +705,347 @@ class SalePayment(models.Model):
 
     def __str__(self):
         return f"{self.sale.dispatch_no} — PKR {self.amount}"    
+
+
+
+# =====================================================================
+# SAFETY MODULE
+#
+# No `voided` fields — safety records must never be deleted.
+# Use `status` transitions instead: Open → In Progress → Resolved → Closed.
+# =====================================================================
+
+
+class SafetyIncident(models.Model):
+    INCIDENT_TYPE_CHOICES = [
+        ('Injury', 'Injury / Accident'),
+        ('Near Miss', 'Near Miss'),
+        ('Property Damage', 'Property / Equipment Damage'),
+        ('Environmental', 'Environmental (Gas, Water, Dust)'),
+        ('Fire', 'Fire'),
+        ('Explosion', 'Explosion'),
+        ('Roof Fall', 'Roof Fall / Rockfall'),
+        ('Vehicle', 'Vehicle Accident'),
+        ('Electrical', 'Electrical Incident'),
+        ('Other', 'Other'),
+    ]
+
+    SEVERITY_CHOICES = [
+        ('Minor', 'Minor (First Aid)'),
+        ('Moderate', 'Moderate (Medical Treatment)'),
+        ('Serious', 'Serious (Hospitalization)'),
+        ('Critical', 'Critical (Permanent Disability)'),
+        ('Fatal', 'Fatal'),
+    ]
+
+    STATUS_CHOICES = [
+        ('Reported', 'Reported'),
+        ('Investigating', 'Under Investigation'),
+        ('Action Pending', 'Corrective Action Pending'),
+        ('Resolved', 'Resolved'),
+        ('Closed', 'Closed'),
+    ]
+
+    incident_no = models.CharField(max_length=30, unique=True, blank=True,
+                                   help_text="Auto-generated: INC-YYYY-0001")
+    date = models.DateField()
+    time = models.TimeField(null=True, blank=True)
+    mine = models.ForeignKey('Mine', on_delete=models.PROTECT, related_name='safety_incidents')
+    shift = models.CharField(max_length=20, blank=True)
+    location = models.CharField(max_length=200, blank=True,
+                                help_text="Exact spot: e.g. tunnel 3 entrance")
+    incident_type = models.CharField(max_length=30, choices=INCIDENT_TYPE_CHOICES, default='Injury')
+    severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, default='Minor')
+    description = models.TextField(help_text="What happened? Write what you saw.")
+    employee = models.ForeignKey('Employee', on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name='safety_incidents',
+                                 help_text="Injured person, if any")
+    witnesses = models.TextField(blank=True, help_text="Names of witnesses, one per line")
+    immediate_action = models.TextField(blank=True, help_text="What was done immediately?")
+    root_cause = models.TextField(blank=True, help_text="Filled during investigation")
+    corrective_action = models.TextField(blank=True, help_text="Steps taken to prevent recurrence")
+    photo = models.ImageField(upload_to='safety/incidents/', blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Reported')
+    reported_to_government = models.BooleanField(
+        default=False,
+        help_text="Reported to Mines Department? Required for serious/fatal.",
+    )
+    cost = models.DecimalField(max_digits=12, decimal_places=2, default=0,
+                               help_text="Medical, damage, or fine cost in PKR")
+    reported_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True,
+                                    related_name='incidents_reported')
+    investigated_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                        related_name='incidents_investigated')
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-date', '-created_at']
+        verbose_name = 'Safety Incident'
+        verbose_name_plural = 'Safety Incidents'
+        indexes = [
+            models.Index(fields=['date']),
+            models.Index(fields=['status']),
+            models.Index(fields=['severity']),
+        ]
+
+    def __str__(self):
+        return f"{self.incident_no} — {self.incident_type} ({self.date})"
+
+    def save(self, *args, **kwargs):
+        if not self.incident_no:
+            from django.utils import timezone
+            year = timezone.localdate().year
+            prefix = f'INC-{year}-'
+            last = SafetyIncident.objects.filter(
+                incident_no__startswith=prefix
+            ).order_by('-incident_no').first()
+            if last:
+                try:
+                    last_num = int(last.incident_no.split('-')[-1])
+                except (ValueError, IndexError):
+                    last_num = 0
+            else:
+                last_num = 0
+            self.incident_no = f'{prefix}{last_num + 1:04d}'
+        super().save(*args, **kwargs)
+
+
+class Hazard(models.Model):
+    HAZARD_TYPE_CHOICES = [
+        ('Roof', 'Roof / Overhang Issue'),
+        ('Ventilation', 'Poor Ventilation'),
+        ('Gas', 'Gas Presence'),
+        ('Water', 'Water Ingress'),
+        ('Equipment', 'Equipment Defect'),
+        ('Electrical', 'Electrical Hazard'),
+        ('Slip', 'Slip / Trip Hazard'),
+        ('Noise', 'Excessive Noise'),
+        ('Dust', 'Excessive Dust'),
+        ('Lighting', 'Inadequate Lighting'),
+        ('Other', 'Other'),
+    ]
+
+    RISK_LEVEL_CHOICES = [
+        ('Low', 'Low'),
+        ('Medium', 'Medium'),
+        ('High', 'High'),
+        ('Critical', 'Critical'),
+    ]
+
+    STATUS_CHOICES = [
+        ('Open', 'Open'),
+        ('In Progress', 'Fix In Progress'),
+        ('Resolved', 'Resolved'),
+        ('Closed', 'Closed'),
+    ]
+
+    hazard_no = models.CharField(max_length=30, unique=True, blank=True,
+                                 help_text="Auto-generated: HAZ-YYYY-0001")
+    date_observed = models.DateField()
+    mine = models.ForeignKey('Mine', on_delete=models.PROTECT, related_name='hazards')
+    shift = models.CharField(max_length=20, blank=True)
+    location = models.CharField(max_length=200)
+    hazard_type = models.CharField(max_length=30, choices=HAZARD_TYPE_CHOICES, default='Roof')
+    risk_level = models.CharField(max_length=20, choices=RISK_LEVEL_CHOICES, default='Medium')
+    description = models.TextField(help_text="What did you see? Be specific.")
+    photo = models.ImageField(upload_to='safety/hazards/', blank=True, null=True)
+    action_taken = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Open')
+    observed_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True,
+                                    related_name='hazards_observed')
+    assigned_to = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='hazards_assigned',
+                                    help_text="Who is responsible for fixing this?")
+    due_date = models.DateField(null=True, blank=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-date_observed', '-created_at']
+        indexes = [
+            models.Index(fields=['date_observed']),
+            models.Index(fields=['status']),
+            models.Index(fields=['risk_level']),
+        ]
+
+    def __str__(self):
+        return f"{self.hazard_no} — {self.hazard_type} ({self.location})"
+
+    def save(self, *args, **kwargs):
+        if not self.hazard_no:
+            from django.utils import timezone
+            year = timezone.localdate().year
+            prefix = f'HAZ-{year}-'
+            last = Hazard.objects.filter(
+                hazard_no__startswith=prefix
+            ).order_by('-hazard_no').first()
+            if last:
+                try:
+                    last_num = int(last.hazard_no.split('-')[-1])
+                except (ValueError, IndexError):
+                    last_num = 0
+            else:
+                last_num = 0
+            self.hazard_no = f'{prefix}{last_num + 1:04d}'
+        super().save(*args, **kwargs)
+
+
+class SafetyInspection(models.Model):
+    INSPECTION_TYPE_CHOICES = [
+        ('Daily', 'Daily Walk-around'),
+        ('Weekly', 'Weekly Inspection'),
+        ('Monthly', 'Monthly Audit'),
+        ('Quarterly', 'Quarterly Review'),
+        ('Annual', 'Annual Certification'),
+        ('Special', 'Special / Ad-hoc'),
+    ]
+
+    OVERALL_STATUS_CHOICES = [
+        ('Pass', 'Pass'),
+        ('Conditional', 'Pass with Conditions'),
+        ('Fail', 'Fail — Action Required'),
+    ]
+
+    inspection_no = models.CharField(max_length=30, unique=True, blank=True,
+                                     help_text="Auto-generated: INS-YYYY-0001")
+    date = models.DateField()
+    mine = models.ForeignKey('Mine', on_delete=models.PROTECT, related_name='safety_inspections')
+    location = models.CharField(max_length=200, blank=True,
+                                help_text="Specific area if not whole mine")
+    inspection_type = models.CharField(max_length=20, choices=INSPECTION_TYPE_CHOICES,
+                                       default='Weekly')
+    inspector = models.CharField(max_length=150, help_text="Who conducted the inspection")
+    findings = models.TextField(help_text="What was checked and what was found")
+    issues_count = models.PositiveIntegerField(default=0, help_text="Number of issues discovered")
+    overall_status = models.CharField(max_length=20, choices=OVERALL_STATUS_CHOICES, default='Pass')
+    follow_up_required = models.BooleanField(default=False)
+    follow_up_deadline = models.DateField(null=True, blank=True)
+    follow_up_notes = models.TextField(blank=True)
+    photo = models.ImageField(upload_to='safety/inspections/', blank=True, null=True)
+    conducted_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True,
+                                     related_name='inspections_conducted')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date', '-created_at']
+        indexes = [
+            models.Index(fields=['date']),
+            models.Index(fields=['overall_status']),
+        ]
+
+    def __str__(self):
+        return f"{self.inspection_no} — {self.inspection_type} ({self.date})"
+
+    def save(self, *args, **kwargs):
+        if not self.inspection_no:
+            from django.utils import timezone
+            year = timezone.localdate().year
+            prefix = f'INS-{year}-'
+            last = SafetyInspection.objects.filter(
+                inspection_no__startswith=prefix
+            ).order_by('-inspection_no').first()
+            if last:
+                try:
+                    last_num = int(last.inspection_no.split('-')[-1])
+                except (ValueError, IndexError):
+                    last_num = 0
+            else:
+                last_num = 0
+            self.inspection_no = f'{prefix}{last_num + 1:04d}'
+        super().save(*args, **kwargs)
+
+
+class PPEIssuance(models.Model):
+    PPE_TYPE_CHOICES = [
+        ('Helmet', 'Safety Helmet'),
+        ('Boots', 'Safety Boots'),
+        ('Gloves', 'Safety Gloves'),
+        ('Glasses', 'Safety Glasses'),
+        ('Respirator', 'Respirator / Dust Mask'),
+        ('Earplugs', 'Hearing Protection'),
+        ('Vest', 'Reflective Vest'),
+        ('Harness', 'Safety Harness'),
+        ('GasDetector', 'Personal Gas Detector'),
+        ('Lamp', 'Miners Lamp'),
+        ('Other', 'Other'),
+    ]
+
+    CONDITION_CHOICES = [
+        ('New', 'New'),
+        ('Used', 'Used'),
+        ('Replacement', 'Replacement'),
+    ]
+
+    employee = models.ForeignKey('Employee', on_delete=models.CASCADE,
+                                 related_name='ppe_issuances')
+    date_issued = models.DateField()
+    ppe_type = models.CharField(max_length=30, choices=PPE_TYPE_CHOICES)
+    quantity = models.PositiveIntegerField(default=1)
+    size = models.CharField(max_length=20, blank=True, help_text="e.g. M, L, 42")
+    condition = models.CharField(max_length=20, choices=CONDITION_CHOICES, default='New')
+    replacement_due = models.DateField(null=True, blank=True,
+                                       help_text="Legally mandated replacement date")
+    returned = models.BooleanField(default=False,
+                                    help_text="Mark when employee leaves or returns")
+    returned_date = models.DateField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    issued_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True,
+                                  related_name='ppe_issued')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date_issued']
+        indexes = [
+            models.Index(fields=['date_issued']),
+            models.Index(fields=['ppe_type']),
+        ]
+
+    def __str__(self):
+        return f"{self.employee.employee_code} — {self.ppe_type} ({self.date_issued})"
+
+
+class SafetyTraining(models.Model):
+    TRAINING_TYPE_CHOICES = [
+        ('Induction', 'General Safety Induction'),
+        ('FirstAid', 'First Aid'),
+        ('FireSafety', 'Fire Safety'),
+        ('Equipment', 'Equipment Operation'),
+        ('Confined', 'Confined Space Entry'),
+        ('Heights', 'Working at Heights'),
+        ('Explosives', 'Explosives Handling'),
+        ('Hazmat', 'Hazardous Materials'),
+        ('Evacuation', 'Emergency Evacuation'),
+        ('GasDetection', 'Gas Detection'),
+        ('Other', 'Other'),
+    ]
+
+    employee = models.ForeignKey('Employee', on_delete=models.CASCADE,
+                                 related_name='safety_trainings')
+    training_type = models.CharField(max_length=30, choices=TRAINING_TYPE_CHOICES)
+    training_date = models.DateField()
+    expiry_date = models.DateField(null=True, blank=True,
+                                   help_text="When does this certification expire?")
+    trainer_name = models.CharField(max_length=150, blank=True)
+    trainer_company = models.CharField(max_length=150, blank=True,
+                                        help_text="If external")
+    duration_hours = models.DecimalField(max_digits=5, decimal_places=1, default=0)
+    certificate_no = models.CharField(max_length=50, blank=True)
+    certificate_photo = models.ImageField(upload_to='safety/training/', blank=True, null=True)
+    passed = models.BooleanField(default=True)
+    notes = models.TextField(blank=True)
+    recorded_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True,
+                                    related_name='safety_trainings_recorded')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-training_date']
+        indexes = [
+            models.Index(fields=['training_date']),
+            models.Index(fields=['expiry_date']),
+        ]
+
+    def __str__(self):
+        return f"{self.employee.employee_code} — {self.training_type} ({self.training_date})"

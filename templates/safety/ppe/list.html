@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block title %}PPE Issuance - Coal Mine{% endblock %}
+{% block page_title %}PPE REGISTER{% endblock %}
+
+{% block content %}
+
+<div class="panel mb-3">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-6 col-md-3">
+            <label class="form-label">PPE Type</label>
+            <select name="type" class="form-select">
+                <option value="">All</option>
+                {% for val, label in type_choices %}
+                <option value="{{ val }}" {% if type_filter == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label">Returned?</label>
+            <select name="returned" class="form-select">
+                <option value="">All</option>
+                <option value="no" {% if returned_filter == 'no' %}selected{% endif %}>Not returned</option>
+                <option value="yes" {% if returned_filter == 'yes' %}selected{% endif %}>Returned</option>
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label">Employee</label>
+            <select name="employee" class="form-select">
+                <option value="">All</option>
+                {% for e in employees %}
+                <option value="{{ e.pk }}" {% if employee_filter == e.pk|stringformat:"s" %}selected{% endif %}>{{ e.employee_code }} — {{ e.first_name }} {{ e.last_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <button type="submit" class="btn btn-amber w-100"><i class="bi bi-funnel"></i> Filter</button>
+        </div>
+    </form>
+</div>
+
+<div class="panel">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="panel-title mb-0"><i class="bi bi-shield-check"></i> PPE Issuances ({{ issuances|length }})</div>
+        {% if is_manager or is_accountant %}
+        <a href="{% url 'ppe_add' %}" class="btn btn-amber btn-sm"><i class="bi bi-plus-lg"></i> Issue PPE</a>
+        {% endif %}
+    </div>
+
+    {% if issuances %}
+    <div style="overflow-x:auto;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Employee</th>
+                    <th>PPE Type</th>
+                    <th style="text-align:center;">Qty</th>
+                    <th>Size</th>
+                    <th>Condition</th>
+                    <th>Replacement Due</th>
+                    <th>Returned</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in issuances %}
+                <tr>
+                    <td>{{ i.date_issued|date:"d M Y" }}</td>
+                    <td><strong>{{ i.employee.first_name }} {{ i.employee.last_name }}</strong><br><small style="color:var(--text-muted); font-family:monospace;">{{ i.employee.employee_code }}</small></td>
+                    <td>{{ i.get_ppe_type_display }}</td>
+                    <td style="text-align:center;">{{ i.quantity }}</td>
+                    <td>{{ i.size|default:"—" }}</td>
+                    <td>
+                        {% if i.condition == 'New' %}<span class="badge-status badge-active">NEW</span>
+                        {% elif i.condition == 'Replacement' %}<span class="badge-status badge-leave">REPLACEMENT</span>
+                        {% else %}<span class="badge-status badge-inactive">{{ i.get_condition_display|upper }}</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if i.replacement_due %}
+                            {% if i.replacement_due < today %}
+                                <span style="color:var(--danger); font-weight:600;">{{ i.replacement_due|date:"d M Y" }}</span>
+                            {% elif i.replacement_due <= today|add:"+30" %}
+                                <span style="color:var(--warning);">{{ i.replacement_due|date:"d M Y" }}</span>
+                            {% else %}
+                                {{ i.replacement_due|date:"d M Y" }}
+                            {% endif %}
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% if i.returned %}<span class="badge-status badge-active">RETURNED</span>
+                        {% else %}<span class="badge-status badge-inactive">ISSUED</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if is_manager %}
+                        <a href="{% url 'ppe_edit' i.pk %}" class="btn btn-sm btn-outline-amber" title="Edit"><i class="bi bi-pencil"></i></a>
+                        {% if not i.returned %}
+                        <a href="{% url 'ppe_return' i.pk %}" class="btn btn-sm btn-outline-danger" title="Mark returned"><i class="bi bi-arrow-return-left"></i></a>
+                        {% endif %}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted); text-align:center; padding:30px;">
+        <i class="bi bi-shield-check" style="font-size:40px; display:block; margin-bottom:10px; opacity:0.5;"></i>
+        No PPE records match your filter.
+    </p>
+    {% endif %}
+</div>
+
+{% endblock %}

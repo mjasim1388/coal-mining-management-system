@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block title %}Hazards - Coal Mine{% endblock %}
+{% block page_title %}HAZARD REGISTER{% endblock %}
+
+{% block content %}
+
+<div class="panel mb-3">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-6 col-md-3">
+            <label class="form-label">Status</label>
+            <select name="status" class="form-select">
+                <option value="">All</option>
+                {% for val, label in status_choices %}
+                <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label">Risk Level</label>
+            <select name="risk" class="form-select">
+                <option value="">All</option>
+                {% for val, label in risk_choices %}
+                <option value="{{ val }}" {% if risk_filter == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label">Mine</label>
+            <select name="mine" class="form-select">
+                <option value="">All</option>
+                {% for m in mines %}
+                <option value="{{ m.pk }}" {% if mine_filter == m.pk|stringformat:"s" %}selected{% endif %}>{{ m.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <button type="submit" class="btn btn-amber w-100"><i class="bi bi-funnel"></i> Filter</button>
+        </div>
+    </form>
+</div>
+
+<div class="panel">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="panel-title mb-0"><i class="bi bi-search"></i> Hazards ({{ hazards|length }})</div>
+        {% if is_manager or is_accountant %}
+        <a href="{% url 'hazard_add' %}" class="btn btn-amber btn-sm"><i class="bi bi-plus-lg"></i> Report Hazard</a>
+        {% endif %}
+    </div>
+
+    {% if hazards %}
+    <div style="overflow-x:auto;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Date</th>
+                    <th>Mine</th>
+                    <th>Type</th>
+                    <th>Risk</th>
+                    <th>Location</th>
+                    <th>Assigned To</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for h in hazards %}
+                <tr>
+                    <td><a href="{% url 'hazard_detail' h.pk %}" style="color:var(--accent); font-family:monospace; font-weight:600;">{{ h.hazard_no }}</a></td>
+                    <td>{{ h.date_observed|date:"d M Y" }}</td>
+                    <td>{{ h.mine.name }}</td>
+                    <td>{{ h.get_hazard_type_display }}</td>
+                    <td>
+                        {% if h.risk_level == 'Critical' %}
+                            <span class="badge-status badge-inactive">CRITICAL</span>
+                        {% elif h.risk_level == 'High' %}
+                            <span class="badge-status badge-inactive">HIGH</span>
+                        {% elif h.risk_level == 'Medium' %}
+                            <span class="badge-status badge-leave">MEDIUM</span>
+                        {% else %}
+                            <span class="badge-status badge-active">LOW</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ h.location|truncatechars:30 }}</td>
+                    <td>{{ h.assigned_to.username|default:"—" }}</td>
+                    <td>
+                        {% if h.status == 'Resolved' or h.status == 'Closed' %}
+                            <span class="badge-status badge-active">{{ h.get_status_display }}</span>
+                        {% elif h.status == 'In Progress' %}
+                            <span class="badge-status badge-leave">{{ h.get_status_display }}</span>
+                        {% else %}
+                            <span class="badge-status badge-inactive">{{ h.get_status_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'hazard_detail' h.pk %}" class="btn btn-sm btn-outline-amber"><i class="bi bi-eye"></i></a>
+                        {% if is_manager %}
+                        <a href="{% url 'hazard_edit' h.pk %}" class="btn btn-sm btn-outline-amber"><i class="bi bi-pencil"></i></a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted); text-align:center; padding:30px;">
+        <i class="bi bi-search" style="font-size:40px; display:block; margin-bottom:10px; opacity:0.5;"></i>
+        No hazards match your filter.
+    </p>
+    {% endif %}
+</div>
+
+{% endblock %}

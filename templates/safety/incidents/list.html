@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block title %}Safety Incidents - Coal Mine{% endblock %}
+{% block page_title %}SAFETY INCIDENTS{% endblock %}
+
+{% block content %}
+
+<div class="panel mb-3">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-6 col-md-2">
+            <label class="form-label">Status</label>
+            <select name="status" class="form-select">
+                <option value="">All</option>
+                {% for val, label in status_choices %}
+                <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label">Severity</label>
+            <select name="severity" class="form-select">
+                <option value="">All</option>
+                {% for val, label in severity_choices %}
+                <option value="{{ val }}" {% if severity_filter == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label">Type</label>
+            <select name="type" class="form-select">
+                <option value="">All</option>
+                {% for val, label in type_choices %}
+                <option value="{{ val }}" {% if type_filter == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label">Mine</label>
+            <select name="mine" class="form-select">
+                <option value="">All</option>
+                {% for m in mines %}
+                <option value="{{ m.pk }}" {% if mine_filter == m.pk|stringformat:"s" %}selected{% endif %}>{{ m.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-12 col-md-2">
+            <button type="submit" class="btn btn-amber w-100"><i class="bi bi-funnel"></i> Filter</button>
+        </div>
+        <div class="col-12 col-md-2">
+            <a href="{% url 'safety_hub' %}" class="btn btn-outline-amber w-100"><i class="bi bi-arrow-left"></i> Hub</a>
+        </div>
+    </form>
+</div>
+
+<div class="panel">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="panel-title mb-0"><i class="bi bi-exclamation-triangle"></i> Incidents ({{ incidents|length }})</div>
+        {% if is_manager or is_accountant %}
+        <a href="{% url 'incident_add' %}" class="btn btn-danger btn-sm"><i class="bi bi-plus-lg"></i> Report Incident</a>
+        {% endif %}
+    </div>
+
+    {% if incidents %}
+    <div style="overflow-x:auto;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Date</th>
+                    <th>Mine</th>
+                    <th>Type</th>
+                    <th>Severity</th>
+                    <th>Employee</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in incidents %}
+                <tr>
+                    <td><a href="{% url 'incident_detail' i.pk %}" style="color:var(--accent); font-family:monospace; font-weight:600;">{{ i.incident_no }}</a></td>
+                    <td>{{ i.date|date:"d M Y" }}</td>
+                    <td>{{ i.mine.name }}</td>
+                    <td>{{ i.get_incident_type_display }}</td>
+                    <td>
+                        {% if i.severity == 'Fatal' or i.severity == 'Critical' %}
+                            <span class="badge-status badge-inactive">{{ i.get_severity_display }}</span>
+                        {% elif i.severity == 'Serious' or i.severity == 'Moderate' %}
+                            <span class="badge-status badge-leave">{{ i.get_severity_display }}</span>
+                        {% else %}
+                            <span class="badge-status badge-active">{{ i.get_severity_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{% if i.employee %}{{ i.employee.first_name }} {{ i.employee.last_name }}{% else %}—{% endif %}</td>
+                    <td><span class="badge-status badge-leave">{{ i.get_status_display }}</span></td>
+                    <td>
+                        <a href="{% url 'incident_detail' i.pk %}" class="btn btn-sm btn-outline-amber"><i class="bi bi-eye"></i></a>
+                        {% if is_manager %}
+                        <a href="{% url 'incident_edit' i.pk %}" class="btn btn-sm btn-outline-amber"><i class="bi bi-pencil"></i></a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted); text-align:center; padding:30px;">
+        <i class="bi bi-shield-check" style="font-size:40px; display:block; margin-bottom:10px; color:var(--success); opacity:0.5;"></i>
+        No incidents match your filter.
+    </p>
+    {% endif %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block title %}Safety Training - Coal Mine{% endblock %}
+{% block page_title %}SAFETY TRAINING RECORDS{% endblock %}
+
+{% block content %}
+
+<div class="panel mb-3">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-6 col-md-3">
+            <label class="form-label">Training Type</label>
+            <select name="type" class="form-select">
+                <option value="">All</option>
+                {% for val, label in type_choices %}
+                <option value="{{ val }}" {% if type_filter == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label">Employee</label>
+            <select name="employee" class="form-select">
+                <option value="">All</option>
+                {% for e in employees %}
+                <option value="{{ e.pk }}" {% if employee_filter == e.pk|stringformat:"s" %}selected{% endif %}>{{ e.employee_code }} — {{ e.first_name }} {{ e.last_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label">Expiry</label>
+            <select name="expiring" class="form-select">
+                <option value="">All</option>
+                <option value="soon" {% if expiring_filter == 'soon' %}selected{% endif %}>Expiring in 30 days</option>
+                <option value="expired" {% if expiring_filter == 'expired' %}selected{% endif %}>Already expired</option>
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <button type="submit" class="btn btn-amber w-100"><i class="bi bi-funnel"></i> Filter</button>
+        </div>
+    </form>
+</div>
+
+<div class="panel">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="panel-title mb-0"><i class="bi bi-mortarboard"></i> Training Records ({{ trainings|length }})</div>
+        {% if is_manager or is_accountant %}
+        <a href="{% url 'training_add' %}" class="btn btn-amber btn-sm"><i class="bi bi-plus-lg"></i> Record Training</a>
+        {% endif %}
+    </div>
+
+    {% if trainings %}
+    <div style="overflow-x:auto;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Employee</th>
+                    <th>Training</th>
+                    <th>Trainer</th>
+                    <th>Duration</th>
+                    <th>Certificate</th>
+                    <th>Expiry</th>
+                    <th>Result</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in trainings %}
+                <tr>
+                    <td>{{ t.training_date|date:"d M Y" }}</td>
+                    <td><strong>{{ t.employee.first_name }} {{ t.employee.last_name }}</strong><br><small style="color:var(--text-muted); font-family:monospace;">{{ t.employee.employee_code }}</small></td>
+                    <td>{{ t.get_training_type_display }}</td>
+                    <td>{{ t.trainer_name|default:"—" }}</td>
+                    <td>{{ t.duration_hours }} h</td>
+                    <td>{{ t.certificate_no|default:"—" }}</td>
+                    <td>
+                        {% if t.expiry_date %}
+                            {% if t.expiry_date < today %}
+                                <span style="color:var(--danger); font-weight:600;">EXPIRED {{ t.expiry_date|date:"d M" }}</span>
+                            {% elif t.expiry_date <= today|add:"+30" %}
+                                <span style="color:var(--warning);">{{ t.expiry_date|date:"d M Y" }}</span>
+                            {% else %}
+                                {{ t.expiry_date|date:"d M Y" }}
+                            {% endif %}
+                        {% else %}
+                            <span style="color:var(--text-muted);">No expiry</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if t.passed %}<span class="badge-status badge-active">PASSED</span>
+                        {% else %}<span class="badge-status badge-inactive">FAILED</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if is_manager %}
+                        <a href="{% url 'training_edit' t.pk %}" class="btn btn-sm btn-outline-amber" title="Edit"><i class="bi bi-pencil"></i></a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted); text-align:center; padding:30px;">
+        <i class="bi bi-mortarboard" style="font-size:40px; display:block; margin-bottom:10px; opacity:0.5;"></i>
+        No training records match your filter.
+    </p>
+    {% endif %}
+</div>
+
+{% endblock %}

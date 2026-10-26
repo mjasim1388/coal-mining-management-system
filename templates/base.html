@@ -39,18 +39,18 @@
             --text-primary: #e6eaf0;
             --text-secondary: #b0bbc8;
             --text-muted: #8391a3;
-            --accent: #e5a11c;
-            --accent-hover: #f0b43f;
-            --accent-ink: #1a1200;
-            --accent-soft: rgba(229, 161, 28, 0.14);
-            --success: #2fb67c;
-            --success-soft: rgba(47, 182, 124, 0.15);
+            --accent: #10b981;
+            --accent-hover: #34d399;
+            --accent-ink: #001a10;
+            --accent-soft: rgba(16, 185, 129, 0.14);
+            --success: #22c55e;
+            --success-soft: rgba(34, 197, 94, 0.15);
             --danger: #ef5b5b;
             --danger-soft: rgba(239, 91, 91, 0.15);
             --info: #4c9aff;
             --info-soft: rgba(76, 154, 255, 0.15);
-            --warning: #e5a11c;
-            --warning-soft: rgba(229, 161, 28, 0.15);
+            --warning: #f59e0b;
+            --warning-soft: rgba(245, 158, 11, 0.15);
             --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
             --sb-bg: #0a0e13;
             --sb-hover: #121922;
@@ -58,7 +58,7 @@
             --sb-border: #1b2430;
             --sb-text: #9aa7b6;
             --sb-heading: #66768a;
-            --sb-accent: #e5a11c;
+            --sb-accent: #10b981;
             --sb-brand-text: #ffffff;
             --sb-link-hover-text: #ffffff;
             --sb-active-text: #ffffff;
@@ -74,18 +74,18 @@
             --text-primary: #17202b;
             --text-secondary: #455366;
             --text-muted: #6a7788;
-            --accent: #b87708;
-            --accent-hover: #9a6206;
-            --accent-ink: #ffffff;
-            --accent-soft: rgba(184, 119, 8, 0.10);
-            --success: #0f8a5c;
-            --success-soft: rgba(15, 138, 92, 0.10);
+    --accent: #059669;
+    --accent-hover: #047857;
+    --accent-ink: #ffffff;
+    --accent-soft: rgba(5, 150, 105, 0.10);
+    --success: #16a34a;
+    --success-soft: rgba(22, 163, 74, 0.10);
             --danger: #cf3a3a;
             --danger-soft: rgba(207, 58, 58, 0.09);
             --info: #1f6feb;
             --info-soft: rgba(31, 111, 235, 0.09);
-            --warning: #b87708;
-            --warning-soft: rgba(184, 119, 8, 0.10);
+    --warning: #b45309;
+    --warning-soft: rgba(180, 83, 9, 0.10);
             --shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
             --sb-bg: #ffffff;
             --sb-hover: #f3f5f8;
@@ -93,8 +93,8 @@
             --sb-border: #e2e6ec;
             --sb-text: #455366;
             --sb-heading: #8a94a3;
-            --sb-accent: #b87708;
-            --sb-brand-text: #17202b;
+    --sb-accent: #059669;
+    --sb-brand-text: #17202b;
             --sb-link-hover-text: #17202b;
             --sb-active-text: #17202b;
         }
@@ -235,6 +235,24 @@
             flex-shrink: 0;
         }
         .sidebar-nav a.active i { color: var(--sb-accent); }
+                .sb-ro-pill {
+            margin-left: auto;
+            font-size: 9.5px;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            padding: 2px 6px;
+            border-radius: 8px;
+            background: color-mix(in srgb, var(--text-muted) 20%, transparent);
+            color: var(--text-muted);
+            border: 1px solid color-mix(in srgb, var(--text-muted) 30%, transparent);
+            line-height: 1.3;
+        }
+        .sidebar-nav a.active .sb-ro-pill {
+            background: color-mix(in srgb, var(--sb-accent) 18%, transparent);
+            color: var(--sb-accent);
+            border-color: color-mix(in srgb, var(--sb-accent) 40%, transparent);
+        }
         .sidebar-nav a.nav-backup { color: var(--success); }
         .sidebar-nav a.nav-backup:hover {
             background: color-mix(in srgb, var(--success) 12%, transparent);
@@ -935,9 +953,12 @@
             <a href="{% url 'attendance_list' %}" class="{% if 'attendance' in request.resolver_match.url_name and request.resolver_match.url_name != 'attendance_punch' %}active{% endif %}">
                 <i class="bi bi-calendar-check-fill"></i> Attendance records
             </a>
-            <a href="{% url 'payroll_list' %}" class="{% if 'payroll' in request.resolver_match.url_name %}active{% endif %}">
-                <i class="bi bi-cash-coin"></i> Payroll
-            </a>
+<a href="{% url 'payroll_list' %}" class="{% if 'payroll' in request.resolver_match.url_name %}active{% endif %}" {% if is_accountant and not is_manager %}title="View-only access"{% endif %}>
+    <i class="bi bi-cash-coin"></i> Payroll
+    {% if is_accountant and not is_manager %}
+    <span class="sb-ro-pill">view only</span>
+    {% endif %}
+</a>
 
             <div class="sidebar-section">Resources</div>
             <a href="{% url 'equipment_list' %}" class="{% if 'equipment' in request.resolver_match.url_name or 'maintenance' in request.resolver_match.url_name %}active{% endif %}">
@@ -956,6 +977,34 @@
                 <i class="bi bi-person-vcard"></i> Customers
             </a>
             {% endif %}
+
+                        <!-- ============================================ -->
+            <!-- SAFETY                                        -->
+            <!-- ============================================ -->
+            <div class="sidebar-section">Safety</div>
+            <a href="{% url 'safety_hub' %}" class="{% if request.resolver_match.url_name == 'safety_hub' %}active{% endif %}">
+                <i class="bi bi-shield-fill-check"></i> Safety Hub
+            </a>
+
+            <a href="{% url 'incident_list' %}" class="{% if 'incident' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-exclamation-triangle-fill"></i> Incidents
+            </a>
+
+            <a href="{% url 'hazard_list' %}" class="{% if 'hazard' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-search"></i> Hazards
+            </a>
+
+            <a href="{% url 'inspection_list' %}" class="{% if 'inspection' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-clipboard-pulse"></i> Inspections
+            </a>
+
+            <a href="{% url 'ppe_list' %}" class="{% if 'ppe' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-shield-check"></i> PPE
+            </a>
+
+            <a href="{% url 'training_list' %}" class="{% if 'training' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-mortarboard"></i> Training
+            </a>
 
             {% if is_manager %}
             <div class="sidebar-section">Approvals</div>
@@ -991,6 +1040,17 @@
             </form>
         </nav>
     </aside>
+    <script>
+      // Restore sidebar scroll position before paint — no flicker
+      (function () {
+        var nav = document.querySelector('.sidebar-nav');
+        if (!nav) return;
+        try {
+          var pos = sessionStorage.getItem('sidebarScrollPos');
+          if (pos) nav.scrollTop = parseInt(pos, 10) || 0;
+        } catch (e) {}
+      })();
+    </script>
     <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
     <!-- MAIN -->
@@ -1174,6 +1234,47 @@
         } catch (e) {}
     })();
 </script>
+
+
+<script>
+    /* =========================================================
+       SIDEBAR SCROLL POSITION PRESERVATION
+       ========================================================= */
+    (function () {
+        var nav = document.querySelector('.sidebar-nav');
+        if (!nav) return;
+
+        var saveTimer = null;
+
+        // Save on scroll (debounced)
+        nav.addEventListener('scroll', function () {
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(function () {
+                try {
+                    sessionStorage.setItem('sidebarScrollPos', String(nav.scrollTop));
+                } catch (e) {}
+            }, 100);
+        }, { passive: true });
+
+        // Save when leaving the page (backup — fires before unload)
+        window.addEventListener('pagehide', function () {
+            try {
+                sessionStorage.setItem('sidebarScrollPos', String(nav.scrollTop));
+            } catch (e) {}
+        });
+
+        // Save immediately when a sidebar link is clicked — most reliable
+        nav.addEventListener('click', function (e) {
+            var link = e.target.closest('a, button');
+            if (link) {
+                try {
+                    sessionStorage.setItem('sidebarScrollPos', String(nav.scrollTop));
+                } catch (e) {}
+            }
+        });
+    })();
+</script>
+
 
 <script>
     /* =========================================================

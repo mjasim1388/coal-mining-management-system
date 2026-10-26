@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Coal Mining System</title>
+    <title>{% if locked_out and lockout_seconds > 0 %}Account Locked{% else %}Sign In{% endif %} — Coal Mine Control System</title>
 
     <script>
         (function () {
@@ -18,58 +18,72 @@
     <link href="{% static 'vendor/icons/bootstrap-icons.min.css' %}" rel="stylesheet">
     <style>
         :root {
-            --radius-lg: 12px;
-            --radius-md: 8px;
-            --radius-sm: 6px;
+            --radius-lg: 14px;
+            --radius-md: 10px;
+            --radius-sm: 7px;
             --font-sans: 'Segoe UI', -apple-system, Roboto, sans-serif;
         }
 
         [data-theme="dark"] {
-            --bg-app: #0d1117;
-            --bg-panel: #151b23;
-            --bg-raised: #1b232d;
+            --bg-app: #0a0e13;
+            --bg-panel: #11171f;
+            --bg-raised: #1a222d;
+            --bg-input: #0d131a;
             --border-light: #232c38;
             --border-medium: #334050;
             --text-primary: #e6eaf0;
             --text-secondary: #b0bbc8;
             --text-muted: #8391a3;
-            --accent: #e5a11c;
-            --accent-hover: #f0b43f;
-            --accent-ink: #1a1200;
-            --accent-soft: rgba(229, 161, 28, 0.14);
+            --accent: #10b981;
+            --accent-hover: #34d399;
+            --accent-ink: #001a10;
+            --accent-soft: rgba(16, 185, 129, 0.14);
             --danger: #ef5b5b;
             --danger-soft: rgba(239, 91, 91, 0.15);
-            --shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            --success: #2fb67c;
+            --brand-bg-start: #001a10;
+            --brand-bg-end:   #0a0e13;
+            --brand-accent:   #10b981;
+            --brand-text:     #34d399;
+            --brand-muted:    #6b9c88;
         }
 
         [data-theme="light"] {
             --bg-app: #f3f5f8;
             --bg-panel: #ffffff;
             --bg-raised: #f8f9fb;
+            --bg-input: #f8f9fb;
             --border-light: #e2e6ec;
             --border-medium: #c9d0da;
             --text-primary: #17202b;
             --text-secondary: #455366;
             --text-muted: #6a7788;
-            --accent: #b87708;
-            --accent-hover: #9a6206;
+            --accent: #059669;
+            --accent-hover: #047857;
             --accent-ink: #ffffff;
-            --accent-soft: rgba(184, 119, 8, 0.10);
+            --accent-soft: rgba(5, 150, 105, 0.10);
             --danger: #cf3a3a;
             --danger-soft: rgba(207, 58, 58, 0.09);
-            --shadow: 0 20px 60px rgba(16, 24, 40, 0.12);
+            --success: #0f8a5c;
+            --brand-bg-start: #003d24;
+            --brand-bg-end:   #0a1e16;
+            --brand-accent:   #34d399;
+            --brand-text:     #6ee7b7;
+            --brand-muted:    #5a8a72;
         }
 
         * { box-sizing: border-box; }
+        html { height: 100%; }
         body {
             background: var(--bg-app);
+            font-family: var(--font-sans);
+            color: var(--text-primary);
+            margin: 0;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-family: var(--font-sans);
-            color: var(--text-primary);
-            margin: 0;
+            padding: 20px;
             -webkit-font-smoothing: antialiased;
             transition: background 0.2s ease, color 0.2s ease;
         }
@@ -78,8 +92,8 @@
             position: fixed;
             top: 20px;
             right: 20px;
-            width: 40px;
-            height: 40px;
+            width: 42px;
+            height: 42px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -90,199 +104,455 @@
             font-size: 18px;
             cursor: pointer;
             transition: background 0.12s ease, color 0.12s ease;
-            z-index: 10;
+            z-index: 100;
         }
         .theme-toggle:hover { background: var(--bg-raised); color: var(--text-primary); }
 
-        .login-box {
+        .login-shell {
+            width: 100%;
+            max-width: 1040px;
+            min-height: 600px;
+            display: grid;
+            grid-template-columns: 1.1fr 1fr;
             background: var(--bg-panel);
             border: 1px solid var(--border-light);
             border-radius: var(--radius-lg);
-            padding: 44px 40px;
-            width: 100%;
-            max-width: 420px;
-            box-shadow: var(--shadow);
-            margin: 20px;
+            overflow: hidden;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
         }
 
-        /* Shake animation */
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
-            20%, 40%, 60%, 80% { transform: translateX(8px); }
+        .brand-panel {
+            position: relative;
+            padding: 48px 44px;
+            color: #fff;
+            background:
+                radial-gradient(circle at 0% 0%, rgba(229, 161, 28, 0.12), transparent 45%),
+                radial-gradient(circle at 100% 100%, rgba(229, 161, 28, 0.06), transparent 45%),
+                linear-gradient(150deg, var(--brand-bg-start), var(--brand-bg-end));
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
-        .shake {
-            animation: shake 0.5s ease;
+        .brand-panel::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(45deg, rgba(255,255,255,0.02) 25%, transparent 25%),
+                linear-gradient(-45deg, rgba(255,255,255,0.02) 25%, transparent 25%);
+            background-size: 40px 40px;
+            pointer-events: none;
         }
-
-        .login-logo { text-align: center; margin-bottom: 30px; }
-        .login-logo .logo-circle {
-            display: inline-flex;
+        .brand-content { position: relative; z-index: 1; display: flex; flex-direction: column; height: 100%; }
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 40px;
+        }
+        .brand-mark {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: var(--brand-accent);
+            color: #001a10;
+            display: flex;
             align-items: center;
             justify-content: center;
-            width: 64px;
-            height: 64px;
-            background: var(--accent);
-            border-radius: var(--radius-lg);
-            margin-bottom: 16px;
+            font-size: 24px;
+            flex-shrink: 0;
+            box-shadow: 0 8px 20px rgba(229, 161, 28, 0.25);
         }
-        .login-logo .logo-circle i { font-size: 32px; color: var(--accent-ink); }
-        .login-logo h3 {
-            font-weight: 700;
-            letter-spacing: 2px;
-            margin: 0;
-            color: var(--text-primary);
-            font-size: 20px;
+        .brand-name { font-size: 18px; font-weight: 700; letter-spacing: 3px; color: #fff; line-height: 1.1; }
+        .brand-tagline { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--brand-muted); margin-top: 3px; }
+        .brand-heading { font-size: 28px; font-weight: 700; line-height: 1.25; letter-spacing: -0.5px; margin: 0 0 14px; color: #fff; }
+        .brand-subheading { font-size: 15px; color: rgba(255, 255, 255, 0.7); line-height: 1.6; margin: 0 0 36px; max-width: 380px; }
+        .feature-list { list-style: none; padding: 0; margin: 0 0 auto; display: flex; flex-direction: column; gap: 14px; }
+        .feature-list li { display: flex; align-items: center; gap: 12px; font-size: 14px; color: rgba(255, 255, 255, 0.85); }
+        .feature-list li i { color: var(--brand-accent); font-size: 16px; flex-shrink: 0; }
+        .brand-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 11.5px;
+            color: var(--brand-muted);
+            letter-spacing: 0.5px;
         }
-        .login-logo small {
-            color: var(--text-muted);
-            letter-spacing: 2px;
-            font-size: 11px;
-            text-transform: uppercase;
-            font-weight: 600;
+        .system-status { display: inline-flex; align-items: center; gap: 7px; }
+        .status-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: #4ade80;
+            box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.2);
+            animation: pulse 2.4s ease-in-out infinite;
         }
-
-        .form-label {
-            font-size: 13px;
-            color: var(--text-secondary);
-            font-weight: 500;
-            margin-bottom: 6px;
-        }
-        .form-control {
-            background: var(--bg-app);
-            border: 1px solid var(--border-medium);
-            color: var(--text-primary);
-            padding: 11px 14px;
-            border-radius: var(--radius-sm);
-            font-size: 14px;
-            transition: border-color 0.12s ease, box-shadow 0.12s ease;
-        }
-        .form-control::placeholder { color: var(--text-muted); }
-        .form-control:focus {
-            background: var(--bg-app);
-            color: var(--text-primary);
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px var(--accent-soft);
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.2); }
+            50%      { box-shadow: 0 0 0 6px rgba(74, 222, 128, 0.05); }
         }
 
-        .form-control.error-field {
-            border-color: var(--danger) !important;
-            box-shadow: 0 0 0 3px var(--danger-soft) !important;
-        }
-
-        .btn-signin {
-            background: var(--accent);
-            border: 1px solid var(--accent);
-            color: var(--accent-ink);
-            font-weight: 600;
-            padding: 12px;
-            border-radius: var(--radius-sm);
-            font-size: 14px;
-            width: 100%;
-            cursor: pointer;
-            transition: background 0.12s ease, border-color 0.12s ease;
-        }
-        .btn-signin:hover {
-            background: var(--accent-hover);
-            border-color: var(--accent-hover);
-            color: var(--accent-ink);
-        }
+        .form-panel { padding: 48px 44px; display: flex; flex-direction: column; justify-content: center; background: var(--bg-panel); }
+        .form-heading { font-size: 24px; font-weight: 700; letter-spacing: -0.3px; margin: 0 0 6px; color: var(--text-primary); }
+        .form-subheading { font-size: 14px; color: var(--text-muted); margin: 0 0 32px; }
 
         .alert-error {
             background: var(--danger-soft);
             border: 1px solid var(--danger);
-            border-left-width: 4px;
+            border-left-width: 3px;
             color: var(--text-primary);
-            padding: 14px 18px;
+            padding: 12px 14px;
             border-radius: var(--radius-sm);
-            font-size: 14px;
-            margin-bottom: 20px;
+            font-size: 13.5px;
+            margin-bottom: 22px;
             display: flex;
             align-items: center;
             gap: 10px;
-            font-weight: 500;
         }
-        .alert-error i {
-            color: var(--danger);
-            font-size: 20px;
-            flex-shrink: 0;
-        }
+        .alert-error i { color: var(--danger); font-size: 18px; flex-shrink: 0; }
 
-        .login-footer {
-            text-align: center;
-            margin-top: 26px;
-            font-size: 12.5px;
-            color: var(--text-muted);
-            padding-top: 20px;
-            border-top: 1px solid var(--border-light);
+        .field-group { margin-bottom: 18px; }
+        .field-label { display: block; font-size: 12.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; letter-spacing: 0.3px; }
+        .input-wrap { position: relative; }
+        .input-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 15px; color: var(--text-muted); pointer-events: none; transition: color 0.15s ease; }
+        .input-wrap:focus-within .input-icon { color: var(--accent); }
+        .form-input {
+            width: 100%;
+            background: var(--bg-input);
+            border: 1px solid var(--border-medium);
+            border-radius: var(--radius-sm);
+            padding: 12px 14px 12px 42px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
         }
-        .login-footer strong { color: var(--text-secondary); font-weight: 600; }
+        .form-input::placeholder { color: var(--text-muted); }
+        .form-input:focus { outline: none; border-color: var(--accent); background: var(--bg-input); box-shadow: 0 0 0 3px var(--accent-soft); }
+        .form-input.error-field { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
 
         .caps-warning {
             background: var(--accent-soft);
             border: 1px solid var(--accent);
             color: var(--accent);
-            padding: 8px 12px;
+            padding: 6px 10px;
             border-radius: var(--radius-sm);
-            font-size: 12px;
+            font-size: 11.5px;
             margin-top: 6px;
             display: none;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .field-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; font-size: 13px; }
+        .remember-box { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); cursor: pointer; user-select: none; }
+        .remember-box input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+
+        .btn-signin {
+            width: 100%;
+            background: var(--accent);
+            color: var(--accent-ink);
+            border: 1px solid var(--accent);
+            padding: 13px;
+            border-radius: var(--radius-sm);
+            font-size: 14.5px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+        }
+        .btn-signin:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--accent-ink); }
+        .btn-signin:active { transform: translateY(1px); }
+        .btn-signin:disabled { opacity: 0.7; cursor: not-allowed; }
+
+        .form-footer { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border-light); text-align: center; font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+        .form-footer strong { color: var(--text-secondary); font-weight: 600; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+        .shake { animation: shake 0.45s ease; }
+
+        /* =========================================================
+           LOCKOUT PANEL
+           ========================================================= */
+        .lockout-panel {
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        .lockout-content {
+            max-width: 400px;
+            width: 100%;
+            margin: 0 auto;
+        }
+        .lockout-icon-wrap {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: var(--accent-soft);
+            border: 2px solid var(--accent);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 22px;
+            animation: lockPulse 2s ease-in-out infinite;
+        }
+        .lockout-icon-wrap i { font-size: 32px; color: var(--accent); }
+        @keyframes lockPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(229, 161, 28, 0.3); }
+            50%      { box-shadow: 0 0 0 14px rgba(229, 161, 28, 0); }
+        }
+
+        .lockout-heading {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0 0 10px;
+            letter-spacing: -0.3px;
+        }
+        .lockout-desc {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin: 0 0 28px;
+        }
+        .lockout-desc strong { color: var(--text-primary); font-weight: 600; }
+
+        .lockout-timer-wrap {
+            position: relative;
+            width: 160px;
+            height: 160px;
+            margin: 0 auto 22px;
+        }
+        .lockout-ring {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+        .ring-track {
+            fill: none;
+            stroke: var(--border-light);
+            stroke-width: 6;
+        }
+        .ring-progress {
+            fill: none;
+            stroke: var(--accent);
+            stroke-width: 6;
+            stroke-linecap: round;
+            stroke-dasharray: 389.557;
+            stroke-dashoffset: 0;
+            transition: stroke-dashoffset 0.4s linear;
+        }
+        .lockout-digits {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: 1px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .lockout-hint {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin: 0 0 24px;
+        }
+
+        .lockout-btn { margin-bottom: 22px; }
+
+        .lockout-footer {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin: 0;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-light);
+        }
+
+        @media (max-width: 900px) {
+            .login-shell { grid-template-columns: 1fr; max-width: 480px; min-height: auto; }
+            .brand-panel { padding: 32px 32px 28px; }
+            .brand-heading { font-size: 22px; }
+            .brand-subheading, .feature-list, .brand-footer { display: none; }
+            .brand-logo { margin-bottom: 0; }
+            .form-panel { padding: 32px; }
+            .form-heading { font-size: 22px; }
+        }
+        @media (max-width: 480px) {
+            body { padding: 0; }
+            .login-shell { border-radius: 0; border-left: 0; border-right: 0; min-height: 100vh; }
+            .brand-panel { padding: 28px 24px 24px; }
+            .form-panel { padding: 28px 24px; }
+            .theme-toggle { top: 14px; right: 14px; }
+            .lockout-digits { font-size: 26px; }
         }
     </style>
 </head>
 <body>
+
     <button type="button" class="theme-toggle" id="themeToggle" aria-label="Switch theme" title="Switch theme">
         <i class="bi bi-sun-fill" id="themeIcon"></i>
     </button>
 
-    <div class="login-box" id="loginBox">
-        <div class="login-logo">
-            <div class="logo-circle"><i class="bi bi-minecart-loaded"></i></div>
-            <h3>COALMINE</h3>
-            <small>Control System</small>
+    <div class="login-shell" id="loginShell">
+
+        <!-- LEFT — BRANDING -->
+        <div class="brand-panel">
+            <div class="brand-content">
+                <div class="brand-logo">
+                    <div class="brand-mark"><i class="bi bi-minecart-loaded"></i></div>
+                    <div>
+                        <div class="brand-name">COALMINE</div>
+                        <div class="brand-tagline">Control System</div>
+                    </div>
+                </div>
+
+                <h1 class="brand-heading">Manage your mine<br>operations from one place.</h1>
+                <p class="brand-subheading">
+                    A unified platform for employees, production, payroll,
+                    inventory, and dispatch — built for the field, not the office.
+                </p>
+
+                <ul class="feature-list">
+                    <li><i class="bi bi-check-circle-fill"></i> Employee &amp; attendance records</li>
+                    <li><i class="bi bi-check-circle-fill"></i> Production tracking by shift</li>
+                    <li><i class="bi bi-check-circle-fill"></i> Payroll with one-click payout</li>
+                    <li><i class="bi bi-check-circle-fill"></i> Inventory &amp; fuel management</li>
+                    <li><i class="bi bi-check-circle-fill"></i> Dispatch slips &amp; sales invoices</li>
+                </ul>
+
+                <div class="brand-footer">
+                    <span>Version 1.0</span>
+                    <span class="system-status">
+                        <span class="status-dot"></span> All systems operational
+                    </span>
+                </div>
+            </div>
         </div>
 
-        {% if form.errors %}
+        <!-- RIGHT — LOCKOUT OR FORM -->
+        {% if locked_out and lockout_seconds > 0 %}
+        <div class="form-panel lockout-panel">
+            <div class="lockout-content">
+
+                <div class="lockout-icon-wrap">
+                    <i class="bi bi-shield-lock-fill"></i>
+                </div>
+
+                <h2 class="lockout-heading">Account temporarily locked</h2>
+                <p class="lockout-desc">
+                    {% if lockout_username %}
+                    Too many failed sign-in attempts for <strong>{{ lockout_username }}</strong>.
+                    {% else %}
+                    Too many failed sign-in attempts.
+                    {% endif %}
+                    For your security, this account is temporarily locked.
+                </p>
+
+                <div class="lockout-timer-wrap">
+                    <svg class="lockout-ring" viewBox="0 0 140 140" aria-hidden="true">
+                        <circle class="ring-track" cx="70" cy="70" r="62"></circle>
+                        <circle class="ring-progress" cx="70" cy="70" r="62" id="ringProgress"></circle>
+                    </svg>
+                    <div class="lockout-digits" id="countdown">--:--</div>
+                </div>
+
+                <p class="lockout-hint">You can try again once the timer reaches zero.</p>
+
+                <a href="{% url 'login' %}" class="btn-signin lockout-btn">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    Refresh status
+                </a>
+
+                <p class="lockout-footer">
+                    If you believe this is a mistake, contact your administrator.
+                </p>
+
+            </div>
+        </div>
+        {% else %}
+        <div class="form-panel">
+            <h2 class="form-heading">Welcome back</h2>
+            <p class="form-subheading">Sign in to continue to your dashboard.</p>
+
+            {% if form.errors %}
             <div class="alert-error" id="loginError">
                 <i class="bi bi-exclamation-triangle-fill"></i>
                 <span>Invalid username or password. Please try again.</span>
             </div>
+            {% endif %}
+
+            <form method="post" id="loginForm">
+                {% csrf_token %}
+
+                <div class="field-group">
+                    <label class="field-label" for="id_username">Username</label>
+                    <div class="input-wrap">
+                        <i class="bi bi-person input-icon"></i>
+                        <input type="text" name="username" id="id_username" class="form-input"
+                               placeholder="Enter your username" required autofocus autocomplete="username">
+                    </div>
+                </div>
+
+                <div class="field-group">
+                    <label class="field-label" for="id_password">Password</label>
+                    <div class="input-wrap">
+                        <i class="bi bi-lock input-icon"></i>
+                        <input type="password" name="password" id="id_password" class="form-input"
+                               placeholder="Enter your password" required autocomplete="current-password">
+                    </div>
+                    <div class="caps-warning" id="capsWarning">
+                        <i class="bi bi-exclamation-triangle-fill"></i> Caps Lock is ON
+                    </div>
+                </div>
+
+                <div class="field-row">
+                    <label class="remember-box">
+                        <input type="checkbox" name="remember_me" value="1">
+                        <span>Remember me</span>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn-signin" id="loginBtn">
+                    Sign In
+                    <i class="bi bi-arrow-right"></i>
+                </button>
+            </form>
+
+            <div class="form-footer">
+                &copy; 2026 Coal Mine Company &middot; All rights reserved<br>
+                Developed by <strong>Muhammad Jasim</strong>
+            </div>
+        </div>
         {% endif %}
 
-        <form method="post" id="loginForm">
-            {% csrf_token %}
-            <div class="mb-3">
-                <label class="form-label">Username</label>
-                <input type="text" name="username" id="id_username" class="form-control" placeholder="Enter your username" required autofocus autocomplete="username">
-            </div>
-            <div class="mb-4">
-                <label class="form-label">Password</label>
-                <input type="password" name="password" id="id_password" class="form-control" placeholder="Enter your password" required autocomplete="current-password">
-                <div class="caps-warning" id="capsWarning">
-                    <i class="bi bi-exclamation-triangle-fill"></i> Caps Lock is ON
-                </div>
-            </div>
-            <button type="submit" class="btn-signin" id="loginBtn">
-                <i class="bi bi-box-arrow-in-right"></i> Sign In
-            </button>
-        </form>
-
-        <div class="login-footer">
-            &copy; 2026 Coal Mine System &middot; Developed by <strong>Muhammad Jasim</strong>
-        </div>
     </div>
 
     <script>
         (function () {
+            // ========== THEME TOGGLE ==========
             var root = document.documentElement;
             var icon = document.getElementById('themeIcon');
-
             function syncIcon() {
                 var dark = root.getAttribute('data-theme') === 'dark';
                 icon.className = dark ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
             }
             syncIcon();
-
             document.getElementById('themeToggle').addEventListener('click', function () {
                 var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
                 root.setAttribute('data-theme', next);
@@ -290,63 +560,96 @@
                 syncIcon();
             });
 
-            // ---------- SHAKE ON ERROR ----------
+            // ========== LOCKOUT COUNTDOWN ==========
+            var countdown = document.getElementById('countdown');
+            if (countdown) {
+                var initialSeconds = {{ lockout_seconds|default:0 }};
+                if (initialSeconds <= 0) {
+                    window.location.reload();
+                    return;
+                }
+
+                var unlockTime = Date.now() + (initialSeconds * 1000);
+                var ring = document.getElementById('ringProgress');
+                var circumference = 389.557;
+
+                function pad(n) { return n < 10 ? '0' + n : String(n); }
+                function formatTime(totalSec) {
+                    var h = Math.floor(totalSec / 3600);
+                    var m = Math.floor((totalSec % 3600) / 60);
+                    var s = totalSec % 60;
+                    if (h > 0) return pad(h) + ':' + pad(m) + ':' + pad(s);
+                    return pad(m) + ':' + pad(s);
+                }
+
+                function tick() {
+                    var remainingMs = unlockTime - Date.now();
+                    if (remainingMs <= 0) {
+                        countdown.textContent = '00:00';
+                        if (ring) ring.style.strokeDashoffset = String(circumference);
+                        window.location.reload();
+                        return;
+                    }
+                    var remainingSec = Math.ceil(remainingMs / 1000);
+                    countdown.textContent = formatTime(remainingSec);
+                    if (ring) {
+                        var progress = remainingSec / initialSeconds;
+                        ring.style.strokeDashoffset = String(circumference * (1 - progress));
+                    }
+                }
+
+                tick();
+                setInterval(tick, 200);
+            }
+
+            // ========== SHAKE ON FORM ERROR ==========
             var loginError = document.getElementById('loginError');
             if (loginError) {
-                var box = document.getElementById('loginBox');
-                box.classList.add('shake');
-                setTimeout(function() { box.classList.remove('shake'); }, 600);
-
-                // Highlight both fields red
+                var shell = document.getElementById('loginShell');
+                shell.classList.add('shake');
+                setTimeout(function () { shell.classList.remove('shake'); }, 500);
                 var u = document.getElementById('id_username');
                 var p = document.getElementById('id_password');
                 if (u) u.classList.add('error-field');
                 if (p) p.classList.add('error-field');
-
-                // Focus on username for retry
-                if (u) setTimeout(function() { u.focus(); u.select(); }, 100);
+                if (u) setTimeout(function () { u.focus(); u.select(); }, 100);
             }
 
-            // ---------- CAPS LOCK DETECTION ----------
+            // ========== CAPS LOCK ==========
             var pwField = document.getElementById('id_password');
             var capsWarning = document.getElementById('capsWarning');
             if (pwField && capsWarning) {
-                pwField.addEventListener('keyup', function(e) {
+                function checkCaps(e) {
                     if (e.getModifierState && e.getModifierState('CapsLock')) {
-                        capsWarning.style.display = 'block';
+                        capsWarning.style.display = 'flex';
                     } else {
                         capsWarning.style.display = 'none';
                     }
-                });
-                pwField.addEventListener('keydown', function(e) {
-                    if (e.getModifierState && e.getModifierState('CapsLock')) {
-                        capsWarning.style.display = 'block';
-                    } else {
-                        capsWarning.style.display = 'none';
-                    }
-                });
+                }
+                pwField.addEventListener('keyup', checkCaps);
+                pwField.addEventListener('keydown', checkCaps);
             }
 
-            // ---------- CLEAR ERROR ON INPUT ----------
-            var u2 = document.getElementById('id_username');
-            var p2 = document.getElementById('id_password');
-            [u2, p2].forEach(function(el) {
+            // ========== CLEAR ERROR ON INPUT ==========
+            ['id_username', 'id_password'].forEach(function (id) {
+                var el = document.getElementById(id);
                 if (!el) return;
-                el.addEventListener('input', function() {
+                el.addEventListener('input', function () {
                     this.classList.remove('error-field');
                 });
             });
 
-            // ---------- BUTTON SPINNER ----------
+            // ========== BUTTON SPINNER ==========
             var form = document.getElementById('loginForm');
             var btn = document.getElementById('loginBtn');
             if (form && btn) {
-                form.addEventListener('submit', function() {
+                form.addEventListener('submit', function () {
                     btn.disabled = true;
-                    btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Signing in...';
+                    btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Signing in…';
                 });
             }
         })();
     </script>
+
 </body>
 </html>

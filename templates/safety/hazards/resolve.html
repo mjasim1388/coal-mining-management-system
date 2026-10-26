@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}Resolve Hazard {{ hazard.hazard_no }} - Coal Mine{% endblock %}
+{% block page_title %}RESOLVE HAZARD{% endblock %}
+
+{% block content %}
+
+<div class="panel" style="max-width: 700px;">
+    <div class="panel-title"><i class="bi bi-check-circle"></i> Resolve Hazard {{ hazard.hazard_no }}</div>
+
+    <div style="padding:16px; background:var(--bg-raised); border-radius:8px; margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; padding:4px 0;">
+            <span style="color:var(--text-muted);">Type:</span>
+            <strong>{{ hazard.get_hazard_type_display }}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:4px 0;">
+            <span style="color:var(--text-muted);">Risk:</span>
+            <strong>{{ hazard.risk_level }}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:4px 0;">
+            <span style="color:var(--text-muted);">Location:</span>
+            <strong>{{ hazard.location }}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:4px 0;">
+            <span style="color:var(--text-muted);">Mine:</span>
+            <strong>{{ hazard.mine.name }}</strong>
+        </div>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label">Resolution Notes *</label>
+            <textarea name="resolution_notes" class="form-control" rows="4" required
+                      placeholder="How was this hazard resolved? What work was done?"></textarea>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-amber" style="padding:12px 26px;">
+                <i class="bi bi-check-lg"></i> Mark as Resolved
+            </button>
+            <a href="{% url 'hazard_detail' hazard.pk %}" class="btn btn-outline-amber" style="padding:12px 26px;">
+                <i class="bi bi-arrow-left"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

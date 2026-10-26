@@ -299,6 +299,16 @@
             return '<span class="badge-status badge-inactive" style="font-size:10.5px;">UNPAID</span>';
         }
 
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         function renderFeed(dispatches) {
             if (!dispatches.length) {
                 feedBox.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:20px; margin:0; font-size:13px;">No dispatches today.</p>';
@@ -311,16 +321,16 @@
                     <div class="dispatch-item ${isNew ? 'new' : ''}">
                         <div class="dispatch-icon"><i class="bi bi-truck"></i></div>
                         <div class="dispatch-info">
-                            <div class="dispatch-title">${d.customer}</div>
+                            <div class="dispatch-title">${escapeHtml(d.customer)}</div>
                             <div class="dispatch-meta">
-                                ${d.truck_no ? '<i class="bi bi-truck"></i> ' + d.truck_no + ' · ' : ''}
-                                <strong style="color:var(--accent);">${d.quantity_tons} T</strong>
-                                · ${d.invoice_no}
+                                ${d.truck_no ? '<i class="bi bi-truck"></i> ' + escapeHtml(d.truck_no) + ' · ' : ''}
+                                <strong style="color:var(--accent);">${escapeHtml(d.quantity_tons)} T</strong>
+                                · ${escapeHtml(d.invoice_no)}
                             </div>
                         </div>
                         <div style="text-align:right;">
                             ${statusBadge(d.payment_status)}
-                            <div class="dispatch-time" style="margin-top:4px;">${d.created_at_display}</div>
+                            <div class="dispatch-time" style="margin-top:4px;">${escapeHtml(d.created_at_display)}</div>
                         </div>
                     </div>
                 `;

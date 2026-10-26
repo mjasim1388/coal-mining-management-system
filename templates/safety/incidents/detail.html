@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ incident.incident_no }} - Coal Mine{% endblock %}
+{% block page_title %}INCIDENT DETAILS{% endblock %}
+
+{% block content %}
+
+<div class="panel mb-3">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+            <div style="font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--text-muted);">Incident Number</div>
+            <div style="font-size:28px; font-weight:800; color:var(--accent); font-family:monospace;">{{ incident.incident_no }}</div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            {% if is_manager and incident.status != 'Closed' %}
+            <a href="{% url 'incident_edit' incident.pk %}" class="btn btn-outline-amber"><i class="bi bi-pencil"></i> Edit</a>
+            <a href="{% url 'incident_close' incident.pk %}" class="btn btn-outline-danger"><i class="bi bi-check-circle"></i> Close Incident</a>
+            {% endif %}
+            <a href="{% url 'incident_list' %}" class="btn btn-outline-amber"><i class="bi bi-arrow-left"></i> Back</a>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-8">
+        <div class="panel h-100">
+            <div class="panel-title"><i class="bi bi-info-circle"></i> Incident Information</div>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Date</label>
+                    <p>{{ incident.date|date:"d M Y" }}{% if incident.time %} at {{ incident.time|time:"H:i" }}{% endif %}</p>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Mine</label>
+                    <p>{{ incident.mine.name }}</p>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Shift</label>
+                    <p>{{ incident.shift|default:"—" }}</p>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Type</label>
+                    <p>{{ incident.get_incident_type_display }}</p>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Severity</label>
+                    <p>
+                        {% if incident.severity == 'Fatal' or incident.severity == 'Critical' %}
+                            <span class="badge-status badge-inactive">{{ incident.get_severity_display }}</span>
+                        {% elif incident.severity == 'Serious' or incident.severity == 'Moderate' %}
+                            <span class="badge-status badge-leave">{{ incident.get_severity_display }}</span>
+                        {% else %}
+                            <span class="badge-status badge-active">{{ incident.get_severity_display }}</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Status</label>
+                    <p><span class="badge-status badge-leave">{{ incident.get_status_display }}</span></p>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Location</label>
+                    <p>{{ incident.location|default:"—" }}</p>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Injured Employee</label>
+                    <p>{% if incident.employee %}{{ incident.employee.first_name }} {{ incident.employee.last_name }} ({{ incident.employee.employee_code }}){% else %}—{% endif %}</p>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Reported To Government</label>
+                    <p>{% if incident.reported_to_government %}✅ Yes{% else %}No{% endif %}</p>
+                </div>
+                {% if incident.cost > 0 %}
+                <div class="col-md-4">
+                    <label class="form-label">Cost</label>
+                    <p style="color:var(--danger); font-weight:600;">PKR {{ incident.cost }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="panel h-100">
+            <div class="panel-title"><i class="bi bi-person-badge"></i> Reporting</div>
+            <div style="padding:8px 0; border-bottom:1px solid var(--border-light);">
+                <label class="form-label">Reported By</label>
+                <p>{{ incident.reported_by.username|default:"—" }}</p>
+            </div>
+            <div style="padding:8px 0; border-bottom:1px solid var(--border-light);">
+                <label class="form-label">Reported On</label>
+                <p>{{ incident.created_at|date:"d M Y, H:i" }}</p>
+            </div>
+            <div style="padding:8px 0;">
+                <label class="form-label">Investigated By</label>
+                <p>{{ incident.investigated_by.username|default:"—" }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="panel mb-3">
+    <div class="panel-title"><i class="bi bi-file-text"></i> Description</div>
+    <p style="white-space:pre-wrap;">{{ incident.description }}</p>
+</div>
+
+{% if incident.immediate_action %}
+<div class="panel mb-3">
+    <div class="panel-title"><i class="bi bi-lightning-charge"></i> Immediate Action Taken</div>
+    <p style="white-space:pre-wrap;">{{ incident.immediate_action }}</p>
+</div>
+{% endif %}
+
+{% if incident.witnesses %}
+<div class="panel mb-3">
+    <div class="panel-title"><i class="bi bi-people"></i> Witnesses</div>
+    <p style="white-space:pre-wrap;">{{ incident.witnesses }}</p>
+</div>
+{% endif %}
+
+{% if incident.root_cause or incident.corrective_action %}
+<div class="row g-3 mb-3">
+    {% if incident.root_cause %}
+    <div class="col-md-6">
+        <div class="panel h-100">
+            <div class="panel-title"><i class="bi bi-search"></i> Root Cause</div>
+            <p style="white-space:pre-wrap;">{{ incident.root_cause }}</p>
+        </div>
+    </div>
+    {% endif %}
+    {% if incident.corrective_action %}
+    <div class="col-md-6">
+        <div class="panel h-100">
+            <div class="panel-title"><i class="bi bi-tools"></i> Corrective Action</div>
+            <p style="white-space:pre-wrap;">{{ incident.corrective_action }}</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if incident.photo %}
+<div class="panel mb-3">
+    <div class="panel-title"><i class="bi bi-camera"></i> Photo Evidence</div>
+    <img src="{{ incident.photo.url }}" style="max-width:100%; max-height:500px; border-radius:8px;">
+</div>
+{% endif %}
+
+{% if incident.status == 'Closed' and incident.resolved_at %}
+<div class="panel" style="background:var(--success-soft); border-left:4px solid var(--success);">
+    <div style="display:flex; align-items:center; gap:12px;">
+        <i class="bi bi-check-circle-fill" style="font-size:24px; color:var(--success);"></i>
+        <div>
+            <div style="font-weight:700; color:var(--success);">INCIDENT CLOSED</div>
+            <div style="font-size:13px; color:var(--text-secondary);">on {{ incident.resolved_at|date:"d M Y, H:i" }}</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
