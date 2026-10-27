@@ -465,6 +465,42 @@
             .footer-right { text-align: left; }
             .app-footer { padding: 20px 20px; }
         }
+
+                /* =========================================================
+           PROFESSIONAL FOOTER
+           ========================================================= */
+        .footer-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 13.5px;
+            transition: color 0.15s ease, transform 0.15s ease;
+            display: inline-block;
+        }
+        .footer-link:hover {
+            color: var(--accent);
+            transform: translateX(4px);
+        }
+
+        @media (max-width: 992px) {
+            .footer-grid-pro {
+                grid-template-columns: 1fr 1fr !important;
+            }
+        }
+        @media (max-width: 576px) {
+            .footer-grid-pro {
+                grid-template-columns: 1fr !important;
+                gap: 32px !important;
+            }
+            .app-footer {
+                padding: 32px 20px 20px 20px !important;
+            }
+            .app-footer > div > div:last-child {
+                flex-direction: column;
+                text-align: center;
+                justify-content: center;
+            }
+        }
+
         /* =========================================================
            STAT CARDS
            ========================================================= */
@@ -1147,39 +1183,88 @@
             {% block content %}{% endblock %}
         </main>
 
-        <!-- ENTERPRISE FOOTER -->
-        <footer class="app-footer" style="padding: 16px 32px; background: var(--bg-panel); border-top: 1px solid var(--border-light); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; flex-shrink: 0;">
-            
-            <!-- Left: Brand -->
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="width: 32px; height: 32px; background: var(--accent-soft); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--accent);">
-                    <i class="bi bi-minecart-loaded" style="font-size: 16px;"></i>
-                </div>
-                <div>
-                    <div style="font-weight: 700; font-size: 13px; color: var(--text-primary); letter-spacing: 0.5px;">COALMINE CONTROL</div>
-                    <div style="font-size: 11.5px; color: var(--text-muted);">&copy; {% now "Y" %} All rights reserved.</div>
-                </div>
-            </div>
+        <!-- PROFESSIONAL ENTERPRISE FOOTER -->
+<footer class="app-footer" style="background: var(--bg-panel); border-top: 1px solid var(--border-light); padding: 44px 40px 22px 40px; margin-top: auto; width: 100%;">
+<div style="width: 100%;">
+                
+                <!-- TOP GRID: Brand + Links -->
+                <div class="footer-grid-pro" style="display: grid; grid-template-columns: 2fr 1fr 1fr 1.5fr; gap: 56px; margin-bottom: 40px;">
+                    
+                    <!-- Column 1: Brand -->
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                            <div style="width: 36px; height: 36px; background: var(--accent-soft); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--accent);">
+                                <i class="bi bi-minecart-loaded" style="font-size: 18px;"></i>
+                            </div>
+                            <div style="font-size: 18px; font-weight: 800; letter-spacing: 1px; color: var(--text-primary);">COALMINE</div>
+                        </div>
+                        <p style="font-size: 13px; color: var(--text-muted); line-height: 1.6; max-width: 280px;">
+                            A comprehensive coal mining management platform built for operational excellence, safety, and financial clarity.
+                        </p>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 20px; font-size: 12px; font-weight: 600; color: var(--success);">
+                            <span class="dot dot-green" style="width: 8px; height: 8px;"></span> All Systems Operational
+                        </div>
+                    </div>
 
-            <!-- Center: Live Status & Clock -->
-            <div style="display: flex; align-items: center; gap: 24px; font-size: 12.5px;">
-                <div style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary);">
-                    <span class="dot dot-green" style="width: 7px; height: 7px; box-shadow: 0 0 8px rgba(47, 182, 124, 0.6);"></span>
-                    System Online
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px; color: var(--text-muted);">
-                    <i class="bi bi-clock-history"></i>
-                    <span>Server Time: <strong id="footerClock" style="font-family: monospace; color: var(--text-primary); font-size: 13px;">--:--:--</strong></span>
-                </div>
-            </div>
+                    <!-- Column 2: Operations -->
+                    <div>
+                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-primary); margin-bottom: 20px;">Operations</div>
+                        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px;">
+                            <li><a href="{% url 'dashboard' %}" class="footer-link">Dashboard</a></li>
+                            <li><a href="{% url 'production_list' %}" class="footer-link">Production</a></li>
+                            <li><a href="{% url 'sale_list' %}" class="footer-link">Sales & Dispatch</a></li>
+                            <li><a href="{% url 'inventory_list' %}" class="footer-link">Inventory</a></li>
+                            <li><a href="{% url 'equipment_list' %}" class="footer-link">Equipment</a></li>
+                        </ul>
+                    </div>
 
-            <!-- Right: Developer & Version -->
-            <div style="display: flex; align-items: center; gap: 16px; font-size: 12.5px; color: var(--text-muted);">
-                <span>v1.0.0</span>
-                <span style="color: var(--border-medium);">|</span>
-                <span>Developed by <strong style="color: var(--text-primary); font-weight: 600;">Muhammad Jasim</strong></span>
-            </div>
+                    <!-- Column 3: Safety & HR -->
+                    <div>
+                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-primary); margin-bottom: 20px;">Safety & HR</div>
+                        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px;">
+                            <li><a href="{% url 'safety_hub' %}" class="footer-link">Safety Hub</a></li>
+                            <li><a href="{% url 'incident_list' %}" class="footer-link">Incidents</a></li>
+                            <li><a href="{% url 'employee_list' %}" class="footer-link">Employees</a></li>
+                            <li><a href="{% url 'attendance_list' %}" class="footer-link">Attendance</a></li>
+                            <li><a href="{% url 'payroll_list' %}" class="footer-link">Payroll</a></li>
+                        </ul>
+                    </div>
 
+                    <!-- Column 4: System Info -->
+                    <div>
+                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-primary); margin-bottom: 20px;">System Status</div>
+                        
+                        <div style="padding: 14px; background: var(--bg-raised); border: 1px solid var(--border-light); border-radius: 8px; margin-bottom: 16px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="font-size: 12px; color: var(--text-muted);">Server Time</span>
+                                <strong id="footerClock" style="font-family: monospace; color: var(--accent); font-size: 14px;">--:--:--</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 12px; color: var(--text-muted);">Database</span>
+                                <span style="font-size: 12px; color: var(--success); font-weight: 600;">Connected</span>
+                            </div>
+                        </div>
+                        
+                        <div style="font-size: 12px; color: var(--text-muted);">
+                            Logged in as <strong style="color: var(--text-primary);">{{ request.user.username }}</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BOTTOM BAR: Copyright & Credits -->
+                <div style="border-top: 1px solid var(--border-light); padding-top: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                    <div style="font-size: 12.5px; color: var(--text-muted);">
+                        &copy; {% now "Y" %} Coal Mine Company. All rights reserved. 
+                        <span style="margin: 0 8px; color: var(--border-medium);">|</span> 
+                        Version 1.0.0
+                    </div>
+                    <div style="font-size: 12.5px; color: var(--text-muted);">
+                        Developed with <i class="bi bi-heart-fill" style="color: var(--danger); font-size: 10px;"></i> by 
+                        <strong style="color: var(--text-primary); font-weight: 600;">Muhammad Jasim</strong>
+                    </div>
+                </div>
+                
+            </div>
         </footer>
     </div>
 </div>
@@ -1551,7 +1636,12 @@
         function updateClock() {
             var now = new Date();
             // Format as HH:MM:SS
-            var timeString = now.toLocaleTimeString('en-GB', { hour12: false });
+            var timeString = now.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit', 
+                hour12: true 
+            });
             clockEl.textContent = timeString;
         }
 
