@@ -3,6 +3,7 @@ Attendance views: list, add, edit, void, punch in/out.
 """
 from datetime import date as date_today
 
+from django.core.paginator import Paginator
 from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -28,8 +29,13 @@ def attendance_list(request):
     if status_filter:
         records = records.filter(status=status_filter)
 
+    # --- Pagination ---
+    paginator = Paginator(records, 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     return render(request, 'attendance/list.html', {
-        'records': records,
+        'records': page_obj,
         'date_filter': date_filter,
         'status_filter': status_filter,
         'show_voided': show_voided,

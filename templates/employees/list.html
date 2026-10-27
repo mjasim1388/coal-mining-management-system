@@ -38,7 +38,7 @@
 <div class="panel">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="panel-title mb-0">
-            <i class="bi bi-people-fill"></i> Employees ({{ employees|length }})
+<i class="bi bi-people-fill"></i> Employees ({{ employees.paginator.count }})
         </div>
         <div>
             <a href="{% url 'export_employees' %}" class="btn btn-outline-amber">
@@ -111,6 +111,7 @@
             {% endfor %}
         </tbody>
     </table>
+        {% include 'shared/pagination.html' with page_obj=employees %}
     {% else %}
     <p style="color:var(--text-muted); text-align:center; padding:30px;">
         <i class="bi bi-inbox" style="font-size:40px; display:block; margin-bottom:10px; opacity:0.5;"></i>

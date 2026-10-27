@@ -83,6 +83,9 @@
                 <label class="form-label">Amount Paid (PKR)</label>
                 {{ form.amount_paid }}
                 <small id="amountHint" style="color:var(--text-muted); font-size:11px; display:block; margin-top:4px;"></small>
+                <div id="amountFormatted" style="font-size:13px; font-weight:600; color:var(--accent); margin-top:4px; display:none;">
+                    <!-- e.g. 1,00,000 (1.00 Lakh) -->
+                </div>
             </div>
             <div class="col-md-8" id="notesBlock">
                 <label class="form-label">Notes</label>
@@ -90,12 +93,31 @@
             </div>
         </div>
 
-        <div id="totalPreview" style="margin-top:22px; padding:16px 20px; background:var(--bg-raised); border:1px solid var(--border-light); border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
-            <div>
-                <div style="font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); font-weight:600;">Total Dispatch Value</div>
-                <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">Quantity × Price per ton</div>
+        <!-- TOTAL & BALANCE CARDS -->
+        <div style="display: flex; gap: 16px; margin-top:22px; flex-wrap: wrap;">
+            <!-- Total Value -->
+            <div style="flex: 1; min-width: 250px; padding:16px 20px; background:var(--bg-raised); border:1px solid var(--border-light); border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); font-weight:600;">Total Value</div>
+                    <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">Qty × Rate</div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:26px; font-weight:700; color:var(--accent);" id="totalValue">PKR 0</div>
+                    <div style="font-size:11px; color:var(--text-muted); height:15px;" id="totalShorthand"></div>
+                </div>
             </div>
-            <div style="font-size:26px; font-weight:700; color:var(--accent);" id="totalValue">PKR 0</div>
+
+            <!-- Balance Due -->
+            <div id="balanceBlock" style="flex: 1; min-width: 250px; padding:16px 20px; background:var(--bg-raised); border:1px solid var(--border-light); border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); font-weight:600;">Balance Due</div>
+                    <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">Leftover to pay</div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:26px; font-weight:700; color:var(--danger);" id="balanceValue">PKR 0</div>
+                    <div style="font-size:11px; color:var(--text-muted); height:15px;" id="balanceShorthand"></div>
+                </div>
+            </div>
         </div>
 
         <hr style="border-color:var(--border-light); margin:25px 0;">
@@ -112,7 +134,9 @@
             </a>
         </div>
     </form>
-    <!-- AUTCOMPLETE SUGGESTIONS -->
+</div>
+
+<!-- AUTOCOMPLETE SUGGESTIONS -->
 <datalist id="truckList">
     {% for t in suggestions.truck_numbers %}<option value="{{ t }}">{% endfor %}
 </datalist>
@@ -122,7 +146,6 @@
 <datalist id="driverPhoneList">
     {% for p in suggestions.driver_phones %}<option value="{{ p }}">{% endfor %}
 </datalist>
-</div>
 
 <!-- CONFIRMATION MODAL -->
 <div class="modal fade" id="confirmModal" tabindex="-1" data-bs-backdrop="static">
@@ -144,7 +167,7 @@
             <div class="modal-footer" style="border-top:1px solid var(--border-light);">
                 <button type="button" class="btn btn-outline-amber" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" id="confirmSubmitBtn" class="btn btn-amber">
-                    <i class="bi bi-check-lg"></i> Save &amp; Print Slip
+                    <i class="bi bi-check-lg"></i> Save Dispatch
                 </button>
             </div>
         </div>
@@ -153,8 +176,6 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('Sale form script loaded');
-
         var form = document.getElementById('dispatchForm');
         if (!form) { console.error('FORM NOT FOUND'); return; }
 
@@ -181,42 +202,83 @@
             console.error('Modal init failed:', err);
         }
 
-        // ---------- LIVE TOTAL ----------
-        function updateTotal() {
+        // ---------- REAL-TIME CALCULATIONS & FORMATTING ----------
+        var balanceEl = document.getElementById('balanceValue');
+        
+        // Helper: Formats numbers to Pakistani/Indian style (e.g. 10,00,000)
+        function formatMoney(num) {
+            if (num === 0) return '0';
+            return num.toLocaleString('en-IN');
+        }
+
+        // Helper: Generates Lakh / Crore text
+        function getShorthand(num) {
+            if (num >= 10000000) return (num / 10000000).toFixed(2) + ' Cr';
+            if (num >= 100000) return (num / 100000).toFixed(2) + ' Lakh';
+            return '';
+        }
+
+        function updateCalculations() {
             var q = parseFloat(qty.value) || 0;
             var r = parseFloat(rate.value) || 0;
-            out.textContent = 'PKR ' + (q * r).toLocaleString();
-        }
-        qty.addEventListener('input', updateTotal);
-        rate.addEventListener('input', updateTotal);
-        updateTotal();
-
-        // ---------- AMOUNT FIELD BEHAVIOR ----------
-        function updateAmountBehavior() {
+            var total = q * r;
             var status = statusField.value;
-            var total = (parseFloat(qty.value) || 0) * (parseFloat(rate.value) || 0);
+            var amount = parseFloat(amountField.value) || 0;
 
+            // 1. Update Total Value
+            out.textContent = 'PKR ' + formatMoney(total);
+            var totalShort = getShorthand(total);
+            document.getElementById('totalShorthand').textContent = totalShort ? '(' + totalShort + ')' : '';
+
+            // 2. Adjust Amount Paid field based on Status
             if (status === 'Unpaid') {
-                // Hide amount field entirely for Unpaid
                 if (amountBlock) amountBlock.style.display = 'none';
                 amountField.value = 0;
+                amount = 0;
             } else if (status === 'Paid') {
-                // Hide amount field for Paid — server sets to total
                 if (amountBlock) amountBlock.style.display = 'none';
                 amountField.value = total;
+                amount = total;
             } else if (status === 'Partial') {
-                // Show amount field for Partial
                 if (amountBlock) amountBlock.style.display = 'block';
                 if (amountHint) {
-                    amountHint.innerHTML = '<i class="bi bi-exclamation-circle-fill" style="color:var(--warning);"></i> Enter amount between 0 and PKR ' + total.toLocaleString() + '.';
+                    amountHint.innerHTML = '<i class="bi bi-exclamation-circle-fill" style="color:var(--warning);"></i> Enter amount up to PKR ' + formatMoney(total);
                 }
+            }
+
+            // 3. Update Balance Due
+            var balance = total - amount;
+            if (balance < 0) balance = 0;
+
+            if (balanceEl) {
+                balanceEl.textContent = 'PKR ' + formatMoney(balance);
+                var balShort = getShorthand(balance);
+                document.getElementById('balanceShorthand').textContent = balShort ? '(' + balShort + ')' : '';
+                
+                if (balance === 0) {
+                    balanceEl.style.color = 'var(--success)';
+                } else {
+                    balanceEl.style.color = 'var(--danger)';
+                }
+            }
+
+            // 4. Update the live "Amount Paid" formatter box
+            var amountFormattedBox = document.getElementById('amountFormatted');
+            if (status === 'Partial' && amount > 0) {
+                amountFormattedBox.style.display = 'block';
+                var short = getShorthand(amount);
+                amountFormattedBox.textContent = '= ' + formatMoney(amount) + (short ? ' (' + short + ')' : '');
             } else {
-                // Default: show
-                if (amountBlock) amountBlock.style.display = 'block';
+                amountFormattedBox.style.display = 'none';
             }
         }
-        statusField.addEventListener('change', updateAmountBehavior);
-        updateAmountBehavior();
+
+        // Attach listeners
+        qty.addEventListener('input', updateCalculations);
+        rate.addEventListener('input', updateCalculations);
+        statusField.addEventListener('change', updateCalculations);
+        amountField.addEventListener('input', updateCalculations);
+        updateCalculations(); // Run once on load
 
         // ---------- CUSTOMER AUTO-FILL ----------
         customerField.addEventListener('change', function() {
@@ -248,8 +310,8 @@
                     var mineField = document.getElementById('id_mine');
                     if (data.mine_id && mineField) { mineField.value = data.mine_id; }
 
-                    updateTotal();
-                    updateAmountBehavior();
+                    // Trigger the calculation update instead of the old broken functions
+                    updateCalculations();
 
                     if (filled.length > 0) {
                         customerHint.innerHTML = '<i class="bi bi-check-circle-fill" style="color:var(--success);"></i> Auto-filled: ' + filled.join(', ');
@@ -310,7 +372,7 @@
 
             if (status === 'Partial') {
                 if (amount <= 0) errors.push('For PARTIAL, enter amount greater than 0');
-                else if (amount >= total) errors.push('For PARTIAL, amount must be less than total (PKR ' + total.toLocaleString() + ')');
+                else if (amount >= total) errors.push('For PARTIAL, amount must be less than total (PKR ' + formatMoney(total) + ')');
             }
 
             if (errors.length > 0) {
@@ -349,15 +411,15 @@
             html += '<tr><td style="color:var(--text-muted); padding:6px 0;">Truck No:</td><td style="text-align:right;">' + truckVal + '</td></tr>';
             html += '<tr><td style="color:var(--text-muted); padding:6px 0;">Driver:</td><td style="text-align:right;">' + driverVal + '</td></tr>';
             html += '<tr style="border-top:1px solid var(--border-light);"><td style="color:var(--text-muted); padding:8px 0;">Quantity:</td><td style="text-align:right; font-weight:600;">' + q + ' tons</td></tr>';
-            html += '<tr><td style="color:var(--text-muted); padding:6px 0;">Rate:</td><td style="text-align:right;">PKR ' + r.toLocaleString() + ' / ton</td></tr>';
-            html += '<tr style="border-top:2px solid var(--accent);"><td style="padding:10px 0; font-weight:700;">TOTAL:</td><td style="text-align:right; font-size:20px; font-weight:800; color:var(--accent);">PKR ' + tot.toLocaleString() + '</td></tr>';
+            html += '<tr><td style="color:var(--text-muted); padding:6px 0;">Rate:</td><td style="text-align:right;">PKR ' + formatMoney(r) + ' / ton</td></tr>';
+            html += '<tr style="border-top:2px solid var(--accent);"><td style="padding:10px 0; font-weight:700;">TOTAL:</td><td style="text-align:right; font-size:20px; font-weight:800; color:var(--accent);">PKR ' + formatMoney(tot) + '</td></tr>';
             html += '<tr style="border-top:1px solid var(--border-light);"><td style="color:var(--text-muted); padding:8px 0;">Payment Status:</td><td style="text-align:right; font-weight:600;">' + statusDisplay + '</td></tr>';
 
             if (status === 'Partial') {
                 var amt = parseFloat(amountField.value) || 0;
                 var bal = tot - amt;
-                html += '<tr><td style="color:var(--text-muted); padding:6px 0;">Amount Paid:</td><td style="text-align:right;">PKR ' + amt.toLocaleString() + '</td></tr>';
-                html += '<tr><td style="color:var(--text-muted); padding:6px 0;">Balance Due:</td><td style="text-align:right; color:var(--danger); font-weight:700;">PKR ' + bal.toLocaleString() + '</td></tr>';
+                html += '<tr><td style="color:var(--text-muted); padding:6px 0;">Amount Paid:</td><td style="text-align:right;">PKR ' + formatMoney(amt) + '</td></tr>';
+                html += '<tr><td style="color:var(--text-muted); padding:6px 0;">Balance Due:</td><td style="text-align:right; color:var(--danger); font-weight:700;">PKR ' + formatMoney(bal) + '</td></tr>';
             }
             html += '</table>';
 
@@ -373,8 +435,10 @@
         function clearForm() {
             form.querySelectorAll('input[type="text"], input[type="number"], textarea').forEach(function(el) { el.value = ''; });
             form.querySelectorAll('select').forEach(function(el) { el.selectedIndex = 0; });
-            updateTotal();
-            updateAmountBehavior();
+            
+            // Trigger the new calculation update
+            updateCalculations();
+            
             customerHint.textContent = '';
             var notice = document.getElementById('prefillNotice');
             if (notice) notice.style.display = 'none';

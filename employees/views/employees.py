@@ -3,6 +3,7 @@ Employee views: list, detail, add, edit, void.
 """
 from datetime import date as date_today
 
+from django.core.paginator import Paginator
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -31,8 +32,13 @@ def employee_list(request):
     if status_filter:
         employees = employees.filter(status=status_filter)
 
+    # --- Pagination ---
+    paginator = Paginator(employees, 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     return render(request, 'employees/list.html', {
-        'employees': employees,
+        'employees': page_obj,
         'query': query,
         'status_filter': status_filter,
         'show_voided': show_voided,

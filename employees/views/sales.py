@@ -4,6 +4,7 @@ Sales views: list, detail, add, edit, void, slip, live API, payments.
 from datetime import date as date_today, timedelta
 from decimal import Decimal
 
+from django.core.paginator import Paginator
 from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -28,12 +29,18 @@ def sale_list(request):
     if status_filter:
         sales = sales.filter(payment_status=status_filter)
 
+    # --- KPI Calculations (must happen BEFORE pagination) ---
     total_amount = sum(s.total_amount for s in sales)
     total_paid = sum(s.amount_paid for s in sales)
     total_balance = total_amount - total_paid
 
+    # --- Pagination (25 per page) ---
+    paginator = Paginator(sales, 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     return render(request, 'sales/sale_list.html', {
-        'sales': sales,
+        'sales': page_obj, # Pass the page object to the template
         'customers': Customer.objects.all(),
         'customer_filter': customer_filter,
         'status_filter': status_filter,
@@ -70,8 +77,8 @@ def sale_add(request):
                     sale.amount_paid = Decimal('0')
 
             sale.save()
-            messages.success(request, f'Dispatch {sale.dispatch_no} created. Print the slip for the driver.')
-            return redirect('sale_slip', pk=sale.pk)
+            messages.success(request, f'Dispatch {sale.dispatch_no} saved successfully.')
+            return redirect('sale_detail', pk=sale.pk)
     else:
         initial = {}
         last = Sale.objects.order_by('-created_at').first()

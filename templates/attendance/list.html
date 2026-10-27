@@ -52,7 +52,7 @@
 <div class="panel">
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div class="panel-title mb-0">
-            <i class="bi bi-calendar-check"></i> Records ({{ records|length }})
+<i class="bi bi-calendar-check"></i> Records ({{ records.paginator.count }})
         </div>
         <div class="d-flex gap-2 flex-wrap">
             {% if is_manager or is_accountant %}
@@ -149,6 +149,7 @@
             </tbody>
         </table>
     </div>
+        {% include 'shared/pagination.html' with page_obj=records %}
     {% else %}
     <p style="color:var(--text-muted); text-align:center; padding:30px;">
         <i class="bi bi-calendar-x" style="font-size:40px; display:block; margin-bottom:10px; opacity:0.5;"></i>
