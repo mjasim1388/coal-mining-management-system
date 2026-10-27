@@ -867,16 +867,17 @@
         /* =========================================================
            RESPONSIVE
            ========================================================= */
-        @media (max-width: 991.98px) {
-            .sidebar { transform: translateX(-100%); }
-            body.sidebar-open .sidebar { transform: translateX(0); }
-            body.sidebar-open .sidebar-backdrop { display: block; }
-            .main-area { margin-left: 0; }
-            .sidebar-toggle { display: inline-flex; }
-            .topbar { padding: 0 16px; }
-            .content { padding: 20px 16px; }
-            .app-footer { padding: 14px 16px; }
-            .user-meta { display: none; }
+        @media (max-width: 767.98px) {
+            .app-footer {
+                flex-direction: column;
+                text-align: center;
+                justify-content: center;
+                padding: 20px !important;
+            }
+            .app-footer > div {
+                justify-content: center;
+                flex-wrap: wrap;
+            }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -1146,32 +1147,39 @@
             {% block content %}{% endblock %}
         </main>
 
-        <!-- FOOTER -->
-        <footer class="app-footer">
-            <div class="footer-grid">
-                <div class="footer-col">
-                    <div class="footer-brand">
-                        <i class="bi bi-gem"></i>
-                        <span>COALMINE CONTROL SYSTEM</span>
-                    </div>
-                    <div class="footer-desc">Coal Mining Management Platform</div>
-                    <div class="footer-version">Version 1.0 · Built on Django</div>
+        <!-- ENTERPRISE FOOTER -->
+        <footer class="app-footer" style="padding: 16px 32px; background: var(--bg-panel); border-top: 1px solid var(--border-light); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; flex-shrink: 0;">
+            
+            <!-- Left: Brand -->
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 32px; height: 32px; background: var(--accent-soft); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--accent);">
+                    <i class="bi bi-minecart-loaded" style="font-size: 16px;"></i>
                 </div>
-                <div class="footer-col">
-                    <div class="footer-heading">System</div>
-                    <div class="footer-stat">
-                        <span class="dot dot-green"></span> All services operational
-                    </div>
-                    <div class="footer-stat">
-                        <i class="bi bi-shield-check"></i> Local network mode
-                    </div>
-                </div>
-                <div class="footer-col footer-right">
-                    <div class="footer-heading">Developed By</div>
-                    <div class="footer-author">Muhammad Jasim</div>
-                    <div class="footer-copyright">&copy; 2026 · All rights reserved</div>
+                <div>
+                    <div style="font-weight: 700; font-size: 13px; color: var(--text-primary); letter-spacing: 0.5px;">COALMINE CONTROL</div>
+                    <div style="font-size: 11.5px; color: var(--text-muted);">&copy; {% now "Y" %} All rights reserved.</div>
                 </div>
             </div>
+
+            <!-- Center: Live Status & Clock -->
+            <div style="display: flex; align-items: center; gap: 24px; font-size: 12.5px;">
+                <div style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary);">
+                    <span class="dot dot-green" style="width: 7px; height: 7px; box-shadow: 0 0 8px rgba(47, 182, 124, 0.6);"></span>
+                    System Online
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; color: var(--text-muted);">
+                    <i class="bi bi-clock-history"></i>
+                    <span>Server Time: <strong id="footerClock" style="font-family: monospace; color: var(--text-primary); font-size: 13px;">--:--:--</strong></span>
+                </div>
+            </div>
+
+            <!-- Right: Developer & Version -->
+            <div style="display: flex; align-items: center; gap: 16px; font-size: 12.5px; color: var(--text-muted);">
+                <span>v1.0.0</span>
+                <span style="color: var(--border-medium);">|</span>
+                <span>Developed by <strong style="color: var(--text-primary); font-weight: 600;">Muhammad Jasim</strong></span>
+            </div>
+
         </footer>
     </div>
 </div>
@@ -1529,6 +1537,26 @@
                 }, 300); // Wait for fade out to finish before removing
             }, 4000); // 4 seconds
         });
+    });
+</script>
+
+<script>
+    /* =========================================================
+       LIVE SERVER CLOCK FOR FOOTER
+       ========================================================= */
+    document.addEventListener('DOMContentLoaded', function() {
+        var clockEl = document.getElementById('footerClock');
+        if (!clockEl) return;
+
+        function updateClock() {
+            var now = new Date();
+            // Format as HH:MM:SS
+            var timeString = now.toLocaleTimeString('en-GB', { hour12: false });
+            clockEl.textContent = timeString;
+        }
+
+        updateClock(); // Run immediately
+        setInterval(updateClock, 1000); // Update every second
     });
 </script>
 
