@@ -17,751 +17,8 @@
 
     <link href="{% static 'vendor/bootstrap.min.css' %}" rel="stylesheet">
     <link href="{% static 'vendor/icons/bootstrap-icons.min.css' %}" rel="stylesheet">
-    <style>
-        /* =========================================================
-           DESIGN TOKENS
-           ========================================================= */
-        :root {
-            --sidebar-width: 244px;
-            --radius-lg: 10px;
-            --radius-md: 8px;
-            --radius-sm: 6px;
-            --font-sans: 'IBM Plex Sans', -apple-system, 'Segoe UI', Roboto, sans-serif;
-        }
-
-        [data-theme="dark"] {
-            --bg-app: #0d1117;
-            --bg-panel: #151b23;
-            --bg-raised: #1b232d;
-            --bg-hover-row: #1a222c;
-            --border-light: #232c38;
-            --border-medium: #334050;
-            --text-primary: #e6eaf0;
-            --text-secondary: #b0bbc8;
-            --text-muted: #8391a3;
-            --accent: #10b981;
-            --accent-hover: #34d399;
-            --accent-ink: #001a10;
-            --accent-soft: rgba(16, 185, 129, 0.14);
-            --success: #22c55e;
-            --success-soft: rgba(34, 197, 94, 0.15);
-            --danger: #ef5b5b;
-            --danger-soft: rgba(239, 91, 91, 0.15);
-            --info: #4c9aff;
-            --info-soft: rgba(76, 154, 255, 0.15);
-            --warning: #f59e0b;
-            --warning-soft: rgba(245, 158, 11, 0.15);
-            --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-            --sb-bg: #0a0e13;
-            --sb-hover: #121922;
-            --sb-active: #172029;
-            --sb-border: #1b2430;
-            --sb-text: #9aa7b6;
-            --sb-heading: #66768a;
-            --sb-accent: #10b981;
-            --sb-brand-text: #ffffff;
-            --sb-link-hover-text: #ffffff;
-            --sb-active-text: #ffffff;
-        }
-
-        [data-theme="light"] {
-            --bg-app: #f3f5f8;
-            --bg-panel: #ffffff;
-            --bg-raised: #f8f9fb;
-            --bg-hover-row: #f5f7fa;
-            --border-light: #e2e6ec;
-            --border-medium: #c9d0da;
-            --text-primary: #17202b;
-            --text-secondary: #455366;
-            --text-muted: #6a7788;
-            --accent: #059669;
-            --accent-hover: #047857;
-            --accent-ink: #ffffff;
-            --accent-soft: rgba(5, 150, 105, 0.10);
-            --success: #16a34a;
-            --success-soft: rgba(22, 163, 74, 0.10);
-            --danger: #cf3a3a;
-            --danger-soft: rgba(207, 58, 58, 0.09);
-            --info: #1f6feb;
-            --info-soft: rgba(31, 111, 235, 0.09);
-            --warning: #b45309;
-            --warning-soft: rgba(180, 83, 9, 0.10);
-            --shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
-            --sb-bg: #ffffff;
-            --sb-hover: #f3f5f8;
-            --sb-active: #eef1f5;
-            --sb-border: #e2e6ec;
-            --sb-text: #455366;
-            --sb-heading: #8a94a3;
-            --sb-accent: #059669;
-            --sb-brand-text: #17202b;
-            --sb-link-hover-text: #17202b;
-            --sb-active-text: #17202b;
-        }
-
-        /* =========================================================
-           BASE
-           ========================================================= */
-        * { box-sizing: border-box; }
-        html { height: 100%; }
-        body { min-height: 100%; }
-        body {
-            background: var(--bg-app);
-            color: var(--text-primary);
-            font-family: var(--font-sans);
-            font-size: 14px;
-            line-height: 1.5;
-            margin: 0;
-            -webkit-font-smoothing: antialiased;
-            font-variant-numeric: tabular-nums;
-        }
-        a { color: var(--accent); }
-        a:hover { color: var(--accent-hover); }
-        h1, h2, h3, h4, h5, h6 { color: var(--text-primary); font-weight: 600; }
-        .text-muted { color: var(--text-muted) !important; }
-        hr { border-color: var(--border-light); opacity: 1; }
-        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-        
-        /* Skip link for accessibility */
-        .skip-link {
-            position: absolute; top: -40px; left: 0; background: var(--accent); color: var(--accent-ink);
-            padding: 8px 16px; z-index: 9999; transition: top 0.2s;
-        }
-        .skip-link:focus { top: 0; }
-
-        /* =========================================================
-           LAYOUT
-           ========================================================= */
-        .app-container { display: flex; min-height: 100vh; }
-
-        /* =========================================================
-           SIDEBAR
-           ========================================================= */
-        .sidebar {
-            width: var(--sidebar-width);
-            background: var(--sb-bg);
-            position: fixed;
-            top: 0; left: 0; bottom: 0;
-            display: flex;
-            flex-direction: column;
-            z-index: 1040;
-            border-right: 1px solid var(--sb-border);
-            transition: transform 0.2s ease;
-        }
-        .sidebar-brand {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 18px 20px;
-            border-bottom: 1px solid var(--sb-border);
-        }
-        .brand-mark {
-            width: 34px;
-            height: 34px;
-            border-radius: var(--radius-md);
-            background: var(--sb-accent);
-            color: var(--accent-ink);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            flex-shrink: 0;
-        }
-        .brand-text strong {
-            display: block;
-            color: var(--sb-brand-text);
-            font-size: 15px;
-            font-weight: 700;
-            letter-spacing: 0.2px;
-            line-height: 1.2;
-        }
-        .brand-text span {
-            display: block;
-            color: var(--sb-heading);
-            font-size: 12px;
-            line-height: 1.3;
-        }
-        .sidebar-nav {
-            flex: 1;
-            overflow-y: auto;
-            padding: 8px 0 16px;
-        }
-        .sidebar-section {
-            padding: 18px 20px 6px;
-            font-size: 12px;
-            color: var(--sb-heading);
-            font-weight: 600;
-        }
-        .sidebar-nav a,
-        .sidebar-nav form button {
-            color: var(--sb-text);
-            margin: 1px 10px;
-            padding: 8px 12px;
-            display: flex;
-            align-items: center;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-            border-radius: var(--radius-sm);
-            transition: background 0.12s ease, color 0.12s ease;
-            position: relative;
-        }
-        .sidebar-nav form button {
-            background: none;
-            border: none;
-            width: calc(100% - 20px);
-            text-align: left;
-            cursor: pointer;
-            font-family: inherit;
-        }
-        .sidebar-nav a:hover,
-        .sidebar-nav form button:hover {
-            color: var(--sb-link-hover-text);
-            background: var(--sb-hover);
-        }
-        .sidebar-nav a.active {
-            color: var(--sb-active-text);
-            background: var(--sb-active);
-        }
-        .sidebar-nav a.active::before {
-            content: '';
-            position: absolute;
-            left: -10px;
-            top: 8px;
-            bottom: 8px;
-            width: 3px;
-            border-radius: 0 3px 3px 0;
-            background: var(--sb-accent);
-        }
-        .sidebar-nav a i,
-        .sidebar-nav form button i {
-            margin-right: 12px;
-            font-size: 16px;
-            width: 18px;
-            text-align: center;
-            flex-shrink: 0;
-        }
-        .sidebar-nav a.active i { color: var(--sb-accent); }
-        
-        .sb-ro-pill {
-            margin-left: auto;
-            font-size: 9.5px;
-            font-weight: 700;
-            letter-spacing: 0.6px;
-            text-transform: uppercase;
-            padding: 2px 6px;
-            border-radius: 8px;
-            background: color-mix(in srgb, var(--text-muted) 20%, transparent);
-            color: var(--text-muted);
-            border: 1px solid color-mix(in srgb, var(--text-muted) 30%, transparent);
-            line-height: 1.3;
-        }
-        .sidebar-nav a.active .sb-ro-pill {
-            background: color-mix(in srgb, var(--sb-accent) 18%, transparent);
-            color: var(--sb-accent);
-            border-color: color-mix(in srgb, var(--sb-accent) 40%, transparent);
-        }
-        .sidebar-nav a.nav-backup { color: var(--success); }
-        .sidebar-nav a.nav-backup:hover {
-            background: color-mix(in srgb, var(--success) 12%, transparent);
-            color: var(--success);
-        }
-        .sidebar-nav a.nav-backup.active {
-            background: color-mix(in srgb, var(--success) 16%, transparent);
-            color: var(--success);
-        }
-        .sidebar-nav a.nav-backup.active i { color: var(--success); }
-        .sidebar-nav a.nav-backup.active::before { background: var(--success); }
-
-        .sidebar-backdrop {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.55);
-            z-index: 1035;
-        }
-
-        /* =========================================================
-           MAIN AREA + TOPBAR
-           ========================================================= */
-        .main-area {
-            margin-left: var(--sidebar-width);
-            flex: 1;
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-        }
-        .topbar {
-            background: var(--bg-panel);
-            height: 60px;
-            padding: 0 28px;
-            border-bottom: 1px solid var(--border-light);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 50;
-        }
-        .topbar-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
-        .topbar .page-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--text-primary);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .topbar-right { display: flex; align-items: center; gap: 6px; }
-
-        .icon-btn {
-            position: relative;
-            width: 38px;
-            height: 38px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: transparent;
-            border: none;
-            border-radius: var(--radius-md);
-            color: var(--text-secondary);
-            font-size: 18px;
-            text-decoration: none;
-            cursor: pointer;
-            transition: background 0.12s ease, color 0.12s ease;
-        }
-        .icon-btn:hover { background: var(--bg-raised); color: var(--text-primary); }
-        .sidebar-toggle { display: none; }
-
-        .notification-badge {
-            position: absolute;
-            top: 3px;
-            right: 2px;
-            background: var(--danger);
-            color: #fff;
-            font-size: 10px;
-            font-weight: 700;
-            line-height: 1;
-            padding: 3px 5px;
-            border-radius: 10px;
-            min-width: 17px;
-            text-align: center;
-            border: 2px solid var(--bg-panel);
-        }
-
-        .topbar-divider {
-            width: 1px;
-            height: 24px;
-            background: var(--border-light);
-            margin: 0 8px;
-        }
-        .user-chip {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 4px 4px 4px 0;
-        }
-        .user-avatar {
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
-            background: var(--bg-raised);
-            border: 1px solid var(--border-medium);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-primary);
-            font-weight: 600;
-            font-size: 13px;
-        }
-        .user-meta { line-height: 1.25; }
-        .user-meta .user-name { font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
-        .user-meta .user-role { font-size: 12px; color: var(--text-muted); }
-
-        .content { padding: 28px; flex: 1; }
-
-        /* =========================================================
-           FOOTER
-           ========================================================= */
-        .footer-link {
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 13.5px;
-            transition: color 0.15s ease, transform 0.15s ease;
-            display: inline-block;
-        }
-        .footer-link:hover {
-            color: var(--accent);
-            transform: translateX(4px);
-        }
-
-        @media (max-width: 992px) {
-            .footer-grid-pro { grid-template-columns: 1fr 1fr !important; }
-        }
-        @media (max-width: 576px) {
-            .footer-grid-pro { grid-template-columns: 1fr !important; gap: 32px !important; }
-            .app-footer { padding: 32px 20px 20px 20px !important; }
-            .app-footer > div > div:last-child { flex-direction: column; text-align: center; justify-content: center; }
-        }
-
-        .dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-            flex-shrink: 0;
-        }
-        .dot-green {
-            background: var(--success);
-            box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 20%, transparent);
-            animation: dotPulse 2s ease-in-out infinite;
-        }
-        @keyframes dotPulse {
-            0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 20%, transparent); }
-            50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--success) 5%, transparent); }
-        }
-
-        /* =========================================================
-           STAT CARDS & PANELS
-           ========================================================= */
-        .stat-card {
-            --stat-color: var(--accent);
-            background: var(--bg-panel);
-            border: 1px solid var(--border-light);
-            border-left: 3px solid var(--stat-color);
-            border-radius: var(--radius-lg);
-            padding: 18px 20px;
-            position: relative;
-            box-shadow: var(--shadow);
-            transition: border-color 0.15s ease;
-        }
-        .stat-card.stat-green { --stat-color: var(--success); }
-        .stat-card.stat-red   { --stat-color: var(--danger); }
-        .stat-card.stat-blue  { --stat-color: var(--info); }
-        .stat-card .icon {
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            width: 36px;
-            height: 36px;
-            border-radius: var(--radius-md);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            color: var(--stat-color);
-            background: color-mix(in srgb, var(--stat-color) 14%, transparent);
-        }
-        .stat-card h2 {
-            font-size: 26px;
-            font-weight: 700;
-            margin: 0;
-            padding-right: 48px;
-            letter-spacing: -0.3px;
-        }
-        .stat-card p {
-            margin: 4px 0 0;
-            font-size: 13px;
-            color: var(--text-muted);
-            font-weight: 500;
-        }
-        .stat-link { text-decoration: none; display: block; color: inherit; }
-        .stat-link:hover { color: inherit; }
-        .stat-link:hover .stat-card { border-color: var(--border-medium); border-left-color: var(--stat-color); }
-
-        .panel {
-            background: var(--bg-panel);
-            border: 1px solid var(--border-light);
-            border-radius: var(--radius-lg);
-            padding: 22px 24px;
-            box-shadow: var(--shadow);
-        }
-        .panel-title {
-            font-size: 15px;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 16px;
-            padding-bottom: 14px;
-            border-bottom: 1px solid var(--border-light);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .panel-title i { color: var(--accent); font-size: 16px; }
-
-        /* =========================================================
-           TABLES
-           ========================================================= */
-        .table {
-            color: var(--text-primary);
-            margin: 0;
-            --bs-table-bg: transparent;
-            --bs-table-color: var(--text-primary);
-            --bs-table-hover-bg: var(--bg-hover-row);
-        }
-        .table thead th {
-            background: var(--bg-raised);
-            color: var(--text-secondary);
-            font-size: 12.5px;
-            font-weight: 600;
-            border: none;
-            border-bottom: 1px solid var(--border-light);
-            padding: 11px 16px;
-            white-space: nowrap;
-        }
-        .table thead th:first-child { border-top-left-radius: var(--radius-sm); }
-        .table thead th:last-child  { border-top-right-radius: var(--radius-sm); }
-        .table tbody td {
-            border: none;
-            border-bottom: 1px solid var(--border-light);
-            padding: 12px 16px;
-            font-size: 14px;
-            vertical-align: middle;
-            color: var(--text-primary);
-            background: transparent;
-        }
-        .table tbody tr:last-child td { border-bottom: none; }
-        .table tbody tr:hover td { background: var(--bg-hover-row); }
-
-        /* =========================================================
-           FORMS & BUTTONS
-           ========================================================= */
-        .form-label {
-            font-size: 13px;
-            color: var(--text-secondary);
-            margin-bottom: 6px;
-            font-weight: 500;
-        }
-        .form-control, .form-select {
-            background-color: var(--bg-app);
-            border: 1px solid var(--border-medium);
-            color: var(--text-primary);
-            padding: 8px 12px;
-            border-radius: var(--radius-sm);
-            font-size: 14px;
-            transition: border-color 0.12s ease, box-shadow 0.12s ease;
-        }
-        .form-control::placeholder { color: var(--text-muted); }
-        .form-control:focus, .form-select:focus {
-            background-color: var(--bg-app);
-            color: var(--text-primary);
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px var(--accent-soft);
-        }
-        .form-control:disabled, .form-select:disabled { background-color: var(--bg-raised); opacity: 0.7; }
-        .form-select option { background: var(--bg-panel); color: var(--text-primary); }
-
-        .btn {
-            border-radius: var(--radius-sm);
-            font-size: 14px;
-            font-weight: 500;
-            padding: 8px 16px;
-            transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
-        }
-        /* Fixed hover transform so disabled buttons don't jump */
-        .btn:not(:disabled):hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-        .btn:active {
-            transform: translateY(0);
-            box-shadow: none;
-        }
-        .btn-amber, .btn-primary {
-            background: var(--accent);
-            color: var(--accent-ink);
-            border: 1px solid var(--accent);
-            font-weight: 600;
-        }
-        .btn-amber:hover, .btn-primary:hover,
-        .btn-amber:focus-visible, .btn-primary:focus-visible {
-            background: var(--accent-hover);
-            border-color: var(--accent-hover);
-            color: var(--accent-ink);
-        }
-        .btn-outline-amber, .btn-outline-secondary {
-            background: transparent;
-            border: 1px solid var(--border-medium);
-            color: var(--text-secondary);
-        }
-        .btn-outline-amber:hover, .btn-outline-secondary:hover {
-            background: var(--bg-raised);
-            border-color: var(--text-muted);
-            color: var(--text-primary);
-        }
-        .btn-outline-danger {
-            background: transparent;
-            border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
-            color: var(--danger);
-        }
-        .btn-outline-danger:hover {
-            background: var(--danger-soft);
-            border-color: var(--danger);
-            color: var(--danger);
-        }
-        .btn-danger { background: var(--danger); border: 1px solid var(--danger); color: #fff; }
-        .btn-danger:hover { filter: brightness(0.92); background: var(--danger); color: #fff; }
-        .btn-sm { padding: 5px 11px; font-size: 13px; }
-
-        /* =========================================================
-           BADGES & ALERTS
-           ========================================================= */
-        .badge-status {
-            font-size: 12px;
-            padding: 3px 10px 3px 8px;
-            border-radius: 20px;
-            font-weight: 500;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            white-space: nowrap;
-        }
-        .badge-status::before {
-            content: '';
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: currentColor;
-        }
-        .badge-active   { background: var(--success-soft); color: var(--success); }
-        .badge-leave    { background: var(--warning-soft); color: var(--warning); }
-        .badge-inactive { background: var(--danger-soft);  color: var(--danger); }
-
-        .alert {
-            border-radius: var(--radius-md);
-            border: 1px solid;
-            border-left-width: 3px;
-            padding: 12px 16px;
-            font-size: 14px;
-            display: flex;
-            align-items: flex-start;
-            gap: 8px;
-        }
-        .alert span { flex: 1; min-width: 0; word-break: break-word; }
-        .alert i { font-size: 16px; flex-shrink: 0; }
-        .alert .btn-close { margin-left: auto; position: static; padding: 4px; }
-        
-        .alert-error-custom {
-            background: var(--danger-soft); border-color: var(--danger); color: var(--text-primary);
-            display: flex; align-items: center; gap: 8px; border-radius: var(--radius-md);
-            border-style: solid; border-width: 1px 1px 1px 3px; padding: 12px 16px; font-size: 14px;
-        }
-        .alert-error-custom i, .alert-error-custom strong { color: var(--danger); }
-        
-        .alert-warning-custom {
-            background: var(--warning-soft); border-color: var(--warning); color: var(--text-primary);
-            display: flex; align-items: center; gap: 8px; border-radius: var(--radius-md);
-            border-style: solid; border-width: 1px 1px 1px 3px; padding: 12px 16px; font-size: 14px;
-        }
-        .alert-warning-custom i { color: var(--warning); }
-        
-        .alert-info-custom {
-            background: var(--info-soft); border-color: var(--info); color: var(--text-primary);
-            display: flex; align-items: center; gap: 8px; border-radius: var(--radius-md);
-            border-style: solid; border-width: 1px 1px 1px 3px; padding: 12px 16px; font-size: 14px;
-        }
-        .alert-info-custom i { color: var(--info); }
-        
-        [data-theme="dark"] .btn-close { filter: invert(1); opacity: 0.6; }
-        [data-theme="light"] .btn-close { opacity: 0.5; }
-
-        /* =========================================================
-           FLOATING TOASTS
-           ========================================================= */
-        @keyframes slideInRight {
-            from { opacity: 0; transform: translateX(50px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-        .toast-message {
-            transition: opacity 0.3s ease, transform 0.3s ease;
-        }
-
-        /* =========================================================
-           INLINE SEARCH
-           ========================================================= */
-        .inline-search { position: relative; display: flex; align-items: center; }
-        .inline-search-input {
-            width: 0; opacity: 0; padding: 8px 0; border: 1px solid transparent; border-radius: 8px;
-            background: var(--bg-app); color: var(--text-primary); font-size: 13.5px; font-family: inherit;
-            outline: none; transition: width 0.25s ease, opacity 0.2s ease, padding 0.25s ease, border-color 0.15s ease;
-            margin-left: 6px;
-        }
-        .inline-search.open .inline-search-input {
-            width: 280px; opacity: 1; padding: 8px 12px; border-color: var(--border-medium);
-        }
-        .inline-search-input::placeholder { color: var(--text-muted); }
-        .inline-search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-        .inline-search-results {
-            position: absolute; top: calc(100% + 8px); right: 0; width: 380px; max-width: calc(100vw - 20px);
-            background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 10px;
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35); max-height: 420px; overflow-y: auto; padding: 6px; z-index: 200; display: none;
-        }
-        .inline-search.open.has-results .inline-search-results { display: block; }
-        .inline-search-item {
-            display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 7px;
-            text-decoration: none; color: inherit; cursor: pointer; transition: background 0.1s;
-        }
-        .inline-search-item:hover, .inline-search-item.selected { background: var(--accent-soft); }
-        .inline-search-item i { color: var(--accent); font-size: 15px; flex-shrink: 0; width: 18px; text-align: center; }
-        .inline-search-item-text { flex: 1; min-width: 0; }
-        .inline-search-item-label { color: var(--text-primary); font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .inline-search-item-sub { color: var(--text-muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .inline-search-item-type {
-            font-size: 9.5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px;
-            padding: 2px 6px; background: var(--bg-raised); border-radius: 4px; flex-shrink: 0;
-        }
-        .inline-search-empty { text-align: center; color: var(--text-muted); padding: 24px 16px; font-size: 12.5px; }
-
-        /* =========================================================
-           SCROLLBAR
-           ========================================================= */
-        ::-webkit-scrollbar { width: 10px; height: 10px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--border-medium); border-radius: 6px; border: 2px solid transparent; background-clip: content-box; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); background-clip: content-box; }
-
-        /* =========================================================
-           RESPONSIVE
-           ========================================================= */
-        @media (max-width: 991.98px) {
-            .sidebar { transform: translateX(-100%); }
-            body.sidebar-open .sidebar { transform: translateX(0); }
-            body.sidebar-open .sidebar-backdrop { display: block; }
-            .main-area { margin-left: 0; }
-            .sidebar-toggle { display: inline-flex; }
-            .topbar { padding: 0 16px; }
-            .content { padding: 20px 16px; }
-            .user-meta { display: none; }
-            .app-footer { flex-direction: column; text-align: center; justify-content: center; padding: 20px !important; }
-            .app-footer > div { justify-content: center; flex-wrap: wrap; }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            * { transition: none !important; }
-        }
-
-        /* =========================================================
-           PRINT
-           ========================================================= */
-        @media print {
-            body { background: #fff !important; color: #000 !important; }
-            .sidebar, .sidebar-backdrop, .topbar, .btn, .alert, .app-footer, #toastContainer { display: none !important; }
-            .main-area { margin-left: 0 !important; }
-            .content { padding: 0 !important; }
-            .panel { border: none !important; background: #fff !important; padding: 0 !important; box-shadow: none !important; }
-            .panel-title, h1, h2, h3, h4, h5, strong { color: #000 !important; border-color: #333 !important; }
-            .form-label { color: #555 !important; font-size: 10px !important; }
-            p, td, small { color: #000 !important; }
-            .table { color: #000 !important; }
-            .table thead th { background: #eee !important; color: #000 !important; border-bottom: 1px solid #333 !important; }
-            .table tbody td { border-bottom: 1px solid #ccc !important; color: #000 !important; }
-            .badge-status { border: 1px solid #333 !important; color: #000 !important; background: #eee !important; }
-            a { color: #000 !important; text-decoration: none !important; }
-            hr { border-color: #333 !important; }
-            @page { size: A4; margin: 15mm; }
-        }
-    </style>
+    <link href="{% static 'css/base.css' %}" rel="stylesheet">
+    
     {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -780,35 +37,37 @@
 
         <nav class="sidebar-nav">
             <div class="sidebar-section">Operations</div>
-            <a href="{% url 'dashboard' %}" class="{% if request.resolver_match and request.resolver_match.url_name == 'dashboard' %}active{% endif %}" {% if request.resolver_match and request.resolver_match.url_name == 'dashboard' %}aria-current="page"{% endif %}>
+            <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
                 <i class="bi bi-grid-1x2-fill"></i> Dashboard
             </a>
 
             {% if is_manager or is_accountant %}
-            <a href="{% url 'employee_list' %}" class="{% if request.resolver_match and 'employee' in request.resolver_match.url_name %}active{% endif %}" {% if request.resolver_match and 'employee' in request.resolver_match.url_name %}aria-current="page"{% endif %}>
+            <a href="{% url 'employee_list' %}" class="{% if 'employee' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-people-fill"></i> Employees
             </a>
             {% endif %}
 
             {% if is_manager %}
-            <a href="{% url 'mine_list' %}" class="{% if request.resolver_match and 'mine' in request.resolver_match.url_name %}active{% endif %}" {% if request.resolver_match and 'mine' in request.resolver_match.url_name %}aria-current="page"{% endif %}>
+            <a href="{% url 'mine_list' %}" class="{% if 'mine' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-geo-alt-fill"></i> Mines
             </a>
             {% endif %}
 
             {% if is_manager or is_accountant %}
-            <a href="{% url 'production_list' %}" class="{% if request.resolver_match and 'production' in request.resolver_match.url_name %}active{% endif %}" {% if request.resolver_match and 'production' in request.resolver_match.url_name %}aria-current="page"{% endif %}>
+            <a href="{% url 'production_list' %}" class="{% if 'production' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-clipboard-data-fill"></i> Production
             </a>
 
             <div class="sidebar-section">Workforce</div>
-            <a href="{% url 'attendance_punch' %}" class="{% if request.resolver_match and request.resolver_match.url_name == 'attendance_punch' %}active{% endif %}" {% if request.resolver_match and request.resolver_match.url_name == 'attendance_punch' %}aria-current="page"{% endif %}>
+            <a href="{% url 'attendance_punch' %}" class="{% if request.resolver_match.url_name == 'attendance_punch' %}active{% endif %}">
                 <i class="bi bi-fingerprint"></i> Punch in / out
             </a>
-            <a href="{% url 'attendance_list' %}" class="{% if request.resolver_match and 'attendance' in request.resolver_match.url_name and request.resolver_match.url_name != 'attendance_punch' %}active{% endif %}" {% if request.resolver_match and 'attendance' in request.resolver_match.url_name and request.resolver_match.url_name != 'attendance_punch' %}aria-current="page"{% endif %}>
+            
+            <a href="{% url 'attendance_list' %}" class="{% if request.resolver_match.url_name == 'attendance_list' %}active{% endif %}">
                 <i class="bi bi-calendar-check-fill"></i> Attendance records
             </a>
-            <a href="{% url 'payroll_list' %}" class="{% if request.resolver_match and 'payroll' in request.resolver_match.url_name %}active{% endif %}" {% if is_accountant and not is_manager %}title="View-only access"{% endif %} {% if request.resolver_match and 'payroll' in request.resolver_match.url_name %}aria-current="page"{% endif %}>
+            
+            <a href="{% url 'payroll_list' %}" class="{% if 'payroll' in request.resolver_match.url_name %}active{% endif %}" {% if is_accountant and not is_manager %}title="View-only access"{% endif %}>
                 <i class="bi bi-cash-coin"></i> Payroll
                 {% if is_accountant and not is_manager %}
                 <span class="sb-ro-pill">view only</span>
@@ -816,74 +75,78 @@
             </a>
 
             <div class="sidebar-section">Resources</div>
-            <a href="{% url 'equipment_list' %}" class="{% if request.resolver_match and 'equipment' in request.resolver_match.url_name or 'maintenance' in request.resolver_match.url_name %}active{% endif %}" {% if request.resolver_match and 'equipment' in request.resolver_match.url_name or 'maintenance' in request.resolver_match.url_name %}aria-current="page"{% endif %}>
+            <a href="{% url 'equipment_list' %}" class="{% if 'equipment' in request.resolver_match.url_name or 'maintenance' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-tools"></i> Equipment
             </a>
-            <a href="{% url 'fuel_report' %}" class="{% if request.resolver_match and 'fuel_report' in request.resolver_match.url_name %}active{% endif %}" {% if request.resolver_match and 'fuel_report' in request.resolver_match.url_name %}aria-current="page"{% endif %}>
+            
+            <a href="{% url 'fuel_report' %}" class="{% if 'fuel_report' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-fuel-pump-fill"></i> Fuel Report
             </a>
-            <a href="{% url 'inventory_list' %}" class="{% if request.resolver_match and 'inventory' in request.resolver_match.url_name or 'stock' in request.resolver_match.url_name %}active{% endif %}" {% if request.resolver_match and 'inventory' in request.resolver_match.url_name or 'stock' in request.resolver_match.url_name %}aria-current="page"{% endif %}>
+            
+            <a href="{% url 'inventory_list' %}" class="{% if 'inventory' in request.resolver_match.url_name or 'stock' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-box-seam-fill"></i> Inventory
             </a>
-            <a href="{% url 'sale_list' %}" class="{% if request.resolver_match and 'sale' in request.resolver_match.url_name and 'customer' not in request.resolver_match.url_name %}active{% endif %}" {% if request.resolver_match and 'sale' in request.resolver_match.url_name and 'customer' not in request.resolver_match.url_name %}aria-current="page"{% endif %}>
+            
+            <a href="{% url 'sale_list' %}" class="{% if 'sale' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-receipt"></i> Sales
             </a>
-            <a href="{% url 'customer_list' %}" class="{% if request.resolver_match and 'customer' in request.resolver_match.url_name %}active{% endif %}" {% if request.resolver_match and 'customer' in request.resolver_match.url_name %}aria-current="page"{% endif %}>
+            
+            <a href="{% url 'customer_list' %}" class="{% if 'customer' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-person-vcard"></i> Customers
             </a>
             {% endif %}
 
-            <!-- ============================================ -->
-            <!-- SAFETY - Now wrapped in permission check -->
-            <!-- ============================================ -->
+            <!-- SAFETY -->
             {% if is_manager or is_accountant %}
             <div class="sidebar-section">Safety</div>
-            <a href="{% url 'safety_hub' %}" class="{% if request.resolver_match and request.resolver_match.url_name == 'safety_hub' %}active{% endif %}" {% if request.resolver_match and request.resolver_match.url_name == 'safety_hub' %}aria-current="page"{% endif %}>
+            <a href="{% url 'safety_hub' %}" class="{% if request.resolver_match.url_name == 'safety_hub' %}active{% endif %}">
                 <i class="bi bi-shield-fill-check"></i> Safety Hub
             </a>
-            <a href="{% url 'incident_list' %}" class="{% if request.resolver_match and 'incident' in request.resolver_match.url_name %}active{% endif %}" {% if request.resolver_match and 'incident' in request.resolver_match.url_name %}aria-current="page"{% endif %}>
+            <a href="{% url 'incident_list' %}" class="{% if 'incident' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-exclamation-triangle-fill"></i> Incidents
             </a>
-            <a href="{% url 'hazard_list' %}" class="{% if request.resolver_match and 'hazard' in request.resolver_match.url_name %}active{% endif %}" {% if request.resolver_match and 'hazard' in request.resolver_match.url_name %}aria-current="page"{% endif %}>
+            <a href="{% url 'hazard_list' %}" class="{% if 'hazard' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-exclamation-diamond-fill"></i> Hazards
             </a>
-            <a href="{% url 'inspection_list' %}" class="{% if request.resolver_match and 'inspection' in request.resolver_match.url_name %}active{% endif %}" {% if request.resolver_match and 'inspection' in request.resolver_match.url_name %}aria-current="page"{% endif %}>
+            <a href="{% url 'inspection_list' %}" class="{% if 'inspection' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-clipboard-pulse"></i> Inspections
             </a>
-            <a href="{% url 'ppe_list' %}" class="{% if request.resolver_match and 'ppe' in request.resolver_match.url_name %}active{% endif %}" {% if request.resolver_match and 'ppe' in request.resolver_match.url_name %}aria-current="page"{% endif %}>
+            <a href="{% url 'ppe_list' %}" class="{% if 'ppe' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-cone-striped"></i> PPE
             </a>
-            <a href="{% url 'training_list' %}" class="{% if request.resolver_match and 'training' in request.resolver_match.url_name %}active{% endif %}" {% if request.resolver_match and 'training' in request.resolver_match.url_name %}aria-current="page"{% endif %}>
+            <a href="{% url 'training_list' %}" class="{% if 'training' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-mortarboard"></i> Training
             </a>
             {% endif %}
 
             {% if is_manager %}
             <div class="sidebar-section">Approvals</div>
-            <a href="{% url 'approval_list' %}" class="{% if request.resolver_match and 'approval' in request.resolver_match.url_name %}active{% endif %}" {% if request.resolver_match and 'approval' in request.resolver_match.url_name %}aria-current="page"{% endif %}>
+            <a href="{% url 'approval_list' %}" class="{% if 'approval' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-shield-check"></i> Pending approvals
             </a>
             {% endif %}
 
             {% if is_manager or is_accountant %}
             <div class="sidebar-section">Reports</div>
-            <a href="{% url 'reports_hub' %}" class="{% if request.resolver_match and 'report' in request.resolver_match.url_name %}active{% endif %}" {% if request.resolver_match and 'report' in request.resolver_match.url_name %}aria-current="page"{% endif %}>
+            <a href="{% url 'reports_hub' %}" class="{% if 'report' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-file-earmark-bar-graph"></i> Reports
             </a>
             {% endif %}
 
             <div class="sidebar-section">System</div>
             {% if is_manager or is_accountant %}
-            <a href="{% url 'backup_now' %}" class="nav-backup {% if request.resolver_match and request.resolver_match.url_name == 'backup_now' %}active{% endif %}" {% if request.resolver_match and request.resolver_match.url_name == 'backup_now' %}aria-current="page"{% endif %}>
+            <a href="{% url 'backup_now' %}" class="nav-backup {% if request.resolver_match.url_name == 'backup_now' %}active{% endif %}">
                 <i class="bi bi-cloud-arrow-down-fill"></i> Back up now
             </a>
-            <a href="{% url 'backup_list' %}" class="{% if request.resolver_match and 'backup_list' in request.resolver_match.url_name or 'backup_download' in request.resolver_match.url_name or 'backup_delete' in request.resolver_match.url_name %}active{% endif %}" {% if request.resolver_match and 'backup_list' in request.resolver_match.url_name or 'backup_download' in request.resolver_match.url_name or 'backup_delete' in request.resolver_match.url_name %}aria-current="page"{% endif %}>
+            <a href="{% url 'backup_list' %}" class="{% if 'backup_list' in request.resolver_match.url_name or 'backup_download' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="bi bi-archive"></i> Backup history
             </a>
             {% endif %}
+            
             {% if user.is_superuser %}
             <a href="/admin/"><i class="bi bi-sliders"></i> Admin panel</a>
             {% endif %}
+            
             <form method="post" action="{% url 'logout' %}" style="margin:0;">
                 {% csrf_token %}
                 <button type="submit">
@@ -892,18 +155,6 @@
             </form>
         </nav>
     </aside>
-    
-    <script>
-      // Restore sidebar scroll position before paint — no flicker
-      (function () {
-        var nav = document.querySelector('.sidebar-nav');
-        if (!nav) return;
-        try {
-          var pos = sessionStorage.getItem('sidebarScrollPos');
-          if (pos) nav.scrollTop = parseInt(pos, 10) || 0;
-        } catch (e) {}
-      })();
-    </script>
     <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
     <!-- MAIN -->
@@ -949,10 +200,8 @@
         <!-- PROFESSIONAL ENTERPRISE FOOTER -->
         <footer class="app-footer" style="background: var(--bg-panel); border-top: 1px solid var(--border-light); padding: 44px 40px 22px 40px; margin-top: auto; width: 100%;">
             <div style="width: 100%;">
-                <!-- TOP GRID: Brand + Links -->
                 <div class="footer-grid-pro" style="display: grid; grid-template-columns: 2fr 1fr 1fr 1.5fr; gap: 56px; margin-bottom: 40px;">
                     
-                    <!-- Column 1: Brand -->
                     <div>
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
                             <div style="width: 36px; height: 36px; background: var(--accent-soft); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--accent);">
@@ -965,7 +214,6 @@
                         </p>
                     </div>
 
-                    <!-- Column 2: Operations -->
                     {% if is_manager or is_accountant %}
                     <div>
                         <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-primary); margin-bottom: 20px;">Operations</div>
@@ -978,7 +226,6 @@
                         </ul>
                     </div>
 
-                    <!-- Column 3: Safety & HR -->
                     <div>
                         <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-primary); margin-bottom: 20px;">Safety & HR</div>
                         <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px;">
@@ -991,7 +238,6 @@
                     </div>
                     {% endif %}
 
-                    <!-- Column 4: System Info -->
                     <div>
                         <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-primary); margin-bottom: 20px;">System Status</div>
                         
@@ -1012,7 +258,6 @@
                     </div>
                 </div>
 
-                <!-- BOTTOM BAR: Copyright & Credits -->
                 <div style="border-top: 1px solid var(--border-light); padding-top: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
                     <div style="font-size: 12.5px; color: var(--text-muted);">
                         &copy; {% now "Y" %} Coal Mine Company. All rights reserved. 
@@ -1029,7 +274,7 @@
     </div>
 </div>
 
-<!-- FLOATING TOAST CONTAINER (Moved outside main) -->
+<!-- FLOATING TOAST CONTAINER -->
 <div id="toastContainer" aria-live="polite" style="position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; max-width: 400px;">
     {% if messages %}
         {% for message in messages %}
@@ -1072,123 +317,10 @@
 </div>
 
 <script src="{% static 'vendor/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'js/base.js' %}"></script>
 
+<!-- Global Search script kept inline -->
 <script>
-    /* =========================================================
-       THEME TOGGLE + SIDEBAR
-       ========================================================= */
-    (function () {
-        var root = document.documentElement;
-        var icon = document.getElementById('themeIcon');
-
-        function syncIcon() {
-            var dark = root.getAttribute('data-theme') === 'dark';
-            icon.className = dark ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
-        }
-        syncIcon();
-
-        var themeBtn = document.getElementById('themeToggle');
-        if (themeBtn) {
-            themeBtn.addEventListener('click', function () {
-                var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-                root.setAttribute('data-theme', next);
-                root.setAttribute('data-bs-theme', next);
-                try { localStorage.setItem('cm-theme', next); } catch (e) {}
-                syncIcon();
-            });
-        }
-
-        function setSidebar(open) { document.body.classList.toggle('sidebar-open', open); }
-        var sidebarToggle = document.getElementById('sidebarToggle');
-        if (sidebarToggle) {
-            sidebarToggle.addEventListener('click', function () {
-                setSidebar(!document.body.classList.contains('sidebar-open'));
-            });
-        }
-        var sidebarBackdrop = document.getElementById('sidebarBackdrop');
-        if (sidebarBackdrop) {
-            sidebarBackdrop.addEventListener('click', function () { setSidebar(false); });
-        }
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') setSidebar(false);
-        });
-    })();
-</script>
-
-<script>
-    /* =========================================================
-       GLOBAL SCROLL POSITION PRESERVATION (Merged & Fixed)
-       ========================================================= */
-    (function () {
-        var key = 'scrollPos:' + window.location.pathname + window.location.search;
-        var saveTimer = null;
-
-        // Save on scroll
-        window.addEventListener('scroll', function () {
-            clearTimeout(saveTimer);
-            saveTimer = setTimeout(function () {
-                try { sessionStorage.setItem(key, String(window.scrollY)); } catch (e) {}
-            }, 150);
-        }, { passive: true });
-
-        // Save when leaving page
-        window.addEventListener('pagehide', function () {
-            try { sessionStorage.setItem(key, String(window.scrollY)); } catch (e) {}
-        });
-
-        // Restore on load (skip if hash is present to not break anchors)
-        window.addEventListener('load', function () {
-            if (window.location.hash) return;
-            try {
-                var saved = sessionStorage.getItem(key);
-                if (saved && parseInt(saved) > 0) {
-                    requestAnimationFrame(function () {
-                        window.scrollTo(0, parseInt(saved));
-                    });
-                }
-            } catch (e) {}
-        });
-
-        // Clear scroll memory if clicking sidebar to go to new section
-        try {
-            var navEntries = performance.getEntriesByType('navigation');
-            if (navEntries.length && navEntries[0].type !== 'back_forward') {
-                document.querySelectorAll('.sidebar a, .sidebar form button').forEach(function (el) {
-                    el.addEventListener('click', function () {
-                        try { sessionStorage.removeItem(key); } catch (e) {}
-                    });
-                });
-            }
-        } catch (e) {}
-
-        // Sidebar scroll preservation
-        var nav = document.querySelector('.sidebar-nav');
-        if (nav) {
-            try {
-                var pos = sessionStorage.getItem('sidebarScrollPos');
-                if (pos) nav.scrollTop = parseInt(pos, 10) || 0;
-            } catch (e) {}
-
-            nav.addEventListener('scroll', function () {
-                clearTimeout(saveTimer);
-                saveTimer = setTimeout(function () {
-                    try { sessionStorage.setItem('sidebarScrollPos', String(nav.scrollTop)); } catch (e) {}
-                }, 100);
-            }, { passive: true });
-
-            nav.addEventListener('click', function (e) {
-                if (e.target.closest('a, button')) {
-                    try { sessionStorage.setItem('sidebarScrollPos', String(nav.scrollTop)); } catch (e) {}
-                }
-            });
-        }
-    })();
-</script>
-
-<script>
-    /* =========================================================
-       INLINE GLOBAL SEARCH (Escaped & URL fixed)
-       ========================================================= */
     (function() {
         document.addEventListener('DOMContentLoaded', function() {
             var searchBox = document.getElementById('inlineSearch');
@@ -1207,41 +339,29 @@
             var debounceTimer = null;
             var abortController = null;
 
-            function openSearch() {
-                searchBox.classList.add('open');
-                setTimeout(function() { input.focus(); }, 100);
-            }
-
+            function openSearch() { searchBox.classList.add('open'); setTimeout(function() { input.focus(); }, 100); }
             function closeSearch() {
                 searchBox.classList.remove('open', 'has-results');
-                input.value = '';
-                resultsContainer.innerHTML = '';
-                currentResults = [];
-                selectedIndex = -1;
+                input.value = ''; resultsContainer.innerHTML = ''; currentResults = []; selectedIndex = -1;
                 if (abortController) { abortController.abort(); abortController = null; }
             }
 
             searchBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
-                if (searchBox.classList.contains('open')) closeSearch();
-                else openSearch();
+                if (searchBox.classList.contains('open')) closeSearch(); else openSearch();
             });
 
             document.addEventListener('keydown', function(e) {
                 if ((e.ctrlKey || e.metaKey) && e.key && e.key.toLowerCase() === 'k') {
                     e.preventDefault();
-                    if (searchBox.classList.contains('open')) closeSearch();
-                    else openSearch();
+                    if (searchBox.classList.contains('open')) closeSearch(); else openSearch();
                 } else if (e.key === 'Escape' && searchBox.classList.contains('open')) {
-                    e.preventDefault();
-                    closeSearch();
+                    e.preventDefault(); closeSearch();
                 }
             });
 
             document.addEventListener('click', function(e) {
-                if (searchBox.classList.contains('open') && !searchBox.contains(e.target)) {
-                    closeSearch();
-                }
+                if (searchBox.classList.contains('open') && !searchBox.contains(e.target)) closeSearch();
             });
 
             input.addEventListener('input', function() {
@@ -1249,10 +369,7 @@
                 var q = input.value.trim();
 
                 if (q.length < 2) {
-                    resultsContainer.innerHTML = '';
-                    searchBox.classList.remove('has-results');
-                    currentResults = [];
-                    selectedIndex = -1;
+                    resultsContainer.innerHTML = ''; searchBox.classList.remove('has-results'); currentResults = []; selectedIndex = -1;
                     return;
                 }
 
@@ -1262,77 +379,45 @@
 
                     fetch('{% url "global_search" %}?q=' + encodeURIComponent(q), { signal: abortController.signal })
                         .then(function(r) { return r.json(); })
-                        .then(function(data) {
-                            currentResults = data.results || [];
-                            renderResults();
-                        })
-                        .catch(function(err) { 
-                            if (err.name !== 'AbortError') console.error('Search error:', err); 
-                        });
+                        .then(function(data) { currentResults = data.results || []; renderResults(); })
+                        .catch(function(err) { if (err.name !== 'AbortError') console.error('Search error:', err); });
                 }, 200);
             });
 
             function renderResults() {
                 if (currentResults.length === 0) {
                     resultsContainer.innerHTML = '<div class="inline-search-empty"><i class="bi bi-search" style="display:block; font-size:22px; margin-bottom:6px; opacity:0.4;"></i>No results found</div>';
-                    searchBox.classList.add('has-results');
-                    selectedIndex = -1;
-                    return;
+                    searchBox.classList.add('has-results'); selectedIndex = -1; return;
                 }
-
                 var html = '';
                 currentResults.forEach(function(r, idx) {
-                    // XSS Fix: Escape everything
                     html += '<a href="' + escapeHtml(r.url) + '" class="inline-search-item" data-index="' + idx + '">';
                     html += '<i class="bi ' + escapeHtml(r.icon) + '"></i>';
-                    html += '<div class="inline-search-item-text">';
-                    html += '<div class="inline-search-item-label">' + escapeHtml(r.label) + '</div>';
-                    html += '<div class="inline-search-item-sub">' + escapeHtml(r.sublabel || '') + '</div>';
-                    html += '</div>';
-                    html += '<span class="inline-search-item-type">' + escapeHtml(r.type) + '</span>';
-                    html += '</a>';
+                    html += '<div class="inline-search-item-text"><div class="inline-search-item-label">' + escapeHtml(r.label) + '</div><div class="inline-search-item-sub">' + escapeHtml(r.sublabel || '') + '</div></div>';
+                    html += '<span class="inline-search-item-type">' + escapeHtml(r.type) + '</span></a>';
                 });
                 resultsContainer.innerHTML = html;
-
-                searchBox.classList.add('has-results');
-                selectedIndex = 0;
-                updateSelection();
+                searchBox.classList.add('has-results'); selectedIndex = 0; updateSelection();
             }
 
-            function escapeHtml(s) {
-                var div = document.createElement('div');
-                div.textContent = s || '';
-                return div.innerHTML;
-            }
-
+            function escapeHtml(s) { var div = document.createElement('div'); div.textContent = s || ''; return div.innerHTML; }
             function getItems() { return resultsContainer.querySelectorAll('.inline-search-item'); }
-
             function updateSelection() {
                 var items = getItems();
                 items.forEach(function(item, idx) {
-                    if (idx === selectedIndex) {
-                        item.classList.add('selected');
-                        item.scrollIntoView({ block: 'nearest' });
-                    } else {
-                        item.classList.remove('selected');
-                    }
+                    if (idx === selectedIndex) { item.classList.add('selected'); item.scrollIntoView({ block: 'nearest' }); }
+                    else { item.classList.remove('selected'); }
                 });
             }
-
             function moveSelection(delta) {
-                var items = getItems();
-                if (items.length === 0) return;
+                var items = getItems(); if (items.length === 0) return;
                 if (selectedIndex < 0) selectedIndex = 0;
-                selectedIndex = (selectedIndex + delta + items.length) % items.length;
-                updateSelection();
+                selectedIndex = (selectedIndex + delta + items.length) % items.length; updateSelection();
             }
-
             function openSelected() {
-                var items = getItems();
-                if (items.length === 0) return;
+                var items = getItems(); if (items.length === 0) return;
                 if (selectedIndex < 0) selectedIndex = 0;
-                var target = items[selectedIndex];
-                if (target) window.location.href = target.getAttribute('href');
+                var target = items[selectedIndex]; if (target) window.location.href = target.getAttribute('href');
             }
 
             input.addEventListener('keydown', function(e) {
@@ -1342,10 +427,8 @@
             });
 
             resultsContainer.addEventListener('mouseover', function(e) {
-                var item = e.target.closest('.inline-search-item');
-                if (!item) return;
-                selectedIndex = parseInt(item.dataset.index, 10);
-                updateSelection();
+                var item = e.target.closest('.inline-search-item'); if (!item) return;
+                selectedIndex = parseInt(item.dataset.index, 10); updateSelection();
             });
         });
     })();
@@ -1353,82 +436,5 @@
 
 {% block extra_js %}{% endblock %}
 {% block print_view %}{% endblock %}
-
-<script>
-    /* =========================================================
-       GLOBAL FORM BUTTON LOADING STATES (Fixed)
-       ========================================================= */
-    document.addEventListener('submit', function (e) {
-        var form = e.target;
-        if (form.method.toLowerCase() === 'get' || form.classList.contains('no-spinner')) return;
-
-        var submitBtn = e.submitter || form.querySelector('button[type="submit"], input[type="submit"]');
-        
-        if (submitBtn && !submitBtn.disabled) {
-            // Use setTimeout to prevent disabling the button before the form submits
-            setTimeout(function() {
-                submitBtn.disabled = true;
-                var text = submitBtn.getAttribute('data-loading-text') || 'Please wait...';
-                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="margin-right: 6px;"></span> ' + text;
-                submitBtn.style.opacity = '0.75';
-                submitBtn.style.cursor = 'not-allowed';
-            }, 10);
-        }
-    });
-
-    // Fix for Back button restoring the page with a disabled button
-    window.addEventListener('pageshow', function (event) {
-        if (event.persisted) {
-            document.querySelectorAll('button[disabled]').forEach(function(btn) {
-                btn.disabled = false;
-                btn.style.opacity = '1';
-                btn.style.cursor = 'pointer';
-            });
-        }
-    });
-</script>
-
-<script>
-    /* =========================================================
-       AUTO-DISMISS TOASTS (Errors stay longer)
-       ========================================================= */
-    document.addEventListener('DOMContentLoaded', function() {
-        var toasts = document.querySelectorAll('.toast-message');
-        toasts.forEach(function(toast) {
-            var isError = toast.style.borderColor.includes('var(--danger)') || toast.classList.contains('alert-danger');
-            var timeout = isError ? 8000 : 4000; // 8s for errors, 4s for success
-
-            setTimeout(function() {
-                toast.classList.remove('show');
-                setTimeout(function() { toast.remove(); }, 150);
-            }, timeout);
-        });
-    });
-</script>
-
-<script>
-    /* =========================================================
-       LIVE SERVER CLOCK FOR FOOTER
-       ========================================================= */
-    document.addEventListener('DOMContentLoaded', function() {
-        var clockEl = document.getElementById('footerClock');
-        if (!clockEl) return;
-
-        function updateClock() {
-            var now = new Date();
-            var timeString = now.toLocaleTimeString('en-US', { 
-                hour: '2-digit', 
-                minute: '2-digit', 
-                second: '2-digit', 
-                hour12: true 
-            });
-            clockEl.textContent = timeString;
-        }
-
-        updateClock();
-        setInterval(updateClock, 1000);
-    });
-</script>
-
 </body>
 </html>

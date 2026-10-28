@@ -120,6 +120,14 @@ USE_TZ = True
 
 # Static files
 STATIC_URL = 'static/'
+
+
+# Add this line:
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
+
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 STORAGES = {
