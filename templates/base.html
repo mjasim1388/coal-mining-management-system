@@ -36,120 +36,111 @@
         </div>
 
         <nav class="sidebar-nav">
-            <div class="sidebar-section">Operations</div>
-            <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+            <!-- DASHBOARD (Standalone link) -->
+            <a href="{% url 'dashboard' %}" class="nav-item-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
                 <i class="bi bi-grid-1x2-fill"></i> Dashboard
             </a>
 
+            <!-- OPERATIONS GROUP -->
+            <div class="nav-group" data-group="operations">
+                <button type="button" class="nav-group-btn">
+                    <i class="bi bi-briefcase"></i> Operations <i class="bi bi-chevron-right chevron"></i>
+                </button>
+                <div class="nav-group-content">
+                    {% if is_manager or is_accountant %}
+                    <a href="{% url 'production_list' %}" class="nav-item-link {% if 'production' in request.resolver_match.url_name %}active{% endif %}">Production</a>
+                    {% endif %}
+                    {% if is_manager %}
+                    <a href="{% url 'mine_list' %}" class="nav-item-link {% if 'mine' in request.resolver_match.url_name %}active{% endif %}">Mines</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- WORKFORCE GROUP -->
             {% if is_manager or is_accountant %}
-            <a href="{% url 'employee_list' %}" class="{% if 'employee' in request.resolver_match.url_name %}active{% endif %}">
-                <i class="bi bi-people-fill"></i> Employees
-            </a>
+            <div class="nav-group" data-group="workforce">
+                <button type="button" class="nav-group-btn">
+                    <i class="bi bi-people"></i> Workforce <i class="bi bi-chevron-right chevron"></i>
+                </button>
+                <div class="nav-group-content">
+                    <a href="{% url 'employee_list' %}" class="nav-item-link {% if 'employee' in request.resolver_match.url_name %}active{% endif %}">Employees</a>
+                    <a href="{% url 'attendance_punch' %}" class="nav-item-link {% if request.resolver_match.url_name == 'attendance_punch' %}active{% endif %}">Punch In / Out</a>
+                    <a href="{% url 'attendance_list' %}" class="nav-item-link {% if request.resolver_match.url_name == 'attendance_list' %}active{% endif %}">Attendance Records</a>
+                    <a href="{% url 'payroll_list' %}" class="nav-item-link {% if 'payroll' in request.resolver_match.url_name %}active{% endif %}">
+                        Payroll {% if is_accountant and not is_manager %}<span class="sb-ro-pill">view only</span>{% endif %}
+                    </a>
+                </div>
+            </div>
             {% endif %}
 
-            {% if is_manager %}
-            <a href="{% url 'mine_list' %}" class="{% if 'mine' in request.resolver_match.url_name %}active{% endif %}">
-                <i class="bi bi-geo-alt-fill"></i> Mines
-            </a>
-            {% endif %}
-
+            <!-- RESOURCES GROUP -->
             {% if is_manager or is_accountant %}
-            <a href="{% url 'production_list' %}" class="{% if 'production' in request.resolver_match.url_name %}active{% endif %}">
-                <i class="bi bi-clipboard-data-fill"></i> Production
-            </a>
-
-            <div class="sidebar-section">Workforce</div>
-            <a href="{% url 'attendance_punch' %}" class="{% if request.resolver_match.url_name == 'attendance_punch' %}active{% endif %}">
-                <i class="bi bi-fingerprint"></i> Punch in / out
-            </a>
-            
-            <a href="{% url 'attendance_list' %}" class="{% if request.resolver_match.url_name == 'attendance_list' %}active{% endif %}">
-                <i class="bi bi-calendar-check-fill"></i> Attendance records
-            </a>
-            
-            <a href="{% url 'payroll_list' %}" class="{% if 'payroll' in request.resolver_match.url_name %}active{% endif %}" {% if is_accountant and not is_manager %}title="View-only access"{% endif %}>
-                <i class="bi bi-cash-coin"></i> Payroll
-                {% if is_accountant and not is_manager %}
-                <span class="sb-ro-pill">view only</span>
-                {% endif %}
-            </a>
-
-            <div class="sidebar-section">Resources</div>
-            <a href="{% url 'equipment_list' %}" class="{% if 'equipment' in request.resolver_match.url_name or 'maintenance' in request.resolver_match.url_name %}active{% endif %}">
-                <i class="bi bi-tools"></i> Equipment
-            </a>
-            
-            <a href="{% url 'fuel_report' %}" class="{% if 'fuel_report' in request.resolver_match.url_name %}active{% endif %}">
-                <i class="bi bi-fuel-pump-fill"></i> Fuel Report
-            </a>
-            
-            <a href="{% url 'inventory_list' %}" class="{% if 'inventory' in request.resolver_match.url_name or 'stock' in request.resolver_match.url_name %}active{% endif %}">
-                <i class="bi bi-box-seam-fill"></i> Inventory
-            </a>
-            
-            <a href="{% url 'sale_list' %}" class="{% if 'sale' in request.resolver_match.url_name %}active{% endif %}">
-                <i class="bi bi-receipt"></i> Sales
-            </a>
-            
-            <a href="{% url 'customer_list' %}" class="{% if 'customer' in request.resolver_match.url_name %}active{% endif %}">
-                <i class="bi bi-person-vcard"></i> Customers
-            </a>
+            <div class="nav-group" data-group="resources">
+                <button type="button" class="nav-group-btn">
+                    <i class="bi bi-box-seam"></i> Resources <i class="bi bi-chevron-right chevron"></i>
+                </button>
+                <div class="nav-group-content">
+                    <a href="{% url 'equipment_list' %}" class="nav-item-link {% if 'equipment' in request.resolver_match.url_name or 'maintenance' in request.resolver_match.url_name %}active{% endif %}">Equipment</a>
+                    <a href="{% url 'fuel_report' %}" class="nav-item-link {% if 'fuel_report' in request.resolver_match.url_name %}active{% endif %}">Fuel Report</a>
+                    <a href="{% url 'inventory_list' %}" class="nav-item-link {% if 'inventory' in request.resolver_match.url_name or 'stock' in request.resolver_match.url_name %}active{% endif %}">Inventory</a>
+                </div>
+            </div>
             {% endif %}
 
-            <!-- SAFETY -->
+            <!-- SALES GROUP -->
             {% if is_manager or is_accountant %}
-            <div class="sidebar-section">Safety</div>
-            <a href="{% url 'safety_hub' %}" class="{% if request.resolver_match.url_name == 'safety_hub' %}active{% endif %}">
-                <i class="bi bi-shield-fill-check"></i> Safety Hub
-            </a>
-            <a href="{% url 'incident_list' %}" class="{% if 'incident' in request.resolver_match.url_name %}active{% endif %}">
-                <i class="bi bi-exclamation-triangle-fill"></i> Incidents
-            </a>
-            <a href="{% url 'hazard_list' %}" class="{% if 'hazard' in request.resolver_match.url_name %}active{% endif %}">
-                <i class="bi bi-exclamation-diamond-fill"></i> Hazards
-            </a>
-            <a href="{% url 'inspection_list' %}" class="{% if 'inspection' in request.resolver_match.url_name %}active{% endif %}">
-                <i class="bi bi-clipboard-pulse"></i> Inspections
-            </a>
-            <a href="{% url 'ppe_list' %}" class="{% if 'ppe' in request.resolver_match.url_name %}active{% endif %}">
-                <i class="bi bi-cone-striped"></i> PPE
-            </a>
-            <a href="{% url 'training_list' %}" class="{% if 'training' in request.resolver_match.url_name %}active{% endif %}">
-                <i class="bi bi-mortarboard"></i> Training
-            </a>
+            <div class="nav-group" data-group="sales">
+                <button type="button" class="nav-group-btn">
+                    <i class="bi bi-receipt"></i> Sales & Clients <i class="bi bi-chevron-right chevron"></i>
+                </button>
+                <div class="nav-group-content">
+                    <a href="{% url 'sale_list' %}" class="nav-item-link {% if 'sale' in request.resolver_match.url_name %}active{% endif %}">Dispatch / Sales</a>
+                    <a href="{% url 'customer_list' %}" class="nav-item-link {% if 'customer' in request.resolver_match.url_name %}active{% endif %}">Customers</a>
+                </div>
+            </div>
             {% endif %}
 
-            {% if is_manager %}
-            <div class="sidebar-section">Approvals</div>
-            <a href="{% url 'approval_list' %}" class="{% if 'approval' in request.resolver_match.url_name %}active{% endif %}">
-                <i class="bi bi-shield-check"></i> Pending approvals
-            </a>
-            {% endif %}
-
+            <!-- SAFETY GROUP -->
             {% if is_manager or is_accountant %}
-            <div class="sidebar-section">Reports</div>
-            <a href="{% url 'reports_hub' %}" class="{% if 'report' in request.resolver_match.url_name %}active{% endif %}">
-                <i class="bi bi-file-earmark-bar-graph"></i> Reports
-            </a>
+            <div class="nav-group" data-group="safety">
+                <button type="button" class="nav-group-btn">
+                    <i class="bi bi-shield-check"></i> Safety <i class="bi bi-chevron-right chevron"></i>
+                </button>
+                <div class="nav-group-content">
+                    <a href="{% url 'safety_hub' %}" class="nav-item-link {% if request.resolver_match.url_name == 'safety_hub' %}active{% endif %}">Safety Hub</a>
+                    <a href="{% url 'incident_list' %}" class="nav-item-link {% if 'incident' in request.resolver_match.url_name %}active{% endif %}">Incidents</a>
+                    <a href="{% url 'hazard_list' %}" class="nav-item-link {% if 'hazard' in request.resolver_match.url_name %}active{% endif %}">Hazards</a>
+                    <a href="{% url 'inspection_list' %}" class="nav-item-link {% if 'inspection' in request.resolver_match.url_name %}active{% endif %}">Inspections</a>
+                    <a href="{% url 'ppe_list' %}" class="nav-item-link {% if 'ppe' in request.resolver_match.url_name %}active{% endif %}">PPE</a>
+                    <a href="{% url 'training_list' %}" class="nav-item-link {% if 'training' in request.resolver_match.url_name %}active{% endif %}">Training</a>
+                </div>
+            </div>
             {% endif %}
 
-            <div class="sidebar-section">System</div>
+            <!-- ADMIN GROUP -->
             {% if is_manager or is_accountant %}
-            <a href="{% url 'backup_now' %}" class="nav-backup {% if request.resolver_match.url_name == 'backup_now' %}active{% endif %}">
-                <i class="bi bi-cloud-arrow-down-fill"></i> Back up now
-            </a>
-            <a href="{% url 'backup_list' %}" class="{% if 'backup_list' in request.resolver_match.url_name or 'backup_download' in request.resolver_match.url_name %}active{% endif %}">
-                <i class="bi bi-archive"></i> Backup history
-            </a>
+            <div class="nav-group" data-group="admin">
+                <button type="button" class="nav-group-btn">
+                    <i class="bi bi-gear"></i> Admin & Reports <i class="bi bi-chevron-right chevron"></i>
+                </button>
+                <div class="nav-group-content">
+                    {% if is_manager %}
+                    <a href="{% url 'approval_list' %}" class="nav-item-link {% if 'approval' in request.resolver_match.url_name %}active{% endif %}">Pending Approvals</a>
+                    {% endif %}
+                    <a href="{% url 'reports_hub' %}" class="nav-item-link {% if 'report' in request.resolver_match.url_name %}active{% endif %}">Reports Hub</a>
+                    <a href="{% url 'backup_now' %}" class="nav-item-link {% if request.resolver_match.url_name == 'backup_now' %}active{% endif %}">Back up Now</a>
+                    <a href="{% url 'backup_list' %}" class="nav-item-link {% if 'backup_list' in request.resolver_match.url_name %}active{% endif %}">Backup History</a>
+                    {% if user.is_superuser %}
+                    <a href="/admin/" class="nav-item-link">Admin Panel</a>
+                    {% endif %}
+                </div>
+            </div>
             {% endif %}
-            
-            {% if user.is_superuser %}
-            <a href="/admin/"><i class="bi bi-sliders"></i> Admin panel</a>
-            {% endif %}
-            
-            <form method="post" action="{% url 'logout' %}" style="margin:0;">
+
+            <!-- LOGOUT -->
+            <form method="post" action="{% url 'logout' %}" style="margin:0; margin-top: 10px;">
                 {% csrf_token %}
-                <button type="submit">
+                <button type="submit" class="nav-item-link" style="width: 100%; text-align: left; background: none; border: none; cursor: pointer;">
                     <i class="bi bi-box-arrow-right"></i> Log out
                 </button>
             </form>

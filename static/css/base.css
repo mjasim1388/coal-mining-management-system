@@ -755,3 +755,94 @@
         white-space: nowrap; /* Prevents text from wrapping weirdly */
     }
 }
+
+
+/* =========================================================
+   ACCORDION SIDEBAR NAVIGATION
+   ========================================================= */
+.nav-group {
+    margin-bottom: 2px;
+}
+
+.nav-group-btn {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--sb-text);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+
+.nav-group-btn:hover {
+    color: var(--sb-link-hover-text);
+}
+
+.nav-group-btn i:first-child {
+    margin-right: 12px;
+    font-size: 16px;
+    width: 18px;
+    text-align: center;
+}
+
+.nav-group-btn .chevron {
+    margin-left: auto;
+    font-size: 12px;
+    transition: transform 0.2s ease;
+    color: var(--sb-heading);
+}
+
+/* Rotate chevron when open */
+.nav-group.open .nav-group-btn .chevron {
+    transform: rotate(90deg);
+}
+
+/* Content container */
+.nav-group-content {
+    display: none;
+    flex-direction: column;
+    padding-bottom: 8px;
+}
+
+.nav-group.open .nav-group-content {
+    display: flex;
+    animation: slideDown 0.2s ease-out forwards;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Child links (indented to show hierarchy) */
+.nav-item-link {
+    color: var(--sb-text);
+    text-decoration: none;
+    padding: 8px 20px 8px 50px; /* 50px left padding creates the indent */
+    display: flex;
+    align-items: center;
+    font-size: 13.5px;
+    font-weight: 500;
+    transition: background 0.12s ease, color 0.12s ease;
+    position: relative;
+    border-radius: 0;
+}
+
+.nav-item-link:hover {
+    color: var(--sb-link-hover-text);
+    background: var(--sb-hover);
+}
+
+.nav-item-link.active {
+    color: var(--sb-accent);
+    background: color-mix(in srgb, var(--sb-accent) 10%, transparent);
+    border-right: 3px solid var(--sb-accent);
+}
+
+.nav-item-link.active::before {
+    display: none; /* Remove the old left-border indicator */
+}

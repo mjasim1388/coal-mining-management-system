@@ -187,3 +187,27 @@ document.addEventListener('DOMContentLoaded', function() {
     updateClock();
     setInterval(updateClock, 1000);
 });
+
+
+/* =========================================================
+   ACCORDION SIDEBAR NAVIGATION
+   ========================================================= */
+document.addEventListener('DOMContentLoaded', function() {
+    var groups = document.querySelectorAll('.nav-group');
+    
+    // 1. Auto-open the group that has an active link
+    groups.forEach(function(group) {
+        var hasActiveLink = group.querySelector('.nav-item-link.active');
+        if (hasActiveLink) {
+            group.classList.add('open');
+        }
+    });
+
+    // 2. Handle clicking the group buttons
+    document.querySelectorAll('.nav-group-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var group = this.closest('.nav-group');
+            group.classList.toggle('open');
+        });
+    });
+});
