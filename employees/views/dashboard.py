@@ -131,16 +131,25 @@ def dashboard(request):
 
     tm = tm_sales_qs.aggregate(
         total=_zero(SALE_TOTAL),
-        received=_zero('amount_paid'),
         tons=_zero('quantity_tons'),
         count=Count('pk'),
         paid=Count('pk', filter=Q(payment_status='Paid')),
         partial=Count('pk', filter=Q(payment_status='Partial')),
         unpaid=Count('pk', filter=Q(payment_status='Unpaid')),
     )
-    lm = lm_sales_qs.aggregate(total=_zero(SALE_TOTAL), received=_zero('amount_paid'))
+    
+    # FIX: Calculate actual cash received from SalePayment records this month
+    tm_cash_received = SalePayment.objects.filter(
+        date__gte=this_month_start, sale__voided=False
+    ).aggregate(t=_zero('amount'))['t']
 
-    tm_sales, tm_received = tm['total'], tm['received']
+    lm_cash_received = SalePayment.objects.filter(
+        date__gte=last_month_start, date__lte=last_month_end, sale__voided=False
+    ).aggregate(t=_zero('amount'))['t']
+    
+    lm_sales_total = lm_sales_qs.aggregate(t=_zero(SALE_TOTAL))['t']
+
+    tm_sales = tm['total']
     tm_tons_sold, tm_sales_count = tm['tons'], tm['count']
     tm_paid, tm_partial, tm_unpaid = tm['paid'], tm['partial'], tm['unpaid']
 
@@ -232,8 +241,7 @@ def dashboard(request):
             + InventoryItem.objects.filter(approval_status='Pending', voided=False).count()
         )
 
-
-        # ----- SAFETY -----
+    # ----- SAFETY -----
     today_for_safety = timezone.localdate()
     last_incident = SafetyIncident.objects.order_by('-date').first()
     days_since_incident = (
@@ -253,19 +261,16 @@ def dashboard(request):
         date__gte=this_month_start
     ).count()
 
-    # Expiring PPE in next 30 days
+    # FIX: Include Expired AND Expiring PPE/Training
     ppe_due_soon = PPEIssuance.objects.filter(
-        replacement_due__isnull=False,
-        replacement_due__gte=today_for_safety,
         replacement_due__lte=today_for_safety + timedelta(days=30),
+        replacement_due__isnull=False,
         returned=False,
     ).count()
 
-    # Expiring training in next 30 days
     training_due_soon = SafetyTraining.objects.filter(
-        expiry_date__isnull=False,
-        expiry_date__gte=today_for_safety,
         expiry_date__lte=today_for_safety + timedelta(days=30),
+        expiry_date__isnull=False,
     ).count()
 
     total_customers = Customer.objects.filter(voided=False).count()
@@ -276,9 +281,10 @@ def dashboard(request):
     top_customers = _top_customers(tm_sales_qs)
     top_customer = top_customers[0] if top_customers else None
 
-    sales_trend_pct = _pct_change(tm_sales, lm['total'])
+    # Trends using accurate cash data
+    sales_trend_pct = _pct_change(tm_sales, lm_sales_total)
     production_trend_pct = _pct_change(tm_tons, lm_tons)
-    received_trend_pct = _pct_change(tm_received, lm['received'])
+    received_trend_pct = _pct_change(tm_cash_received, lm_cash_received)
 
     first_y, first_m = _month_back(today, 5)
     window_start = date(first_y, first_m, 1)
@@ -328,6 +334,12 @@ def dashboard(request):
     cost_fuel = float(fuel_cost or 0)
     cost_maintenance = float(maint_cost or 0)
 
+    # --- NEW FINANCIAL METRICS (Calculated in Python) ---
+    total_costs = cost_payroll + cost_fuel + cost_maintenance
+    net_position = float(tm_sales) - total_costs
+    cost_per_ton = (total_costs / float(tm_tons)) if float(tm_tons) > 0 else 0
+    collection_rate = (float(tm_cash_received) / float(tm_sales) * 100) if float(tm_sales) > 0 else 0
+
     coal_type_data = {}
     rows = tm_sales_qs.order_by().values('coal_type').annotate(t=Sum(SALE_TOTAL))
     for r in rows:
@@ -340,7 +352,7 @@ def dashboard(request):
         'active_employees': active_employees,
         'mine_count': mine_count,
         'tm_sales': tm_sales,
-        'tm_received': tm_received,
+        'tm_received': tm_cash_received, # FIXED: Now uses accurate payment data
         'tm_tons_sold': tm_tons_sold,
         'tm_sales_count': tm_sales_count,
         'total_outstanding': total_outstanding,
@@ -367,13 +379,15 @@ def dashboard(request):
         'low_stock_count': low_stock_count,
         'inventory_value': inventory_value,
         'pending_approvals': pending_approvals,
-                # Safety
+        
+        # Safety
         'days_since_incident': days_since_incident,
         'open_hazards_count': open_hazards_count,
         'critical_hazards_count': critical_hazards_count,
         'incidents_this_month': incidents_this_month,
         'ppe_due_soon': ppe_due_soon,
         'training_due_soon': training_due_soon,
+        
         'total_customers': total_customers,
         'new_customers_month': new_customers_month,
         'overdue_invoices': overdue_invoices,
@@ -381,9 +395,13 @@ def dashboard(request):
         'aging': aging,
         'top_customers': top_customers,
         'top_customer': top_customer,
+        
+        # Trends
         'sales_trend_pct': sales_trend_pct,
         'production_trend_pct': production_trend_pct,
         'received_trend_pct': received_trend_pct,
+        
+        # Charts
         'monthly_labels': monthly_labels,
         'monthly_production': monthly_production,
         'monthly_sales': monthly_sales,
@@ -399,4 +417,9 @@ def dashboard(request):
         'coal_type_values': list(coal_type_data.values()),
         'mine_performance': mine_performance,
         'recent_sales': recent_sales,
+        
+        # NEW Financial Metrics
+        'net_position': net_position,
+        'cost_per_ton': cost_per_ton,
+        'collection_rate': collection_rate,
     })

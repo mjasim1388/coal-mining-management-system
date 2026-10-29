@@ -133,6 +133,45 @@ class ProductionRecord(models.Model):
         return f"{self.mine.name} - {self.date} ({self.shift})"
 
 
+    def save(self, *args, **kwargs):
+        from decimal import Decimal
+        is_new = self.pk is None
+        old = None
+        
+        if not is_new:
+            old = ProductionRecord.objects.get(pk=self.pk)
+
+        # Calculate how much to add/subtract from the stockpile
+        delta = Decimal('0')
+        
+        if is_new:
+            if not self.voided:
+                delta = self.quantity_tons
+        else:
+            if not old.voided and not self.voided:
+                delta = self.quantity_tons - old.quantity_tons
+            elif not old.voided and self.voided:
+                delta = -old.quantity_tons
+            elif old.voided and not self.voided:
+                delta = self.quantity_tons
+
+        # Handle moving stock between mines/types if edited
+        if not is_new and not self.voided and not old.voided:
+            if self.mine_id != old.mine_id or self.coal_type != old.coal_type:
+                old_pile, _ = CoalStockpile.objects.get_or_create(mine=old.mine, coal_type=old.coal_type)
+                old_pile.quantity_tons -= old.quantity_tons
+                old_pile.save()
+                delta = self.quantity_tons # Add full amount to the new pile
+
+        super().save(*args, **kwargs)
+
+        if delta != 0:
+            pile, _ = CoalStockpile.objects.get_or_create(mine=self.mine, coal_type=self.coal_type)
+            pile.quantity_tons += delta
+            pile.save()
+    
+
+
 class Attendance(models.Model):
     STATUS_CHOICES = [
         ('Present', 'Present'),
@@ -464,6 +503,7 @@ class Sale(models.Model):
 
     def save(self, *args, **kwargs):
         from django.utils import timezone
+        from decimal import Decimal
 
         # Auto-calculate total
         self.total_amount = (self.quantity_tons or 0) * (self.price_per_ton or 0)
@@ -487,7 +527,40 @@ class Sale(models.Model):
         if not self.invoice_no:
             self.invoice_no = self.dispatch_no
 
+        # --- COAL STOCKPILE LOGIC ---
+        is_new = self.pk is None
+        old = None
+        if not is_new:
+            old = Sale.objects.get(pk=self.pk)
+
+        delta = Decimal('0')
+        
+        if is_new:
+            if not self.voided:
+                delta = -self.quantity_tons # Sales reduce stock
+        else:
+            if not old.voided and not self.voided:
+                delta = -(self.quantity_tons - old.quantity_tons)
+            elif not old.voided and self.voided:
+                delta = old.quantity_tons # Voiding a sale adds stock back
+            elif old.voided and not self.voided:
+                delta = -self.quantity_tons
+
+        # Handle moving stock between mines/types if edited
+        if not is_new and not self.voided and not old.voided:
+            if self.mine_id != old.mine_id or self.coal_type != old.coal_type:
+                old_pile, _ = CoalStockpile.objects.get_or_create(mine=old.mine, coal_type=old.coal_type)
+                old_pile.quantity_tons += old.quantity_tons
+                old_pile.save()
+                delta = -self.quantity_tons
+
         super().save(*args, **kwargs)
+
+        if delta != 0 and self.mine:
+            pile, _ = CoalStockpile.objects.get_or_create(mine=self.mine, coal_type=self.coal_type)
+            pile.quantity_tons += delta
+            pile.save()
+        # --- END COAL STOCKPILE LOGIC ---
 
     @property
     def balance(self):
@@ -1049,3 +1122,24 @@ class SafetyTraining(models.Model):
 
     def __str__(self):
         return f"{self.employee.employee_code} — {self.training_type} ({self.training_date})"
+
+
+
+class CoalStockpile(models.Model):
+    """
+    Automatically tracks the physical coal stockpile (in tons).
+    Updates automatically when Production or Sales are saved/voided.
+    """
+    mine = models.ForeignKey(Mine, on_delete=models.CASCADE, related_name='coal_stockpiles')
+    coal_type = models.CharField(max_length=30, choices=ProductionRecord.COAL_TYPE_CHOICES, default='Bituminous')
+    quantity_tons = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    
+    # Audit
+    last_updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('mine', 'coal_type')
+        ordering = ['mine__name', 'coal_type']
+
+    def __str__(self):
+        return f"{self.mine.name} - {self.coal_type}: {self.quantity_tons} tons"

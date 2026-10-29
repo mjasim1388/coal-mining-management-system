@@ -26,7 +26,7 @@ from .attendance import (  # noqa: F401
 from .inventory import (  # noqa: F401
     inventory_list, inventory_add, inventory_edit, inventory_void,
     stock_transaction_list, stock_transaction_add, stock_transaction_delete,
-    stock_quick_in, stock_quick_out,
+    stock_quick_in, stock_quick_out, coal_stock_list,
 )
 from .payroll import (  # noqa: F401
     payroll_list, payroll_generate, payroll_add, payroll_edit,

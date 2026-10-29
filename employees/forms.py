@@ -131,7 +131,18 @@ class ProductionForm(forms.ModelForm):
         self.fields['overburden_removed'].required = False
         self.fields['workers_count'].required = False
         clear_zeros(self, ['quantity_tons', 'overburden_removed', 'workers_count'])
-
+        
+    def clean(self):
+        from decimal import Decimal
+        cleaned_data = super().clean()
+        
+        if cleaned_data.get('overburden_removed') in (None, ''):
+            cleaned_data['overburden_removed'] = Decimal('0')
+            
+        if cleaned_data.get('workers_count') in (None, ''):
+            cleaned_data['workers_count'] = 0
+            
+        return cleaned_data
 
 class AttendanceForm(forms.ModelForm):
     class Meta:

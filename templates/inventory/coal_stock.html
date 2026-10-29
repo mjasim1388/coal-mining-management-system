@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block title %}Coal Stockpile - Coal Mine{% endblock %}
+{% block page_title %}COAL STOCKPILE{% endblock %}
+
+{% block content %}
+
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="stat-card stat-green">
+            <i class="bi bi-box-seam icon"></i>
+            <h2>{{ total_stock|floatformat:1 }}</h2>
+            <p>Total Coal in Stock (Tons)</p>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="panel h-100" style="display: flex; align-items: center;">
+            <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+                <i class="bi bi-info-circle-fill" style="color: var(--info);"></i>
+                This stock is calculated automatically. <strong>Production</strong> adds to this stockpile, and <strong>Dispatch/Sales</strong> subtracts from it. If you edit or void a record, the stockpile updates instantly.
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div class="panel-title mb-0">
+            <i class="bi bi-minecart-loaded"></i> Current Stock by Mine & Grade
+        </div>
+        {% if is_manager or is_accountant %}
+        <div class="d-flex gap-2">
+            <a href="{% url 'production_add' %}" class="btn btn-amber btn-sm">
+                <i class="bi bi-plus-lg"></i> Add Production
+            </a>
+            <a href="{% url 'sale_add' %}" class="btn btn-outline-amber btn-sm">
+                <i class="bi bi-truck"></i> New Dispatch
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if stocks %}
+    <div style="overflow-x:auto;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Mine</th>
+                    <th>Coal Type</th>
+                    <th style="text-align:right;">Available Stock (Tons)</th>
+                    <th style="text-align:center;">Status</th>
+                    <th>Last Updated</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in stocks %}
+                <tr>
+                    <td><strong>{{ s.mine.name }}</strong></td>
+                    <td>{{ s.coal_type }}</td>
+                    <td style="text-align:right; font-size: 16px; font-weight: 700; 
+                        color: {% if s.quantity_tons < 0 %}var(--danger){% elif s.quantity_tons < 100 %}var(--warning){% else %}var(--success){% endif %};">
+                        {{ s.quantity_tons|floatformat:2 }}
+                    </td>
+                    <td style="text-align:center;">
+                        {% if s.status == 'Error' %}
+                            <span class="badge-status badge-inactive">DATA ERROR (NEGATIVE)</span>
+                        {% elif s.status == 'Empty' %}
+                            <span class="badge-status badge-inactive">EMPTY</span>
+                        {% elif s.status == 'Low' %}
+                            <span class="badge-status badge-leave">LOW STOCK</span>
+                        {% else %}
+                            <span class="badge-status badge-active">HEALTHY</span>
+                        {% endif %}
+                    </td>
+                    <td style="color: var(--text-muted); font-size: 12.5px;">
+                        {{ s.last_updated|date:"d M Y, H:i" }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted); text-align:center; padding:40px 20px;">
+        <i class="bi bi-box" style="font-size:44px; display:block; margin-bottom:12px; opacity:0.5;"></i>
+        No stock records found. Start adding Production records to build your stockpile.
+    </p>
+    {% endif %}
+</div>
+
+{% endblock %}

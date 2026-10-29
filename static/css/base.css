@@ -46,38 +46,49 @@
         }
 
         [data-theme="light"] {
-            --bg-app: #f3f5f8;
-            --bg-panel: #ffffff;
-            --bg-raised: #f8f9fb;
-            --bg-hover-row: #f5f7fa;
-            --border-light: #e2e6ec;
-            --border-medium: #c9d0da;
-            --text-primary: #17202b;
-            --text-secondary: #455366;
-            --text-muted: #6a7788;
-            --accent: #059669;
-            --accent-hover: #047857;
+            /* The background is a soft, cool gray so the white cards pop */
+            --bg-app: #f1f5f9;           
+            --bg-panel: #ffffff;         
+            --bg-raised: #f8fafc;
+            --bg-hover-row: #f1f5f9;
+            
+            --border-light: #e2e8f0;
+            --border-medium: #cbd5e1;
+            
+            /* Much darker text for high contrast */
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            
+            --accent: #10b981;
+            --accent-hover: #059669;
             --accent-ink: #ffffff;
-            --accent-soft: rgba(5, 150, 105, 0.10);
-            --success: #16a34a;
-            --success-soft: rgba(22, 163, 74, 0.10);
-            --danger: #cf3a3a;
-            --danger-soft: rgba(207, 58, 58, 0.09);
-            --info: #1f6feb;
-            --info-soft: rgba(31, 111, 235, 0.09);
-            --warning: #b45309;
-            --warning-soft: rgba(180, 83, 9, 0.10);
-            --shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
-            --sb-bg: #ffffff;
-            --sb-hover: #f3f5f8;
-            --sb-active: #eef1f5;
-            --sb-border: #e2e6ec;
-            --sb-text: #455366;
-            --sb-heading: #8a94a3;
-            --sb-accent: #059669;
-            --sb-brand-text: #17202b;
-            --sb-link-hover-text: #17202b;
-            --sb-active-text: #17202b;
+            --accent-soft: rgba(16, 185, 129, 0.10);
+            
+            --success: #10b981;
+            --success-soft: rgba(16, 185, 129, 0.10);
+            --danger: #ef4444;
+            --danger-soft: rgba(239, 68, 68, 0.10);
+            --info: #3b82f6;
+            --info-soft: rgba(59, 130, 246, 0.10);
+            --warning: #f59e0b;
+            --warning-soft: rgba(245, 158, 11, 0.10);
+            
+            /* Soft shadow for the cards */
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+            
+            /* --- SIDEBAR (Soft Gray to separate from the white cards) --- */
+            --sb-bg: #f8fafc;            
+            --sb-hover: #e2e8f0;
+            --sb-active: #e0e7ff;        
+            --sb-border: #cbd5e1;        /* Visible border */
+            
+            --sb-text: #334155;          
+            --sb-heading: #64748b;
+            --sb-accent: #10b981;
+            --sb-brand-text: #0f172a;
+            --sb-link-hover-text: #0f172a;
+            --sb-active-text: #10b981;
         }
 
         /* =========================================================
@@ -361,6 +372,35 @@
         .user-meta .user-role { font-size: 12px; color: var(--text-muted); }
 
         .content { padding: 28px; flex: 1; }
+
+        /* Light Mode specific shadows */
+[data-theme="light"] .sidebar {
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.02);
+}
+
+[data-theme="light"] .topbar {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+[data-theme="light"] .panel,
+[data-theme="light"] .kpi-card,
+[data-theme="light"] .stat-card {
+    border: 1px solid var(--border-light);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+
+        /* =========================================================
+   LIGHT MODE DEPTH (Floating Shadows)
+   ========================================================= */
+[data-theme="light"] .sidebar {
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .topbar {
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+    z-index: 60; /* Ensures shadow sits above the page content */
+}
 
         /* =========================================================
            FOOTER
@@ -758,28 +798,31 @@
 
 
 /* =========================================================
-   ACCORDION SIDEBAR NAVIGATION
+   ACCORDION SIDEBAR NAVIGATION (Upgraded)
    ========================================================= */
 .nav-group {
     margin-bottom: 2px;
 }
 
 .nav-group-btn {
-    width: 100%;
+    width: calc(100% - 20px);
+    margin: 1px 10px;
     background: transparent;
     border: none;
     color: var(--sb-text);
-    padding: 10px 20px;
+    padding: 10px 12px;
     display: flex;
     align-items: center;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
-    transition: color 0.15s ease;
+    border-radius: var(--radius-sm);
+    transition: all 0.15s ease;
 }
 
 .nav-group-btn:hover {
     color: var(--sb-link-hover-text);
+    background: var(--sb-hover);
 }
 
 .nav-group-btn i:first-child {
@@ -796,16 +839,27 @@
     color: var(--sb-heading);
 }
 
-/* Rotate chevron when open */
+/* --- OPEN STATE FOR PARENT BUTTON --- */
+.nav-group.open .nav-group-btn {
+    background: var(--sb-hover);
+    color: var(--sb-accent);
+    font-weight: 700;
+}
+.nav-group.open .nav-group-btn i:first-child {
+    color: var(--sb-accent);
+}
 .nav-group.open .nav-group-btn .chevron {
     transform: rotate(90deg);
+    color: var(--sb-accent);
 }
 
 /* Content container */
 .nav-group-content {
     display: none;
     flex-direction: column;
-    padding-bottom: 8px;
+    padding: 4px 0 8px 0;
+    margin-left: 20px; /* Indent the children */
+    border-left: 2px solid var(--sb-border); /* The visual tree line */
 }
 
 .nav-group.open .nav-group-content {
@@ -818,18 +872,19 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Child links (indented to show hierarchy) */
+/* Child links */
 .nav-item-link {
     color: var(--sb-text);
     text-decoration: none;
-    padding: 8px 20px 8px 50px; /* 50px left padding creates the indent */
+    padding: 8px 12px 8px 16px; /* Adjusted padding to fit the new tree line */
     display: flex;
     align-items: center;
     font-size: 13.5px;
     font-weight: 500;
     transition: background 0.12s ease, color 0.12s ease;
     position: relative;
-    border-radius: 0;
+    border-radius: var(--radius-sm);
+    margin: 2px 10px 2px 0; /* Space on the right */
 }
 
 .nav-item-link:hover {
@@ -839,15 +894,9 @@
 
 .nav-item-link.active {
     color: var(--sb-accent);
-    background: color-mix(in srgb, var(--sb-accent) 10%, transparent);
-    border-right: 3px solid var(--sb-accent);
+    background: var(--sb-active);
+    font-weight: 600;
 }
-
-.nav-item-link.active::before {
-    display: none; /* Remove the old left-border indicator */
-}
-
-
 /* =========================================================
    QUICK ACTIONS GRID
    ========================================================= */
@@ -933,3 +982,30 @@
     color: var(--text-primary);
     font-weight: 600;
 }
+
+
+
+
+/* =========================================================
+   COLORED SIDEBAR ICONS
+   ========================================================= */
+.nav-group-btn i:first-child {
+    transition: color 0.15s ease;
+}
+
+.nav-icon-blue   { color: #3b82f6 !important; } /* Operations */
+.nav-icon-purple { color: #8b5cf6 !important; } /* Workforce */
+.nav-icon-amber  { color: #f59e0b !important; } /* Resources */
+.nav-icon-green  { color: #10b981 !important; } /* Sales */
+.nav-icon-red    { color: #ef4444 !important; } /* Safety */
+.nav-icon-slate  { color: #64748b !important; } /* Admin */
+
+/* Make the icon slightly glow when the group is open */
+.nav-group.open .nav-icon-blue   { text-shadow: 0 0 8px rgba(59, 130, 246, 0.5); }
+.nav-group.open .nav-icon-purple { text-shadow: 0 0 8px rgba(139, 92, 246, 0.5); }
+.nav-group.open .nav-icon-amber  { text-shadow: 0 0 8px rgba(245, 158, 11, 0.5); }
+.nav-group.open .nav-icon-green  { text-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
+.nav-group.open .nav-icon-red    { text-shadow: 0 0 8px rgba(239, 68, 68, 0.5); }
+
+
+

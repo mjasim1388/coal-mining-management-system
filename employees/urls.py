@@ -43,6 +43,7 @@ urlpatterns = [
     path('inventory/transactions/<int:pk>/delete/', views.stock_transaction_delete, name='stock_transaction_delete'),
     path('inventory/quick-in/<int:item_pk>/', views.stock_quick_in, name='stock_quick_in'),
     path('inventory/quick-out/<int:item_pk>/', views.stock_quick_out, name='stock_quick_out'),
+    path('inventory/coal-stock/', views.coal_stock_list, name='coal_stock_list'),
 
     # Payroll
     path('payroll/', views.payroll_list, name='payroll_list'),
@@ -155,5 +156,7 @@ urlpatterns = [
     path('safety/trainings/', views.training_list, name='training_list'),
     path('safety/trainings/add/', views.training_add, name='training_add'),
     path('safety/trainings/<int:pk>/edit/', views.training_edit, name='training_edit'),
+
+
 
 ]

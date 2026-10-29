@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load l10n %}
+{% load humanize %}
 {% load pk_money %}
 
 {% block title %}Dashboard - Coal Mine{% endblock %}
@@ -8,399 +10,65 @@
 {% block content %}
 
 <style>
-    /* ============================================================
-       DASHBOARD LOCAL TOKENS
-       ============================================================ */
-    .dash {
-        --c-accent: var(--accent);
-        --c-green:  var(--success);
-        --c-red:    var(--danger);
-        --c-blue:   var(--info);
-        --c-purple: #8b5cf6;
-    }
-
-    /* ============================================================
-       TOOLBAR
-       ============================================================ */
-    .dash-toolbar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin-bottom: 4px;
-    }
-    .dash-date {
-        font-size: 13px;
-        color: var(--text-muted);
-    }
+    /* Local tokens */
+    .dash { --c-accent: var(--accent); --c-green: var(--success); --c-red: var(--danger); --c-blue: var(--info); --c-purple: #8b5cf6; }
+    
+    /* Toolbar */
+    .dash-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    .dash-date { font-size: 13px; color: var(--text-muted); }
     .dash-date strong { color: var(--text-primary); font-weight: 600; }
-    .dash-refresh {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 12.5px;
-        color: var(--text-muted);
-    }
-    .dash-refresh .btn { padding: 4px 10px; font-size: 12.5px; }
-
-    /* ============================================================
-       SECTION HEADERS
-       ============================================================ */
-    .dash-section {
-        font-size: 11px;
-        letter-spacing: 1.8px;
-        text-transform: uppercase;
-        color: var(--text-secondary);
-        font-weight: 700;
-        margin: 28px 0 14px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
+    .dash-refresh { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-muted); }
+    
+    /* Sections */
+    .dash-section { font-size: 11px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--text-secondary); font-weight: 700; margin: 28px 0 14px; display: flex; align-items: center; gap: 10px; }
     .dash-section i { color: var(--text-muted); font-size: 13px; }
-    .dash-section::after {
-        content: '';
-        flex: 1;
-        height: 1px;
-        background: var(--border-light);
-    }
+    .dash-section::after { content: ''; flex: 1; height: 1px; background: var(--border-light); }
 
-    /* ============================================================
-       ATTENTION STRIP
-       ============================================================ */
-    .attn {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        flex-wrap: wrap;
-        padding: 12px 16px;
-        margin-top: 14px;
-        background: var(--bg-panel);
-        border: 1px solid var(--border-light);
-        border-left: 3px solid var(--danger);
-        border-radius: var(--radius-lg);
-    }
-    .attn-title {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: 1.2px;
-        text-transform: uppercase;
-        color: var(--text-primary);
-        margin-right: 6px;
-    }
-    .attn-title i { color: var(--danger); }
-    .attn-items { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; }
-    .attn-item {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 13px;
-        text-decoration: none;
-        font-weight: 500;
-        color: var(--text-primary);
-        background: var(--danger-soft);
-        border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
-        transition: background 0.12s ease, border-color 0.12s ease;
-    }
-    .attn-item b { color: var(--danger); font-weight: 700; }
-    .attn-item:hover { color: var(--text-primary); border-color: var(--danger); }
-    .attn-item.warn {
-        background: var(--warning-soft);
-        border-color: color-mix(in srgb, var(--warning) 30%, transparent);
-    }
-    .attn-item.warn b { color: var(--warning); }
-    .attn-item.warn:hover { border-color: var(--warning); }
-
-    .attn-ok {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 10px 16px;
-        margin-top: 14px;
-        background: var(--success-soft);
-        border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
-        border-left: 3px solid var(--success);
-        border-radius: var(--radius-lg);
-        font-size: 13px;
-        color: var(--text-primary);
-    }
-    .attn-ok i { color: var(--success); }
-
-    /* ============================================================
-       KPI CARDS
-       ============================================================ */
+    /* KPIs & Tiles */
     .kpi-link { text-decoration: none; display: block; color: inherit; height: 100%; }
-    .kpi-link:hover { color: inherit; }
-
-    .kpi-card {
-        --kc: var(--c-accent);
-        background: var(--bg-panel);
-        border: 1px solid var(--border-light);
-        border-left: 3px solid var(--kc);
-        border-radius: var(--radius-lg);
-        padding: 18px 20px;
-        box-shadow: var(--shadow);
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        min-width: 0;
-        transition: border-color 0.12s ease, background 0.12s ease;
-    }
+    .kpi-card { --kc: var(--c-accent); background: var(--bg-panel); border: 1px solid var(--border-light); border-left: 3px solid var(--kc); border-radius: var(--radius-lg); padding: 18px 20px; height: 100%; display: flex; flex-direction: column; gap: 10px; }
     .kpi-link:hover .kpi-card { border-color: var(--border-medium); border-left-color: var(--kc); background: var(--bg-raised); }
-    .kpi-amber  { --kc: var(--c-accent); }
-    .kpi-green  { --kc: var(--c-green); }
-    .kpi-red    { --kc: var(--c-red); }
-    .kpi-blue   { --kc: var(--c-blue); }
-    .kpi-purple { --kc: var(--c-purple); }
-
-    .kpi-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-    }
-    .kpi-label {
-        font-size: 11.5px;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        color: var(--text-muted);
-        font-weight: 700;
-        line-height: 1.3;
-    }
-    .kpi-icon {
-        width: 34px;
-        height: 34px;
-        border-radius: var(--radius-md);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 17px;
-        flex-shrink: 0;
-        color: var(--kc);
-        background: color-mix(in srgb, var(--kc) 14%, transparent);
-    }
-    .kpi-value {
-        font-size: clamp(22px, 2.1vw, 30px);
-        font-weight: 700;
-        color: var(--text-primary);
-        letter-spacing: -0.5px;
-        line-height: 1.1;
-        overflow-wrap: anywhere;
-    }
-    .kpi-value small {
-        font-size: 13px;
-        color: var(--text-muted);
-        font-weight: 500;
-        margin-left: 4px;
-        letter-spacing: 0;
-    }
-    .kpi-value.neg { color: var(--danger); }
-    .kpi-value.pos { color: var(--success); }
-    .kpi-sub {
-        font-size: 12.5px;
-        color: var(--text-muted);
-        line-height: 1.4;
-        margin-top: auto;
-    }
-    .kpi-trend {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 12px;
-        font-weight: 600;
-        padding: 3px 9px;
-        border-radius: 14px;
-        width: fit-content;
-        margin-top: auto;
-    }
-    .trend-up   { background: var(--success-soft); color: var(--success); }
-    .trend-down { background: var(--danger-soft);  color: var(--danger); }
-    .trend-flat { background: var(--bg-raised);    color: var(--text-muted); }
-
-    /* ============================================================
-       TILES (today + resources)
-       ============================================================ */
-    .tile-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 12px;
-    }
-    .tile-btn {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 14px 16px;
-        background: var(--bg-panel);
-        border: 1px solid var(--border-light);
-        border-radius: var(--radius-lg);
-        text-decoration: none;
-        color: inherit;
-        transition: border-color 0.12s ease, background 0.12s ease;
-        min-width: 0;
-    }
-    .tile-btn:hover {
-        border-color: var(--border-medium);
-        background: var(--bg-raised);
-        color: inherit;
-    }
-    .tile-icon {
-        width: 38px;
-        height: 38px;
-        border-radius: var(--radius-md);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 18px;
-        flex-shrink: 0;
-        color: var(--accent);
-        background: var(--accent-soft);
-    }
-    .tile-btn.tile-warn .tile-icon { color: var(--danger); background: var(--danger-soft); }
+    .kpi-amber { --kc: var(--c-accent); } .kpi-green { --kc: var(--c-green); } .kpi-red { --kc: var(--c-red); } .kpi-blue { --kc: var(--c-blue); } .kpi-purple { --kc: var(--c-purple); }
+    .kpi-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .kpi-label { font-size: 11.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; }
+    .kpi-icon { width: 34px; height: 34px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 17px; color: var(--kc); background: color-mix(in srgb, var(--kc) 14%, transparent); }
+    .kpi-value { font-size: clamp(22px, 2.1vw, 30px); font-weight: 700; color: var(--text-primary); line-height: 1.1; }
+    .kpi-value small { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+    .kpi-sub { font-size: 12.5px; color: var(--text-muted); margin-top: auto; }
+    
+    /* Tiles */
+    .tile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+    .tile-btn { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: var(--radius-lg); text-decoration: none; color: inherit; }
+    .tile-btn:hover { border-color: var(--border-medium); background: var(--bg-raised); }
+    .tile-icon { width: 38px; height: 38px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--accent); background: var(--accent-soft); flex-shrink: 0; }
     .tile-content { flex: 1; min-width: 0; }
-    .tile-label {
-        font-size: 10.5px;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        color: var(--text-muted);
-        font-weight: 700;
-        line-height: 1.2;
-    }
-    .tile-value {
-        font-size: 18px;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin-top: 3px;
-        letter-spacing: -0.2px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .tile-value small { font-size: 11.5px; color: var(--text-muted); font-weight: 500; }
-    .tile-sub {
-        font-size: 11.5px;
-        color: var(--text-muted);
-        margin-top: 2px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
+    .tile-label { font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; }
+    .tile-value { font-size: 18px; font-weight: 700; color: var(--text-primary); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tile-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
 
-    /* ============================================================
-       PANELS
-       height:auto by default; 100% only inside grid columns so a
-       panel placed directly in <main> never stretches the page.
-       ============================================================ */
-    .mini-panel {
-        background: var(--bg-panel);
-        border: 1px solid var(--border-light);
-        border-radius: var(--radius-lg);
-        padding: 18px 20px;
-        box-shadow: var(--shadow);
-        height: auto;
-    }
+    /* Panels */
+    .mini-panel { background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 18px 20px; height: auto; }
     .row > [class*="col-"] > .mini-panel { height: 100%; }
-    .mini-panel-title {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--text-primary);
-        margin-bottom: 14px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid var(--border-light);
-    }
-    .mini-panel-title i { color: var(--text-muted); }
-    .mini-panel-title .hint {
-        margin-left: auto;
-        font-size: 11px;
-        color: var(--text-muted);
-        font-weight: 400;
-    }
-
-    .list-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        padding: 9px 0;
-        border-bottom: 1px solid var(--border-light);
-        font-size: 13px;
-    }
+    .mini-panel-title { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--border-light); }
+    .list-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--border-light); font-size: 13px; }
     .list-row:last-child { border-bottom: none; }
-    .list-main { min-width: 0; }
-    .list-name {
-        color: var(--text-primary);
-        font-weight: 600;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .list-sub { color: var(--text-muted); font-size: 12px; }
-    .list-amount { color: var(--accent); font-weight: 700; white-space: nowrap; }
-    .rank { display: inline-block; width: 18px; color: var(--text-muted); font-weight: 600; }
-    .rank-1 { color: #d9a21b; }
-    .rank-2 { color: #9aa7b6; }
-    .rank-3 { color: #c2793a; }
-
-    .empty-note { color: var(--text-muted); margin: 0; font-size: 13px; }
-
     .chart-wrap { position: relative; height: 240px; }
-    .chart-wrap.tall { height: 260px; }
     .chart-wrap.short { height: 220px; }
-    .chart-empty {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        color: var(--text-muted);
-        font-size: 13px;
-    }
-
-    .legend-stats {
-        display: flex;
-        justify-content: space-around;
-        margin-top: 14px;
-        padding-top: 14px;
-        border-top: 1px solid var(--border-light);
-    }
-    .legend-stat { text-align: center; }
-    .legend-stat .n { font-size: 20px; font-weight: 700; }
-    .legend-stat .l {
-        font-size: 10.5px;
-        color: var(--text-muted);
-        letter-spacing: 1px;
-        text-transform: uppercase;
-    }
-    .legend-stat.paid .n    { color: var(--success); }
-    .legend-stat.partial .n { color: var(--warning); }
-    .legend-stat.unpaid .n  { color: var(--danger); }
-
-    .table-scroll { overflow-x: auto; }
-    .dispatch-no { color: var(--accent); font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
-    .num { text-align: right; }
-    .num-strong { text-align: right; font-weight: 700; color: var(--accent); }
-
-    @media (max-width: 575.98px) {
-        .attn { padding: 12px; }
-        .tile-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
-        .tile-btn { padding: 12px; gap: 10px; }
-        .tile-icon { width: 34px; height: 34px; font-size: 16px; }
-    }
+    
+    /* Attention Strip */
+    .attn { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 12px 16px; margin-bottom: 20px; background: var(--bg-panel); border: 1px solid var(--border-light); border-left: 3px solid var(--danger); border-radius: var(--radius-lg); }
+    .attn-title { font-size: 12px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-primary); }
+    .attn-items { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; }
+    .attn-item { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 20px; font-size: 13px; text-decoration: none; font-weight: 500; color: var(--text-primary); background: var(--danger-soft); border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent); }
+    .attn-item b { color: var(--danger); font-weight: 700; }
+    .attn-item.warn { background: var(--warning-soft); border-color: color-mix(in srgb, var(--warning) 30%, transparent); }
+    .attn-item.warn b { color: var(--warning); }
+    .attn-ok { display: flex; align-items: center; gap: 10px; padding: 10px 16px; margin-bottom: 20px; background: var(--success-soft); border: 1px solid color-mix(in srgb, var(--success) 30%, transparent); border-left: 3px solid var(--success); border-radius: var(--radius-lg); font-size: 13px; color: var(--text-primary); }
 </style>
 
 <div class="dash">
 
-<!-- ============================================================ -->
-<!-- TOOLBAR                                                       -->
-<!-- ============================================================ -->
+<!-- TOOLBAR -->
 <div class="dash-toolbar">
     <div class="dash-date"><i class="bi bi-calendar3"></i> <strong>{% now "l, d F Y" %}</strong></div>
     <div class="dash-refresh">
@@ -416,12 +84,18 @@
     </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- NEEDS ATTENTION                                               -->
-<!-- ============================================================ -->
+<!-- QUICK ACCESS (RECENTLY VIEWED) -->
+<div id="recentPagesContainer" style="display: none; margin-bottom: 20px;">
+    <div class="dash-section" style="margin-top: 0;">
+        <i class="bi bi-clock-history"></i> Quick Access
+    </div>
+    <div class="tile-grid" id="recentPagesGrid"></div>
+</div>
+
+<!-- NEEDS ATTENTION -->
 {% if overdue_invoices > 0 or low_stock_count > 0 or eq_out > 0 or is_manager and pending_approvals > 0 %}
 <div class="attn" role="region" aria-label="Items needing attention">
-    <div class="attn-title"><i class="bi bi-exclamation-octagon-fill"></i> Needs attention</div>
+    <div class="attn-title"><i class="bi bi-exclamation-octagon-fill" style="color:var(--danger);"></i> Needs attention</div>
     <div class="attn-items">
         {% if is_manager and pending_approvals > 0 %}
         <a href="{% url 'approval_list' %}" class="attn-item"><b>{{ pending_approvals }}</b> pending approval{{ pending_approvals|pluralize }}</a>
@@ -441,410 +115,247 @@
 <div class="attn-ok"><i class="bi bi-check-circle-fill"></i> Nothing needs attention right now.</div>
 {% endif %}
 
-<!-- ============================================================ -->
-<!-- KEY PERFORMANCE                                               -->
-<!-- ============================================================ -->
-<div class="dash-section"><i class="bi bi-star-fill"></i> Key performance — this month</div>
-
-<div class="row g-3">
-    <div class="col-6 col-lg-3">
-        <a href="{% url 'sale_list' %}" class="kpi-link">
-            <div class="kpi-card kpi-amber">
-                <div class="kpi-head">
-                    <div class="kpi-label">Sales this month</div>
-                    <div class="kpi-icon"><i class="bi bi-cash-stack"></i></div>
-                </div>
-                <div class="kpi-value" title="{{ tm_sales|pk_money }} PKR">{{ tm_sales|pk_money }} <small>PKR</small></div>
-                {% if sales_trend_pct is not None %}
-                    <span class="kpi-trend {% if sales_trend_pct > 0 %}trend-up{% elif sales_trend_pct < 0 %}trend-down{% else %}trend-flat{% endif %}">
-                        <i class="bi bi-arrow-{% if sales_trend_pct > 0 %}up{% elif sales_trend_pct < 0 %}down{% else %}right{% endif %}"></i>
-                        {{ sales_trend_pct }}% vs last month
-                    </span>
-                {% else %}
-                    <div class="kpi-sub">{{ tm_sales_count }} dispatches</div>
-                {% endif %}
-            </div>
-        </a>
-    </div>
-
-    <div class="col-6 col-lg-3">
-        <a href="{% url 'sale_list' %}?status=Paid" class="kpi-link">
-            <div class="kpi-card kpi-green">
-                <div class="kpi-head">
-                    <div class="kpi-label">Cash received</div>
-                    <div class="kpi-icon"><i class="bi bi-wallet2"></i></div>
-                </div>
-                <div class="kpi-value" title="{{ tm_received|pk_money }} PKR">{{ tm_received|pk_money }} <small>PKR</small></div>
-                {% if received_trend_pct is not None %}
-                    <span class="kpi-trend {% if received_trend_pct > 0 %}trend-up{% elif received_trend_pct < 0 %}trend-down{% else %}trend-flat{% endif %}">
-                        <i class="bi bi-arrow-{% if received_trend_pct > 0 %}up{% elif received_trend_pct < 0 %}down{% else %}right{% endif %}"></i>
-                        {{ received_trend_pct }}% vs last month
-                    </span>
-                {% else %}
-                    <div class="kpi-sub">Money in the bank</div>
-                {% endif %}
-            </div>
-        </a>
-    </div>
-
-    <div class="col-6 col-lg-3">
-        <a href="{% url 'sale_list' %}?status=Unpaid" class="kpi-link">
-            <div class="kpi-card kpi-red">
-                <div class="kpi-head">
-                    <div class="kpi-label">Outstanding receivables</div>
-                    <div class="kpi-icon"><i class="bi bi-hourglass-split"></i></div>
-                </div>
-                <div class="kpi-value" title="{{ total_outstanding|pk_money }} PKR">{{ total_outstanding|pk_money }} <small>PKR</small></div>
-                <div class="kpi-sub">Unpaid &amp; partial invoices</div>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-6 col-lg-3">
-        <a href="{% url 'production_list' %}" class="kpi-link">
-            <div class="kpi-card kpi-blue">
-                <div class="kpi-head">
-                    <div class="kpi-label">Coal produced</div>
-                    <div class="kpi-icon"><i class="bi bi-clipboard-data-fill"></i></div>
-                </div>
-                <div class="kpi-value" title="{{ tm_tons|pk_money }} tons">{{ tm_tons|pk_money }} <small>tons</small></div>
-                {% if production_trend_pct is not None %}
-                    <span class="kpi-trend {% if production_trend_pct > 0 %}trend-up{% elif production_trend_pct < 0 %}trend-down{% else %}trend-flat{% endif %}">
-                        <i class="bi bi-arrow-{% if production_trend_pct > 0 %}up{% elif production_trend_pct < 0 %}down{% else %}right{% endif %}"></i>
-                        {{ production_trend_pct }}% vs last month
-                    </span>
-                {% else %}
-                    <div class="kpi-sub">Extracted this month</div>
-                {% endif %}
-            </div>
-        </a>
-    </div>
-</div>
-
-<!-- ============================================================ -->
-<!-- FINANCIAL HEALTH (calculated in the browser from your data)   -->
-<!-- ============================================================ -->
-<div id="finData" hidden
-     data-sales="{{ tm_sales|stringformat:'f' }}"
-     data-received="{{ tm_received|stringformat:'f' }}"
-     data-payroll="{{ cost_payroll|stringformat:'f' }}"
-     data-fuel="{{ cost_fuel|stringformat:'f' }}"
-     data-maint="{{ cost_maintenance|stringformat:'f' }}"
-     data-tons="{{ tm_tons|stringformat:'f' }}"></div>
-
-<div class="row g-3 mt-0">
-    <div class="col-12 col-md-4">
-        <div class="kpi-card kpi-purple">
-            <div class="kpi-head">
-                <div class="kpi-label">Net position</div>
-                <div class="kpi-icon"><i class="bi bi-calculator"></i></div>
-            </div>
-            <div class="kpi-value" id="netValue">—</div>
-            <div class="kpi-sub" id="netSub">Sales minus payroll, fuel &amp; maintenance</div>
-        </div>
-    </div>
-    <div class="col-12 col-md-4">
-        <div class="kpi-card kpi-amber">
-            <div class="kpi-head">
-                <div class="kpi-label">Cost per ton</div>
-                <div class="kpi-icon"><i class="bi bi-speedometer2"></i></div>
-            </div>
-            <div class="kpi-value" id="cpValue">—</div>
-            <div class="kpi-sub" id="cpSub">Operating costs ÷ tons produced</div>
-        </div>
-    </div>
-    <div class="col-12 col-md-4">
-        <div class="kpi-card kpi-green">
-            <div class="kpi-head">
-                <div class="kpi-label">Collection rate</div>
-                <div class="kpi-icon"><i class="bi bi-percent"></i></div>
-            </div>
-            <div class="kpi-value" id="crValue">—</div>
-            <div class="kpi-sub">Cash received ÷ sales this month</div>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================================ -->
-<!-- TRENDS                                                        -->
-<!-- ============================================================ -->
-<div class="dash-section"><i class="bi bi-graph-up-arrow"></i> Trends &amp; analytics</div>
-
-<div class="row g-3">
-    <div class="col-12 col-lg-8">
-        <div class="mini-panel">
-            <div class="mini-panel-title">
-                <i class="bi bi-graph-up"></i> 6-month performance
-                <span class="hint">Production (tons) · Sales (PKR)</span>
-            </div>
-            <div class="chart-wrap"><canvas id="monthlyChart"></canvas></div>
-        </div>
-    </div>
-    <div class="col-12 col-lg-4">
-        <div class="mini-panel">
-            <div class="mini-panel-title"><i class="bi bi-activity"></i> Sales — last 30 days</div>
-            <div class="chart-wrap"><canvas id="salesTrendChart"></canvas></div>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================================ -->
-<!-- TODAY                                                         -->
-<!-- ============================================================ -->
-<div class="dash-section"><i class="bi bi-sun"></i> Today</div>
-
-<div class="tile-grid">
-    <a href="{% url 'sale_list' %}" class="tile-btn">
-        <div class="tile-icon"><i class="bi bi-truck"></i></div>
-        <div class="tile-content">
-            <div class="tile-label">Trucks today</div>
-            <div class="tile-value">{{ todays_dispatches }}</div>
-            <div class="tile-sub">{{ todays_tons|pk_money }} tons dispatched</div>
-        </div>
-    </a>
-
-    <a href="{% url 'production_list' %}" class="tile-btn">
-        <div class="tile-icon"><i class="bi bi-hammer"></i></div>
-        <div class="tile-content">
-            <div class="tile-label">Produced today</div>
-            <div class="tile-value">{{ todays_production|pk_money }} <small>t</small></div>
-            <div class="tile-sub">Coal extracted</div>
-        </div>
-    </a>
-
-    <a href="{% url 'sale_list' %}?status=Paid" class="tile-btn">
-        <div class="tile-icon"><i class="bi bi-cash-coin"></i></div>
-        <div class="tile-content">
-            <div class="tile-label">Cash today</div>
-            <div class="tile-value">{{ todays_cash|pk_money }}</div>
-            <div class="tile-sub">PKR received</div>
-        </div>
-    </a>
-
-    <a href="{% url 'attendance_list' %}?date={{ today|date:'Y-m-d' }}" class="tile-btn">
-        <div class="tile-icon"><i class="bi bi-people-fill"></i></div>
-        <div class="tile-content">
-            <div class="tile-label">Present today</div>
-            <div class="tile-value">{{ today_present }} <small>/ {{ today_attendance_total }}</small></div>
-            <div class="tile-sub">{{ today_absent }} absent · {{ today_leave }} on leave</div>
-        </div>
-    </a>
-</div>
-
-<!-- ============================================================ -->
-<!-- RESOURCES                                                     -->
-<!-- ============================================================ -->
-<div class="dash-section"><i class="bi bi-box-seam"></i> Resources &amp; costs — this month</div>
-
-<div class="tile-grid">
-    <a href="{% url 'payroll_list' %}" class="tile-btn">
-        <div class="tile-icon"><i class="bi bi-cash-coin"></i></div>
-        <div class="tile-content">
-            <div class="tile-label">Payroll</div>
-            <div class="tile-value">{{ tm_payroll_total|pk_money }}</div>
-            <div class="tile-sub">{{ tm_payroll_count }} payslips</div>
-        </div>
-    </a>
-
-    <a href="{% url 'fuel_report' %}" class="tile-btn">
-        <div class="tile-icon"><i class="bi bi-fuel-pump-fill"></i></div>
-        <div class="tile-content">
-            <div class="tile-label">Fuel</div>
-            <div class="tile-value">{{ fuel_liters|pk_money }} <small>L</small></div>
-            <div class="tile-sub">{{ fuel_cost|pk_money }} PKR spent</div>
-        </div>
-    </a>
-
-    <a href="{% url 'maintenance_list' %}" class="tile-btn">
-        <div class="tile-icon"><i class="bi bi-wrench-adjustable"></i></div>
-        <div class="tile-content">
-            <div class="tile-label">Maintenance</div>
-            <div class="tile-value">{{ maint_cost|pk_money }}</div>
-            <div class="tile-sub">{{ maint_count }} logs</div>
-        </div>
-    </a>
-
-    <a href="{% url 'inventory_list' %}" class="tile-btn">
-        <div class="tile-icon"><i class="bi bi-box-seam-fill"></i></div>
-        <div class="tile-content">
-            <div class="tile-label">Inventory value</div>
-            <div class="tile-value">{{ inventory_value|pk_money }}</div>
-            <div class="tile-sub">Total stock worth</div>
-        </div>
-    </a>
-
-    <a href="{% url 'equipment_list' %}" class="tile-btn {% if eq_out > 0 %}tile-warn{% endif %}">
-        <div class="tile-icon"><i class="bi bi-tools"></i></div>
-        <div class="tile-content">
-            <div class="tile-label">Equipment working</div>
-            <div class="tile-value">{{ eq_working }} <small>/ {{ eq_total }}</small></div>
-            <div class="tile-sub">{{ eq_maint }} in maintenance · {{ eq_out }} out</div>
-        </div>
-    </a>
-</div>
-
-
-<!-- ============================================================ -->
-<!-- SAFETY                                                        -->
-<!-- ============================================================ -->
-<div class="dash-section">
-    <i class="bi bi-shield-fill-check"></i> Safety
-</div>
-
+<!-- SAFETY (Moved to top per review) -->
+<div class="dash-section"><i class="bi bi-shield-fill-check"></i> Safety Status</div>
 <div class="row g-3 mb-0">
-    <!-- Days since incident — the star metric -->
     <div class="col-12 col-md-4">
         <a href="{% url 'incident_list' %}" class="kpi-link">
-            <div class="kpi-card kpi-green">
+            <!-- Dynamic color logic for safety -->
+            <div class="kpi-card {% if days_since_incident == 0 %}kpi-red{% elif days_since_incident < 7 %}kpi-amber{% else %}kpi-green{% endif %}">
                 <div class="kpi-head">
                     <div class="kpi-label">Days since last incident</div>
                     <div class="kpi-icon"><i class="bi bi-shield-check"></i></div>
                 </div>
                 <div class="kpi-value">
-                    {% if days_since_incident is not None %}
-                        {{ days_since_incident }}
-                    {% else %}
-                        <span style="color:var(--text-muted); font-size:20px;">—</span>
-                    {% endif %}
+                    {% if days_since_incident is not None %}{{ days_since_incident }}{% else %}—{% endif %}
                 </div>
                 <div class="kpi-sub">
-                    {% if days_since_incident is None %}
-                        No incidents on record
-                    {% elif incidents_this_month > 0 %}
-                        {{ incidents_this_month }} this month
-                    {% else %}
-                        Clean month so far
-                    {% endif %}
+                    {% if days_since_incident is None %}No incidents on record
+                    {% elif incidents_this_month > 0 %}{{ incidents_this_month }} this month
+                    {% else %}Clean month so far{% endif %}
                 </div>
             </div>
         </a>
     </div>
-
-    <!-- Open hazards -->
     <div class="col-6 col-md-4">
         <a href="{% url 'hazard_list' %}?status=Open" class="kpi-link">
             <div class="kpi-card {% if critical_hazards_count > 0 %}kpi-red{% else %}kpi-amber{% endif %}">
-                <div class="kpi-head">
-                    <div class="kpi-label">Open hazards</div>
-                    <div class="kpi-icon"><i class="bi bi-search"></i></div>
-                </div>
+                <div class="kpi-head"><div class="kpi-label">Open hazards</div><div class="kpi-icon"><i class="bi bi-search"></i></div></div>
                 <div class="kpi-value">{{ open_hazards_count }}</div>
-                <div class="kpi-sub">
-                    {% if critical_hazards_count > 0 %}
-                        <span style="color:var(--danger); font-weight:600;">⚠️ {{ critical_hazards_count }} high/critical</span>
-                    {% else %}
-                        No high-risk items
-                    {% endif %}
-                </div>
+                <div class="kpi-sub">{% if critical_hazards_count > 0 %}<span style="color:var(--danger); font-weight:600;">⚠️ {{ critical_hazards_count }} high/critical</span>{% else %}No high-risk items{% endif %}</div>
             </div>
         </a>
     </div>
-
-    <!-- Compliance alerts -->
     <div class="col-6 col-md-4">
         <a href="{% url 'safety_hub' %}" class="kpi-link">
             <div class="kpi-card kpi-purple">
-                <div class="kpi-head">
-                    <div class="kpi-label">Compliance alerts</div>
-                    <div class="kpi-icon"><i class="bi bi-clipboard-pulse"></i></div>
-                </div>
-                <div class="kpi-value">{{ ppe_due_soon|add:training_due_soon }}</div>
-                <div class="kpi-sub">
-                    {{ ppe_due_soon }} PPE · {{ training_due_soon }} training expiring in 30 days
-                </div>
+                <div class="kpi-head"><div class="kpi-label">Compliance alerts</div><div class="kpi-icon"><i class="bi bi-clipboard-pulse"></i></div></div>
+                <div class="kpi-value">{{ ppe_due_soon|default:0|add:training_due_soon|default:0 }}</div>
+                <div class="kpi-sub">{{ ppe_due_soon|default:0 }} PPE · {{ training_due_soon|default:0 }} training (expired/expiring)</div>
             </div>
         </a>
     </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- BREAKDOWNS                                                    -->
-<!-- ============================================================ -->
-<div class="dash-section"><i class="bi bi-list-check"></i> Detailed breakdown</div>
+<!-- KEY PERFORMANCE -->
+<div class="dash-section"><i class="bi bi-star-fill"></i> Key performance — this month</div>
+<div class="row g-3">
+    <div class="col-6 col-lg-3">
+        <a href="{% url 'sale_list' %}" class="kpi-link">
+            <div class="kpi-card kpi-amber">
+                <div class="kpi-head"><div class="kpi-label">Sales this month</div><div class="kpi-icon"><i class="bi bi-cash-stack"></i></div></div>
+                <div class="kpi-value">{{ tm_sales|pk_money }} <small>PKR</small></div>
+                {% if sales_trend_pct is not None %}
+                    <span class="kpi-sub" style="color: {% if sales_trend_pct > 0 %}var(--success){% elif sales_trend_pct < 0 %}var(--danger){% else %}var(--text-muted){% endif %};">
+                        <i class="bi bi-arrow-{% if sales_trend_pct > 0 %}up{% elif sales_trend_pct < 0 %}down{% else %}right{% endif %}"></i> {{ sales_trend_pct }}% vs last month
+                    </span>
+                {% else %}<div class="kpi-sub">{{ tm_sales_count }} dispatches</div>{% endif %}
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-lg-3">
+        <a href="{% url 'sale_list' %}?status=Paid" class="kpi-link">
+            <div class="kpi-card kpi-green">
+                <div class="kpi-head"><div class="kpi-label">Cash received</div><div class="kpi-icon"><i class="bi bi-wallet2"></i></div></div>
+                <div class="kpi-value">{{ tm_received|pk_money }} <small>PKR</small></div>
+                {% if received_trend_pct is not None %}
+                    <span class="kpi-sub" style="color: {% if received_trend_pct > 0 %}var(--success){% elif received_trend_pct < 0 %}var(--danger){% else %}var(--text-muted){% endif %};">
+                        <i class="bi bi-arrow-{% if received_trend_pct > 0 %}up{% elif received_trend_pct < 0 %}down{% else %}right{% endif %}"></i> {{ received_trend_pct }}% vs last month
+                    </span>
+                {% else %}<div class="kpi-sub">Money in the bank</div>{% endif %}
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-lg-3">
+        <a href="{% url 'sale_list' %}?status=Unpaid" class="kpi-link">
+            <div class="kpi-card kpi-red">
+                <div class="kpi-head"><div class="kpi-label">Outstanding</div><div class="kpi-icon"><i class="bi bi-hourglass-split"></i></div></div>
+                <div class="kpi-value">{{ total_outstanding|pk_money }} <small>PKR</small></div>
+                <div class="kpi-sub">Unpaid & partial invoices</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-lg-3">
+        <a href="{% url 'production_list' %}" class="kpi-link">
+            <div class="kpi-card kpi-blue">
+                <div class="kpi-head"><div class="kpi-label">Coal produced</div><div class="kpi-icon"><i class="bi bi-clipboard-data-fill"></i></div></div>
+                <div class="kpi-value">{{ tm_tons|pk_money }} <small>tons</small></div>
+                {% if production_trend_pct is not None %}
+                    <span class="kpi-sub" style="color: {% if production_trend_pct > 0 %}var(--success){% elif production_trend_pct < 0 %}var(--danger){% else %}var(--text-muted){% endif %};">
+                        <i class="bi bi-arrow-{% if production_trend_pct > 0 %}up{% elif production_trend_pct < 0 %}down{% else %}right{% endif %}"></i> {{ production_trend_pct }}% vs last month
+                    </span>
+                {% else %}<div class="kpi-sub">Extracted this month</div>{% endif %}
+            </div>
+        </a>
+    </div>
+</div>
 
+<!-- FINANCIAL HEALTH (Python calculated) -->
+<div class="row g-3 mt-0">
+    <div class="col-12 col-md-4">
+        <div class="kpi-card kpi-purple">
+            <div class="kpi-head"><div class="kpi-label">Operating margin (est)</div><div class="kpi-icon"><i class="bi bi-calculator"></i></div></div>
+            <div class="kpi-value {% if net_position < 0 %}text-danger{% else %}text-success{% endif %}">
+                {% if net_position < 0 %}−{% endif %}{{ net_position|floatformat:0|intcomma }} <small>PKR</small>
+            </div>
+            <div class="kpi-sub">Sales minus payroll, fuel & maintenance</div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="kpi-card kpi-amber">
+            <div class="kpi-head"><div class="kpi-label">Cost per ton</div><div class="kpi-icon"><i class="bi bi-speedometer2"></i></div></div>
+            <div class="kpi-value">{{ cost_per_ton|floatformat:0|intcomma }} <small>PKR</small></div>
+            <div class="kpi-sub">Operating costs ÷ tons produced</div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="kpi-card kpi-green">
+            <div class="kpi-head"><div class="kpi-label">Collection rate</div><div class="kpi-icon"><i class="bi bi-percent"></i></div></div>
+            <div class="kpi-value">{{ collection_rate|floatformat:1 }}%</div>
+            <div class="kpi-sub">Cash received ÷ sales this month</div>
+        </div>
+    </div>
+</div>
+
+<!-- TODAY -->
+<div class="dash-section"><i class="bi bi-sun"></i> Today</div>
+<div class="tile-grid">
+    <a href="{% url 'sale_list' %}" class="tile-btn">
+        <div class="tile-icon"><i class="bi bi-truck"></i></div>
+        <div class="tile-content"><div class="tile-label">Trucks today</div><div class="tile-value">{{ todays_dispatches }}</div><div class="tile-sub">{{ todays_tons|pk_money }} tons dispatched</div></div>
+    </a>
+    <a href="{% url 'production_list' %}" class="tile-btn">
+        <div class="tile-icon"><i class="bi bi-hammer"></i></div>
+        <div class="tile-content"><div class="tile-label">Produced today</div><div class="tile-value">{{ todays_production|pk_money }} <small>t</small></div><div class="tile-sub">Coal extracted</div></div>
+    </a>
+    <a href="{% url 'sale_list' %}?status=Paid" class="tile-btn">
+        <div class="tile-icon"><i class="bi bi-cash-coin"></i></div>
+        <div class="tile-content"><div class="tile-label">Cash today</div><div class="tile-value">{{ todays_cash|pk_money }}</div><div class="tile-sub">PKR received</div></div>
+    </a>
+    <a href="{% url 'attendance_list' %}?date={{ today|date:'Y-m-d' }}" class="tile-btn">
+        <div class="tile-icon"><i class="bi bi-people-fill"></i></div>
+        <div class="tile-content"><div class="tile-label">Present today</div><div class="tile-value">{{ today_present }} <small>/ {{ today_attendance_total }}</small></div><div class="tile-sub">{{ today_absent }} absent · {{ today_leave }} leave</div></div>
+    </a>
+</div>
+
+<!-- RESOURCES -->
+<div class="dash-section"><i class="bi bi-box-seam"></i> Resources & costs — this month</div>
+<div class="tile-grid">
+    <a href="{% url 'payroll_list' %}" class="tile-btn">
+        <div class="tile-icon"><i class="bi bi-cash-coin"></i></div>
+        <div class="tile-content"><div class="tile-label">Payroll</div><div class="tile-value">{{ tm_payroll_total|pk_money }}</div><div class="tile-sub">{{ tm_payroll_count }} payslips</div></div>
+    </a>
+    <a href="{% url 'fuel_report' %}" class="tile-btn">
+        <div class="tile-icon"><i class="bi bi-fuel-pump-fill"></i></div>
+        <div class="tile-content"><div class="tile-label">Fuel</div><div class="tile-value">{{ fuel_liters|pk_money }} <small>L</small></div><div class="tile-sub">{{ fuel_cost|pk_money }} PKR spent</div></div>
+    </a>
+    <a href="{% url 'maintenance_list' %}" class="tile-btn">
+        <div class="tile-icon"><i class="bi bi-wrench-adjustable"></i></div>
+        <div class="tile-content"><div class="tile-label">Maintenance</div><div class="tile-value">{{ maint_cost|pk_money }}</div><div class="tile-sub">{{ maint_count }} logs</div></div>
+    </a>
+    <a href="{% url 'inventory_list' %}" class="tile-btn">
+        <div class="tile-icon"><i class="bi bi-box-seam-fill"></i></div>
+        <div class="tile-content"><div class="tile-label">Inventory value</div><div class="tile-value">{{ inventory_value|pk_money }}</div><div class="tile-sub">Total stock worth</div></div>
+    </a>
+    <a href="{% url 'equipment_list' %}" class="tile-btn {% if eq_out > 0 %}tile-warn{% endif %}">
+        <div class="tile-icon"><i class="bi bi-tools"></i></div>
+        <div class="tile-content"><div class="tile-label">Equipment</div><div class="tile-value">{{ eq_working }} <small>/ {{ eq_total }}</small></div><div class="tile-sub">{{ eq_maint }} in maint · {{ eq_out }} out</div></div>
+    </a>
+</div>
+
+<!-- TRENDS -->
+<div class="dash-section"><i class="bi bi-graph-up-arrow"></i> Trends & analytics</div>
+<div class="row g-3">
+    <div class="col-12 col-lg-8">
+        <div class="mini-panel">
+            <div class="mini-panel-title"><i class="bi bi-graph-up"></i> 6-month performance <span style="margin-left:auto; font-size:11px; color:var(--text-muted); font-weight:400;">Production (t) · Sales (PKR)</span></div>
+            <div class="chart-wrap"><canvas id="monthlyChart" aria-label="6-month performance chart"></canvas></div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-4">
+        <div class="mini-panel">
+            <div class="mini-panel-title"><i class="bi bi-activity"></i> Sales — last 30 days</div>
+            <div class="chart-wrap"><canvas id="salesTrendChart" aria-label="Sales trend for last 30 days"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<!-- BREAKDOWNS -->
+<div class="dash-section"><i class="bi bi-list-check"></i> Detailed breakdown</div>
 <div class="row g-3">
     <div class="col-12 {% if is_manager %}col-lg-4{% else %}col-lg-6{% endif %}">
         <div class="mini-panel">
-            <div class="mini-panel-title"><i class="bi bi-trophy-fill"></i> Top customers (this month)</div>
+            <div class="mini-panel-title"><i class="bi bi-trophy-fill"></i> Top customers</div>
             {% if top_customers %}
                 {% for name, amount in top_customers %}
                 <div class="list-row">
-                    <div class="list-main">
-                        <div class="list-name">
-                            <span class="rank {% if forloop.counter <= 3 %}rank-{{ forloop.counter }}{% endif %}">{% if forloop.counter <= 3 %}<i class="bi bi-trophy-fill"></i>{% else %}{{ forloop.counter }}.{% endif %}</span>
-                            {{ name }}
-                        </div>
-                    </div>
+                    <div class="list-main"><div class="list-name">{{ name }}</div></div>
                     <div class="list-amount">{{ amount|pk_money }}</div>
                 </div>
                 {% endfor %}
-            {% else %}
-                <p class="empty-note">No sales this month.</p>
-            {% endif %}
+            {% else %}<p class="empty-note">No sales this month.</p>{% endif %}
         </div>
     </div>
-
     {% if is_manager %}
     <div class="col-12 col-lg-5">
         <div class="mini-panel">
-            <div class="mini-panel-title"><i class="bi bi-geo-alt-fill"></i> Mine performance (this month)</div>
+            <div class="mini-panel-title"><i class="bi bi-geo-alt-fill"></i> Mine performance</div>
             {% if mine_performance %}
                 {% for mp in mine_performance %}
                 <div class="list-row">
-                    <div class="list-main">
-                        <div class="list-name">{{ mp.mine.name }}</div>
-                        <div class="list-sub">{{ mp.mine.location }}</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <div class="list-amount">{{ mp.tons|pk_money }} t</div>
-                        <div class="list-sub">{{ mp.revenue|pk_money }} PKR</div>
-                    </div>
+                    <div class="list-main"><div class="list-name">{{ mp.mine.name }}</div><div class="list-sub">{{ mp.mine.location }}</div></div>
+                    <div style="text-align:right;"><div class="list-amount">{{ mp.tons|pk_money }} t</div><div class="list-sub">{{ mp.revenue|pk_money }} PKR</div></div>
                 </div>
                 {% endfor %}
-            {% else %}
-                <p class="empty-note">No mines on record.</p>
-            {% endif %}
+            {% else %}<p class="empty-note">No mines on record.</p>{% endif %}
         </div>
     </div>
     {% endif %}
-
     <div class="col-12 {% if is_manager %}col-lg-3{% else %}col-lg-6{% endif %}">
         <div class="mini-panel">
-            <div class="mini-panel-title">
-                <i class="bi bi-exclamation-triangle-fill" style="color:var(--danger);"></i> Low stock items
-            </div>
+            <div class="mini-panel-title"><i class="bi bi-exclamation-triangle-fill" style="color:var(--danger);"></i> Low stock items</div>
             {% if low_stock_items %}
                 {% for item in low_stock_items|slice:":5" %}
                 <div class="list-row">
-                    <div class="list-main">
-                        <div class="list-name">{{ item.name }}</div>
-                        <div class="list-sub">Reorder at {{ item.reorder_level }} {{ item.unit }}</div>
-                    </div>
+                    <div class="list-main"><div class="list-name">{{ item.name }}</div><div class="list-sub">Reorder at {{ item.reorder_level }} {{ item.unit }}</div></div>
                     <span class="badge-status badge-inactive">{{ item.quantity }} {{ item.unit }}</span>
                 </div>
                 {% endfor %}
                 {% if low_stock_items|length > 5 %}
-                <div style="text-align:center; padding-top:8px;">
-                    <a href="{% url 'inventory_list' %}?low=1" style="font-size:12px;">+ {{ low_stock_items|length|add:"-5" }} more</a>
-                </div>
+                <div style="text-align:center; padding-top:8px;"><a href="{% url 'inventory_list' %}?low=1" style="font-size:12px;">+ {{ low_stock_items|length|add:"-5" }} more</a></div>
                 {% endif %}
-            {% else %}
-                <p class="empty-note"><i class="bi bi-check-circle-fill" style="color:var(--success);"></i> All stock levels healthy.</p>
-            {% endif %}
+            {% else %}<p class="empty-note"><i class="bi bi-check-circle-fill" style="color:var(--success);"></i> All stock levels healthy.</p>{% endif %}
         </div>
     </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- FINANCIAL & OPERATIONS ANALYTICS                              -->
-<!-- ============================================================ -->
-<div class="dash-section"><i class="bi bi-pie-chart-fill"></i> Financial &amp; operations analytics</div>
-
+<!-- ANALYTICS CHARTS -->
+<div class="dash-section"><i class="bi bi-pie-chart-fill"></i> Financial & operations analytics</div>
 <div class="row g-3">
     <div class="col-12 col-lg-4">
         <div class="mini-panel">
-            <div class="mini-panel-title"><i class="bi bi-credit-card-fill"></i> Payment status — this month</div>
-            <div class="chart-wrap short"><canvas id="paymentStatusChart"></canvas></div>
+            <div class="mini-panel-title"><i class="bi bi-credit-card-fill"></i> Payment status</div>
+            <div class="chart-wrap short"><canvas id="paymentStatusChart" aria-label="Payment status chart"></canvas></div>
             <div class="legend-stats">
                 <div class="legend-stat paid"><div class="n">{{ tm_paid }}</div><div class="l">Paid</div></div>
                 <div class="legend-stat partial"><div class="n">{{ tm_partial }}</div><div class="l">Partial</div></div>
@@ -852,47 +363,37 @@
             </div>
         </div>
     </div>
-
     <div class="col-12 col-lg-4">
         <div class="mini-panel">
-            <div class="mini-panel-title"><i class="bi bi-graph-down-arrow"></i> Monthly costs breakdown</div>
-            <div class="chart-wrap tall"><canvas id="costBreakdownChart"></canvas></div>
+            <div class="mini-panel-title"><i class="bi bi-graph-down-arrow"></i> Monthly costs</div>
+            <div class="chart-wrap tall"><canvas id="costBreakdownChart" aria-label="Monthly costs chart"></canvas></div>
         </div>
     </div>
-
     <div class="col-12 col-lg-4">
         <div class="mini-panel">
             <div class="mini-panel-title"><i class="bi bi-gem"></i> Sales by coal type</div>
-            <div class="chart-wrap tall" id="coalTypeWrap"><canvas id="coalTypeChart"></canvas></div>
+            <div class="chart-wrap tall" id="coalTypeWrap"><canvas id="coalTypeChart" aria-label="Sales by coal type chart"></canvas></div>
         </div>
     </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- RECEIVABLES AGING                                             -->
-<!-- Paste this just BEFORE the "RECENT ACTIVITY" section in       -->
-<!-- dashboard.html (inside the <div class="dash"> wrapper).       -->
-<!-- ============================================================ -->
+<!-- RECEIVABLES AGING -->
 <div class="dash-section"><i class="bi bi-hourglass-split"></i> Receivables aging</div>
-
 <div class="mini-panel">
     <div class="mini-panel-title">
         <i class="bi bi-calendar-range"></i> Outstanding by invoice age
-        <span class="hint">{{ total_outstanding|pk_money }} PKR total</span>
+        <span style="margin-left:auto; font-size:11px; color:var(--text-muted); font-weight:400;">{{ total_outstanding|pk_money }} PKR total</span>
     </div>
-
     {% if total_outstanding > 0 %}
         {% for b in aging %}
         <div class="list-row" style="flex-direction:column; align-items:stretch; gap:6px;">
             <div style="display:flex; justify-content:space-between; gap:12px;">
                 <span class="list-name">{{ b.label }}</span>
-                <span class="list-amount">
-                    {{ b.amount|pk_money }}
-                    <span class="list-sub">· {{ b.count }} invoice{{ b.count|pluralize }}</span>
-                </span>
+                <span class="list-amount">{{ b.amount|pk_money }} <span class="list-sub">· {{ b.count }} invoice{{ b.count|pluralize }}</span></span>
             </div>
+            <!-- Added |unlocalize to prevent comma decimal issues -->
             <div style="height:6px; background:var(--bg-raised); border-radius:4px; overflow:hidden;">
-                <div style="width:{{ b.pct }}%; height:100%; background:var(--{{ b.tone }});"></div>
+                <div style="width:{{ b.pct|unlocalize }}%; height:100%; background:var(--{{ b.tone }});"></div>
             </div>
         </div>
         {% endfor %}
@@ -901,29 +402,13 @@
     {% endif %}
 </div>
 
-
-
-<!-- ============================================================ -->
-<!-- RECENT ACTIVITY                                               -->
-<!-- ============================================================ -->
+<!-- RECENT ACTIVITY -->
 <div class="dash-section"><i class="bi bi-clock-history"></i> Recent activity</div>
-
 <div class="mini-panel">
     {% if recent_sales %}
     <div class="table-scroll">
         <table class="table">
-            <thead>
-                <tr>
-                    <th>Dispatch</th>
-                    <th>Date</th>
-                    <th>Customer</th>
-                    <th>Mine</th>
-                    <th class="num">Tons</th>
-                    <th class="num">Total</th>
-                    <th>Status</th>
-                    <th></th>
-                </tr>
-            </thead>
+            <thead><tr><th>Dispatch</th><th>Date</th><th>Customer</th><th>Mine</th><th class="num">Tons</th><th class="num">Total</th><th>Status</th><th></th></tr></thead>
             <tbody>
                 {% for s in recent_sales %}
                 <tr>
@@ -934,39 +419,23 @@
                     <td class="num">{{ s.quantity_tons }}</td>
                     <td class="num-strong">{{ s.total_amount|pk_money }}</td>
                     <td>
-                        {% if s.payment_status == 'Paid' %}
-                            <span class="badge-status badge-active">PAID</span>
-                        {% elif s.payment_status == 'Partial' %}
-                            <span class="badge-status badge-leave">PARTIAL</span>
-                        {% else %}
-                            <span class="badge-status badge-inactive">UNPAID</span>
-                        {% endif %}
+                        {% if s.payment_status == 'Paid' %}<span class="badge-status badge-active">PAID</span>
+                        {% elif s.payment_status == 'Partial' %}<span class="badge-status badge-leave">PARTIAL</span>
+                        {% else %}<span class="badge-status badge-inactive">UNPAID</span>{% endif %}
                     </td>
-                    <td>
-                        <a href="{% url 'sale_detail' s.pk %}" class="btn btn-sm btn-outline-amber" aria-label="View sale">
-                            <i class="bi bi-eye"></i>
-                        </a>
-                    </td>
+                    <td><a href="{% url 'sale_detail' s.pk %}" class="btn btn-sm btn-outline-amber" aria-label="View sale"><i class="bi bi-eye"></i></a></td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
-    <div style="text-align:center; padding-top:12px;">
-        <a href="{% url 'sale_list' %}" class="btn btn-outline-amber btn-sm">
-            <i class="bi bi-list-ul"></i> View all sales
-        </a>
-    </div>
-    {% else %}
-    <p class="empty-note" style="text-align:center; padding:24px;">No sales recorded yet.</p>
-    {% endif %}
+    <div style="text-align:center; padding-top:12px;"><a href="{% url 'sale_list' %}" class="btn btn-outline-amber btn-sm"><i class="bi bi-list-ul"></i> View all sales</a></div>
+    {% else %}<p class="empty-note" style="text-align:center; padding:24px;">No sales recorded yet.</p>{% endif %}
 </div>
 
 </div><!-- /.dash -->
 
-<!-- ============================================================ -->
-<!-- CHART DATA + SCRIPTS                                          -->
-<!-- ============================================================ -->
+<!-- CHART DATA -->
 {{ monthly_labels|json_script:"monthly_labels" }}
 {{ monthly_production|json_script:"monthly_production" }}
 {{ monthly_sales|json_script:"monthly_sales" }}
@@ -976,309 +445,154 @@
 <script src="{% static 'vendor/chart.umd.min.js' %}"></script>
 <script>
 (function () {
-    /* ---------- helpers ---------- */
-    function cssVar(name) {
-        return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    /* --- Quick Access (XSS Safe) --- */
+    var userKey = 'cm_recent_pages_{{ request.user.id|default:"anon" }}';
+    var container = document.getElementById('recentPagesContainer');
+    var grid = document.getElementById('recentPagesGrid');
+    
+    if (container && grid) {
+        var recent = [];
+        try { recent = JSON.parse(localStorage.getItem(userKey) || '[]'); } catch(e) {}
+        
+        if (recent.length > 0) {
+            container.style.display = 'block';
+            recent.forEach(function(page) {
+                var a = document.createElement('a');
+                a.href = page.url;
+                a.className = 'tile-btn';
+                
+                var icon = 'bi-arrow-right-circle';
+                if (page.title.includes('Sale')) icon = 'bi-receipt';
+                else if (page.title.includes('Production')) icon = 'bi-clipboard-data-fill';
+                else if (page.title.includes('Employee')) icon = 'bi-people-fill';
+                else if (page.title.includes('Stock') || page.title.includes('Inventory')) icon = 'bi-box-seam';
+                else if (page.title.includes('Safety')) icon = 'bi-shield-check';
+                else if (page.title.includes('Payroll')) icon = 'bi-cash-coin';
+
+                // Safe innerHTML structure
+                var iconDiv = document.createElement('div');
+                iconDiv.className = 'tile-icon';
+                iconDiv.innerHTML = '<i class="bi ' + icon + '"></i>';
+
+                var contentDiv = document.createElement('div');
+                contentDiv.className = 'tile-content';
+                
+                var titleDiv = document.createElement('div');
+                titleDiv.className = 'tile-value';
+                titleDiv.style.fontSize = '14px';
+                titleDiv.style.whiteSpace = 'normal';
+                titleDiv.style.lineHeight = '1.2';
+                titleDiv.textContent = page.title; // XSS Safe
+
+                contentDiv.appendChild(titleDiv);
+                a.appendChild(iconDiv);
+                a.appendChild(contentDiv);
+                grid.appendChild(a);
+            });
+        }
     }
+
+    /* --- Charts --- */
+    function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
     function num(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
+    function compact(v) { var a = Math.abs(v); if (a >= 10000000) return (v / 10000000).toFixed(2) + ' Cr'; if (a >= 100000) return (v / 100000).toFixed(2) + ' L'; if (a >= 1000) return (v / 1000).toFixed(1) + 'K'; return Math.round(v).toLocaleString(); }
+    function axisCompact(v) { if (v >= 10000000) return (v / 10000000).toFixed(1) + 'Cr'; if (v >= 100000) return (v / 100000).toFixed(0) + 'L'; if (v >= 1000) return (v / 1000).toFixed(0) + 'K'; return v; }
 
-    // 1.2 Cr / 4.5 L / 12K / plain
-    function compact(v) {
-        var a = Math.abs(v);
-        if (a >= 10000000) return (v / 10000000).toFixed(2) + ' Cr';
-        if (a >= 100000)   return (v / 100000).toFixed(2) + ' L';
-        if (a >= 1000)     return (v / 1000).toFixed(1) + 'K';
-        return Math.round(v).toLocaleString();
-    }
-    function axisCompact(v) {
-        if (v >= 10000000) return (v / 10000000).toFixed(1) + 'Cr';
-        if (v >= 100000)   return (v / 100000).toFixed(0) + 'L';
-        if (v >= 1000)     return (v / 1000).toFixed(0) + 'K';
-        return v;
-    }
-
-    /* ---------- financial health cards ---------- */
-    (function financialHealth() {
-        var el = document.getElementById('finData');
-        if (!el) return;
-        var sales    = num(el.dataset.sales);
-        var received = num(el.dataset.received);
-        var payroll  = num(el.dataset.payroll);
-        var fuel     = num(el.dataset.fuel);
-        var maint    = num(el.dataset.maint);
-        var tons     = num(el.dataset.tons);
-        var costs    = payroll + fuel + maint;
-
-        var net = sales - costs;
-        var netEl = document.getElementById('netValue');
-        netEl.innerHTML = (net < 0 ? '−' : '') + compact(Math.abs(net)) + ' <small>PKR</small>';
-        netEl.classList.add(net < 0 ? 'neg' : 'pos');
-        netEl.title = 'PKR ' + Math.round(net).toLocaleString();
-        document.getElementById('netSub').textContent =
-            'Sales ' + compact(sales) + ' − costs ' + compact(costs);
-
-        var cpEl = document.getElementById('cpValue');
-        if (tons > 0) {
-            cpEl.innerHTML = Math.round(costs / tons).toLocaleString() + ' <small>PKR / ton</small>';
-            document.getElementById('cpSub').textContent =
-                'Costs ' + compact(costs) + ' ÷ ' + tons.toLocaleString(undefined, { maximumFractionDigits: 1 }) + ' t';
-        } else {
-            cpEl.textContent = '—';
-            document.getElementById('cpSub').textContent = 'No production recorded this month';
-        }
-
-        var crEl = document.getElementById('crValue');
-        if (sales > 0) {
-            var rate = (received / sales) * 100;
-            crEl.textContent = rate.toFixed(1) + '%';
-            crEl.classList.remove('pos', 'neg');
-            if (rate >= 80) crEl.classList.add('pos');
-            else if (rate < 50) crEl.classList.add('neg');
-        } else {
-            crEl.textContent = '—';
-        }
-    })();
-
-    /* ---------- charts (rebuilt when the theme changes) ---------- */
-    function destroyIfExists(canvas) {
-        if (!canvas) return;
-        var c = Chart.getChart(canvas);
-        if (c) c.destroy();
-    }
+    function destroyIfExists(canvas) { if (!canvas) return; var c = Chart.getChart(canvas); if (c) c.destroy(); }
 
     var coalLabels = {{ coal_type_labels|safe }};
     var coalValues = {{ coal_type_values|safe }};
 
     function renderCharts() {
-        var accent      = cssVar('--accent');
-        var success     = cssVar('--success');
-        var danger      = cssVar('--danger');
-        var info        = cssVar('--info');
-        var warning     = cssVar('--warning');
-        var purple      = '#8b5cf6';
-        var borderLight = cssVar('--border-light');
-        var textMuted   = cssVar('--text-muted');
-        var panelBg     = cssVar('--bg-panel') || '#151b23';
+        var accent = cssVar('--accent'), success = cssVar('--success'), danger = cssVar('--danger'), info = cssVar('--info'), warning = cssVar('--warning'), purple = '#8b5cf6';
+        var borderLight = cssVar('--border-light'), textMuted = cssVar('--text-muted'), panelBg = cssVar('--bg-panel') || '#151b23';
         var tip = { backgroundColor: 'rgba(0,0,0,0.85)', padding: 10, titleColor: '#fff', bodyColor: '#fff' };
-
         Chart.defaults.color = textMuted;
-        Chart.defaults.font.family = cssVar('--font-sans') || undefined;
 
-        var fin = document.getElementById('finData').dataset;
-
-        /* 6-month performance */
-        var monthlyEl = document.getElementById('monthlyChart');
-        destroyIfExists(monthlyEl);
-        new Chart(monthlyEl, {
+        // 6-month performance
+        var mEl = document.getElementById('monthlyChart'); destroyIfExists(mEl);
+        new Chart(mEl, {
             type: 'bar',
             data: {
                 labels: JSON.parse(document.getElementById('monthly_labels').textContent),
                 datasets: [
-                    {
-                        label: 'Production (tons)',
-                        data: JSON.parse(document.getElementById('monthly_production').textContent),
-                        backgroundColor: accent,
-                        borderRadius: 6,
-                        yAxisID: 'y',
-                        order: 1
-                    },
-                    {
-                        label: 'Sales (PKR)',
-                        data: JSON.parse(document.getElementById('monthly_sales').textContent),
-                        type: 'line',
-                        borderColor: success,
-                        backgroundColor: 'transparent',
-                        borderWidth: 2.5,
-                        tension: 0.35,
-                        pointBackgroundColor: success,
-                        pointRadius: 4,
-                        yAxisID: 'y1',
-                        order: 0
-                    }
+                    { label: 'Production (tons)', data: JSON.parse(document.getElementById('monthly_production').textContent), backgroundColor: accent, borderRadius: 6, yAxisID: 'y' },
+                    { label: 'Sales (PKR)', data: JSON.parse(document.getElementById('monthly_sales').textContent), type: 'line', borderColor: success, backgroundColor: 'transparent', borderWidth: 2.5, tension: 0.35, pointBackgroundColor: success, pointRadius: 4, yAxisID: 'y1' }
                 ]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
+                responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
                 plugins: {
-                    legend: { labels: { color: textMuted, boxWidth: 12, padding: 14 } },
-                    tooltip: Object.assign({}, tip, {
-                        callbacks: {
-                            label: function (ctx) {
-                                if (ctx.datasetIndex === 1) return 'Sales: PKR ' + Number(ctx.parsed.y).toLocaleString();
-                                return 'Production: ' + Number(ctx.parsed.y).toLocaleString() + ' t';
-                            }
-                        }
-                    })
+                    legend: { labels: { color: textMuted, boxWidth: 12 } },
+                    tooltip: Object.assign({}, tip, { callbacks: { label: function (ctx) { return ctx.datasetIndex === 1 ? 'Sales: PKR ' + Number(ctx.parsed.y).toLocaleString() : 'Production: ' + Number(ctx.parsed.y).toLocaleString() + ' t'; } } })
                 },
                 scales: {
                     x: { ticks: { color: textMuted, font: { size: 11 } }, grid: { display: false } },
-                    y: {
-                        position: 'left', beginAtZero: true,
-                        ticks: { color: textMuted, font: { size: 10 } },
-                        grid: { color: borderLight, drawBorder: false },
-                        title: { display: true, text: 'Tons', color: textMuted, font: { size: 10 } }
-                    },
-                    y1: {
-                        position: 'right', beginAtZero: true,
-                        ticks: { color: textMuted, font: { size: 10 }, callback: axisCompact },
-                        grid: { display: false },
-                        title: { display: true, text: 'PKR', color: textMuted, font: { size: 10 } }
-                    }
+                    y: { position: 'left', beginAtZero: true, ticks: { color: textMuted }, grid: { color: borderLight, drawBorder: false }, title: { display: true, text: 'Tons', color: textMuted, font: { size: 10 } } },
+                    y1: { position: 'right', beginAtZero: true, ticks: { color: textMuted, callback: axisCompact }, grid: { display: false }, title: { display: true, text: 'PKR', color: textMuted, font: { size: 10 } } }
                 }
             }
         });
 
-        /* sales last 30 days */
-        var trendEl = document.getElementById('salesTrendChart');
-        destroyIfExists(trendEl);
-        var ctx2 = trendEl.getContext('2d');
+        // 30-day sales
+        var tEl = document.getElementById('salesTrendChart'); destroyIfExists(tEl);
+        var ctx2 = tEl.getContext('2d');
         var g2 = ctx2.createLinearGradient(0, 0, 0, 240);
-        g2.addColorStop(0, 'rgba(76, 154, 255, 0.35)');
-        g2.addColorStop(1, 'rgba(76, 154, 255, 0.02)');
+        g2.addColorStop(0, 'rgba(76, 154, 255, 0.35)'); g2.addColorStop(1, 'rgba(76, 154, 255, 0.02)');
         new Chart(ctx2, {
             type: 'line',
             data: {
                 labels: JSON.parse(document.getElementById('trend_labels').textContent),
-                datasets: [{
-                    label: 'Sales',
-                    data: JSON.parse(document.getElementById('trend_data').textContent),
-                    borderColor: info,
-                    backgroundColor: g2,
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.35,
-                    pointRadius: 2,
-                    pointHoverRadius: 5
-                }]
+                datasets: [{ label: 'Sales', data: JSON.parse(document.getElementById('trend_data').textContent), borderColor: info, backgroundColor: g2, borderWidth: 2, fill: true, tension: 0.35, pointRadius: 2 }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: Object.assign({}, tip, {
-                        callbacks: { label: function (ctx) { return 'PKR ' + Number(ctx.parsed.y).toLocaleString(); } }
-                    })
-                },
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: Object.assign({}, tip, { callbacks: { label: function (ctx) { return 'PKR ' + Number(ctx.parsed.y).toLocaleString(); } } }) },
                 scales: {
                     x: { ticks: { color: textMuted, font: { size: 9 }, maxRotation: 0, autoSkipPadding: 20 }, grid: { display: false } },
-                    y: {
-                        beginAtZero: true,
-                        ticks: { color: textMuted, font: { size: 9 }, callback: axisCompact },
-                        grid: { color: borderLight, drawBorder: false }
-                    }
+                    y: { beginAtZero: true, ticks: { color: textMuted, callback: axisCompact }, grid: { color: borderLight, drawBorder: false } }
                 }
             }
         });
 
-        /* payment status donut */
-        var payEl = document.getElementById('paymentStatusChart');
-        destroyIfExists(payEl);
-        new Chart(payEl, {
+        // Payment status
+        var pEl = document.getElementById('paymentStatusChart'); destroyIfExists(pEl);
+        new Chart(pEl, {
             type: 'doughnut',
-            data: {
-                labels: ['Paid', 'Partial', 'Unpaid'],
-                datasets: [{
-                    data: [{{ tm_paid|default:0 }}, {{ tm_partial|default:0 }}, {{ tm_unpaid|default:0 }}],
-                    backgroundColor: [success, warning, danger],
-                    borderColor: panelBg,
-                    borderWidth: 3,
-                    hoverOffset: 8
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '65%',
-                plugins: {
-                    legend: { display: false },
-                    tooltip: Object.assign({}, tip, {
-                        callbacks: { label: function (ctx) { return ctx.label + ': ' + ctx.parsed + ' dispatches'; } }
-                    })
-                }
-            }
+            data: { labels: ['Paid', 'Partial', 'Unpaid'], datasets: [{ data: [{{ tm_paid|default:0 }}, {{ tm_partial|default:0 }}, {{ tm_unpaid|default:0 }}], backgroundColor: [success, warning, danger], borderColor: panelBg, borderWidth: 3, hoverOffset: 8 }] },
+            options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { display: false }, tooltip: Object.assign({}, tip, { callbacks: { label: function (ctx) { return ctx.label + ': ' + ctx.parsed + ' dispatches'; } } }) } }
         });
 
-        /* cost breakdown */
-        var costEl = document.getElementById('costBreakdownChart');
-        destroyIfExists(costEl);
-        new Chart(costEl, {
+        // Cost breakdown
+        var cEl = document.getElementById('costBreakdownChart'); destroyIfExists(cEl);
+        new Chart(cEl, {
             type: 'bar',
-            data: {
-                labels: ['Payroll', 'Fuel', 'Maintenance'],
-                datasets: [{
-                    label: 'Cost (PKR)',
-                    data: [num(fin.payroll), num(fin.fuel), num(fin.maint)],
-                    backgroundColor: [info, accent, purple],
-                    borderRadius: 8,
-                    barPercentage: 0.55
-                }]
-            },
+            data: { labels: ['Payroll', 'Fuel', 'Maintenance'], datasets: [{ label: 'Cost', data: [num({{ cost_payroll }}), num({{ cost_fuel }}), num({{ cost_maintenance }})], backgroundColor: [info, accent, purple], borderRadius: 8, barPercentage: 0.55 }] },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                indexAxis: 'y',
-                plugins: {
-                    legend: { display: false },
-                    tooltip: Object.assign({}, tip, {
-                        callbacks: { label: function (ctx) { return 'PKR ' + compact(ctx.parsed.x); } }
-                    })
-                },
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        ticks: { color: textMuted, font: { size: 10 }, callback: axisCompact },
-                        grid: { color: borderLight, drawBorder: false }
-                    },
-                    y: { ticks: { color: textMuted, font: { size: 11 } }, grid: { display: false } }
-                }
+                responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+                plugins: { legend: { display: false }, tooltip: Object.assign({}, tip, { callbacks: { label: function (ctx) { return 'PKR ' + compact(ctx.parsed.x); } } }) },
+                scales: { x: { beginAtZero: true, ticks: { color: textMuted, callback: axisCompact }, grid: { color: borderLight, drawBorder: false } }, y: { ticks: { color: textMuted, font: { size: 11 } }, grid: { display: false } } }
             }
         });
 
-        /* sales by coal type */
-        var wrap = document.getElementById('coalTypeWrap');
-        var coalEl = document.getElementById('coalTypeChart');
+        // Coal type
+        var wrap = document.getElementById('coalTypeWrap'), coalEl = document.getElementById('coalTypeChart');
         if (!coalLabels || coalLabels.length === 0) {
             if (coalEl) wrap.innerHTML = '<div class="chart-empty">No sales this month</div>';
         } else if (coalEl) {
             destroyIfExists(coalEl);
             new Chart(coalEl, {
                 type: 'doughnut',
-                data: {
-                    labels: coalLabels,
-                    datasets: [{
-                        data: coalValues,
-                        backgroundColor: [accent, success, info, danger, purple],
-                        borderColor: panelBg,
-                        borderWidth: 3,
-                        hoverOffset: 8
-                    }]
-                },
+                data: { labels: coalLabels, datasets: [{ data: coalValues, backgroundColor: [accent, success, info, danger, purple], borderColor: panelBg, borderWidth: 3, hoverOffset: 8 }] },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '60%',
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { color: textMuted, padding: 10, boxWidth: 12, font: { size: 11 } }
-                        },
-                        tooltip: Object.assign({}, tip, {
-                            callbacks: { label: function (ctx) { return ctx.label + ': PKR ' + compact(ctx.parsed); } }
-                        })
-                    }
+                    responsive: true, maintainAspectRatio: false, cutout: '60%',
+                    plugins: { legend: { position: 'bottom', labels: { color: textMuted, padding: 10, boxWidth: 12, font: { size: 11 } } }, tooltip: Object.assign({}, tip, { callbacks: { label: function (ctx) { return ctx.label + ': PKR ' + compact(ctx.parsed); } } }) }
                 }
             });
         }
     }
-
     renderCharts();
-
-    // Re-colour charts when the user toggles light/dark (no page refresh needed)
-    new MutationObserver(function () { renderCharts(); })
-        .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    new MutationObserver(renderCharts).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 })();
 </script>
 

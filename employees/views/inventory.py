@@ -11,7 +11,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from ..decorators import role_required
 from ..forms import InventoryItemForm, StockTransactionForm
 from ..models import (
-    Employee, Equipment, InventoryItem, Mine, StockTransaction,
+    Employee, Equipment, InventoryItem, Mine, StockTransaction, CoalStockpile
 )
 from ._helpers import void_record
 from .notifications import notify_accountants, notify_managers
@@ -310,3 +310,28 @@ def stock_quick_out(request, item_pk):
             messages.error(request, f'Stock-out failed: {e}')
 
     return redirect('inventory_list')
+
+
+
+@role_required('Manager', 'Accountant', 'Viewer')
+def coal_stock_list(request):
+    stocks = CoalStockpile.objects.select_related('mine').all().order_by('mine__name', 'coal_type')
+    
+    # Calculate total stock for the KPI card
+    total_stock = sum(s.quantity_tons for s in stocks)
+
+    # Add a status flag for the UI
+    for s in stocks:
+        if s.quantity_tons < 0:
+            s.status = 'Error'      # Sold more than mined
+        elif s.quantity_tons == 0:
+            s.status = 'Empty'
+        elif s.quantity_tons < 100:
+            s.status = 'Low'
+        else:
+            s.status = 'Healthy'
+
+    return render(request, 'inventory/coal_stock.html', {
+        'stocks': stocks,
+        'total_stock': total_stock,
+    })

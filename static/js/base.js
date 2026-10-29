@@ -190,12 +190,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 /* =========================================================
-   ACCORDION SIDEBAR NAVIGATION
+   ACCORDION SIDEBAR NAVIGATION (Click-Only)
    ========================================================= */
 document.addEventListener('DOMContentLoaded', function() {
     var groups = document.querySelectorAll('.nav-group');
     
-    // 1. Auto-open the group that has an active link
+    // 1. Auto-open the group that has an active link on page load
     groups.forEach(function(group) {
         var hasActiveLink = group.querySelector('.nav-item-link.active');
         if (hasActiveLink) {
@@ -206,8 +206,48 @@ document.addEventListener('DOMContentLoaded', function() {
     // 2. Handle clicking the group buttons
     document.querySelectorAll('.nav-group-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            var group = this.closest('.nav-group');
-            group.classList.toggle('open');
+            var currentGroup = this.closest('.nav-group');
+            var isOpen = currentGroup.classList.contains('open');
+
+            // Close all other groups
+            groups.forEach(function(g) {
+                g.classList.remove('open');
+            });
+
+            // If the clicked group wasn't open, open it now
+            if (!isOpen) {
+                currentGroup.classList.add('open');
+            }
         });
     });
 });
+
+
+/* =========================================================
+   RECENTLY VISITED PAGES TRACKER (Saved in Browser)
+   ========================================================= */
+(function trackRecentPages() {
+    var path = window.location.pathname;
+    
+    // Do not track the dashboard itself, login, logout, or admin
+    if (path === '/' || path.includes('/login') || path.includes('/logout') || path.includes('/admin')) {
+        return;
+    }
+
+    // Get the page title (e.g., "Sales - Coal Mine" -> "Sales")
+    var title = document.title.split(' - ')[0] || path;
+    
+    var recent = JSON.parse(localStorage.getItem('cm_recent_pages') || '[]');
+
+    // Remove the page if it already exists in the list (to move it to the top)
+    recent = recent.filter(item => item.url !== path);
+    
+    // Add to the front of the list
+    recent.unshift({ url: path, title: title });
+    
+    // Keep only the top 5 most recent
+    recent = recent.slice(0, 5);
+    
+    // Save back to browser
+    localStorage.setItem('cm_recent_pages', JSON.stringify(recent));
+})();
