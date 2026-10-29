@@ -34,6 +34,23 @@
                 <span>Control system</span>
             </div>
         </div>
+                <!-- QUICK ACTIONS -->
+        {% if is_manager or is_accountant %}
+        <div class="quick-actions">
+            <a href="{% url 'sale_add' %}" class="qa-btn" title="New Dispatch">
+                <i class="bi bi-plus-circle" style="color:var(--accent);"></i> Dispatch
+            </a>
+            <a href="{% url 'attendance_punch' %}" class="qa-btn" title="Punch In/Out">
+                <i class="bi bi-fingerprint" style="color:var(--info);"></i> Punch In
+            </a>
+            <a href="{% url 'inventory_list' %}" class="qa-btn" title="Stock In/Out">
+                <i class="bi bi-box-seam" style="color:var(--warning);"></i> Stock
+            </a>
+            <a href="{% url 'production_add' %}" class="qa-btn" title="Add Production">
+                <i class="bi bi-clipboard-plus" style="color:var(--success);"></i> Production
+            </a>
+        </div>
+        {% endif %}
 
         <nav class="sidebar-nav">
             <!-- DASHBOARD (Standalone link) -->
@@ -82,7 +99,12 @@
                 <div class="nav-group-content">
                     <a href="{% url 'equipment_list' %}" class="nav-item-link {% if 'equipment' in request.resolver_match.url_name or 'maintenance' in request.resolver_match.url_name %}active{% endif %}">Equipment</a>
                     <a href="{% url 'fuel_report' %}" class="nav-item-link {% if 'fuel_report' in request.resolver_match.url_name %}active{% endif %}">Fuel Report</a>
-                    <a href="{% url 'inventory_list' %}" class="nav-item-link {% if 'inventory' in request.resolver_match.url_name or 'stock' in request.resolver_match.url_name %}active{% endif %}">Inventory</a>
+<a href="{% url 'inventory_list' %}" class="nav-item-link {% if 'inventory' in request.resolver_match.url_name or 'stock' in request.resolver_match.url_name %}active{% endif %}">
+    Inventory 
+    {% if low_stock_count > 0 %}
+    <span class="nav-badge badge-warning">{{ low_stock_count }}</span>
+    {% endif %}
+</a>
                 </div>
             </div>
             {% endif %}
@@ -125,7 +147,12 @@
                 </button>
                 <div class="nav-group-content">
                     {% if is_manager %}
-                    <a href="{% url 'approval_list' %}" class="nav-item-link {% if 'approval' in request.resolver_match.url_name %}active{% endif %}">Pending Approvals</a>
+<a href="{% url 'approval_list' %}" class="nav-item-link {% if 'approval' in request.resolver_match.url_name %}active{% endif %}">
+    Pending Approvals
+    {% if pending_approvals_count > 0 %}
+    <span class="nav-badge badge-danger">{{ pending_approvals_count }}</span>
+    {% endif %}
+</a>
                     {% endif %}
                     <a href="{% url 'reports_hub' %}" class="nav-item-link {% if 'report' in request.resolver_match.url_name %}active{% endif %}">Reports Hub</a>
                     <a href="{% url 'backup_now' %}" class="nav-item-link {% if request.resolver_match.url_name == 'backup_now' %}active{% endif %}">Back up Now</a>
@@ -155,7 +182,11 @@
                 <button type="button" class="icon-btn sidebar-toggle" id="sidebarToggle" aria-label="Open menu">
                     <i class="bi bi-list"></i>
                 </button>
-                <h1 class="page-title m-0">{% block page_title %}Mine management{% endblock %}</h1>
+<div class="topbar-breadcrumbs">
+    <a href="{% url 'dashboard' %}">Home</a>
+    <i class="bi bi-chevron-right"></i>
+    <span>{% block page_title %}Mine management{% endblock %}</span>
+</div>
             </div>
             <div class="topbar-right">
                 <div class="inline-search" id="inlineSearch">
