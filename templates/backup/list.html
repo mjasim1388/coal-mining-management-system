@@ -30,6 +30,27 @@
     </div>
 </div>
 
+<!-- AUTOMATION SETTINGS -->
+<div class="panel mb-3" style="border-left:4px solid var(--accent);">
+    <div class="panel-title"><i class="bi bi-clock-history"></i> Automated Backup Schedule</div>
+    <form method="post" action="{% url 'update_backup_time' %}" class="d-flex align-items-end gap-3 flex-wrap">
+        {% csrf_token %}
+        <div>
+            <label class="form-label" style="margin-bottom:4px;">Daily Backup Time</label>
+            <input type="time" name="backup_time" class="form-control" value="{{ system_settings.backup_time|time:'H:i' }}" required>
+        </div>
+        <button type="submit" class="btn btn-amber">Save Time</button>
+        
+        <div style="margin-left: auto; font-size: 13px; color: var(--text-muted);">
+            {% if system_settings.last_auto_backup %}
+                <i class="bi bi-check-circle-fill" style="color:var(--success);"></i> Last auto-backup: {{ system_settings.last_auto_backup|date:"d M Y" }}
+            {% else %}
+                <i class="bi bi-info-circle"></i> No automated backup has run yet.
+            {% endif %}
+        </div>
+    </form>
+</div>
+
 <div class="panel mb-3" style="border-left:4px solid var(--accent);">
     <div style="font-size:13px; color:var(--text-secondary); line-height:1.6;">
         <i class="bi bi-info-circle-fill" style="color:var(--accent);"></i>

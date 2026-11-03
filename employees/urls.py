@@ -110,6 +110,7 @@ urlpatterns = [
     path('backup/', views.backup_now, name='backup_now'),
     path('backup/list/', views.backup_list, name='backup_list'),
     path('backup/download/<str:filename>/', views.backup_download, name='backup_download'),
+    path('backup/update-time/', views.update_backup_time, name='update_backup_time'),
     # Reports
     path('reports/', views.reports_hub, name='reports_hub'),
     path('reports/sales/', views.report_sales, name='report_sales'),

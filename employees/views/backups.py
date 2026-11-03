@@ -14,93 +14,21 @@ from django.utils import timezone
 from ..decorators import role_required
 
 
+from ..backup_utils import run_database_backup
+from ..models import SystemSettings
+
 @role_required('Manager')
 def backup_now(request):
-    from datetime import timedelta
-
     if request.method == 'POST':
-        try:
-            backup_dir = os.path.join(settings.BASE_DIR, 'backups')
-            os.makedirs(backup_dir, exist_ok=True)
-
-            today_str = timezone.localtime().strftime('%Y-%m-%d')
-            dated_filename = f'coalmining_{today_str}.dump'
-            dated_filepath = os.path.join(backup_dir, dated_filename)
-
-            master_filename = 'coalmining_backup.dump'
-            master_filepath = os.path.join(backup_dir, master_filename)
-
-            pg_dump_path = shutil.which('pg_dump')
-            if not pg_dump_path:
-                for ver in ['18', '17', '16', '15', '14']:
-                    test_path = rf'C:\Program Files\PostgreSQL\{ver}\bin\pg_dump.exe'
-                    if os.path.exists(test_path):
-                        pg_dump_path = test_path
-                        break
-            if not pg_dump_path:
-                messages.error(request, 'pg_dump.exe not found. Please check PostgreSQL installation path.')
-                return redirect('dashboard')
-
-            db = settings.DATABASES['default']
-            env = os.environ.copy()
-            env['PGPASSWORD'] = str(db.get('PASSWORD', ''))
-
-            result = subprocess.run(
-                [
-                    pg_dump_path,
-                    '-U', db.get('USER') or 'postgres',
-                    '-h', db.get('HOST') or 'localhost',
-                    '-p', str(db.get('PORT') or '5432'),
-                    '-Fc', '-f', dated_filepath,
-                    db['NAME'],
-                ],
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=120,
-            )
-
-            if result.returncode != 0:
-                messages.error(request, f'Backup failed: {result.stderr}')
-                return redirect('dashboard')
-
-            shutil.copy2(dated_filepath, master_filepath)
-
-            cutoff_date = timezone.localdate() - timedelta(days=7)
-            removed_count = 0
-            for fname in os.listdir(backup_dir):
-                if not (fname.startswith('coalmining_') and fname.endswith('.dump')):
-                    continue
-                if fname == master_filename:
-                    continue
-                try:
-                    date_str = fname.replace('coalmining_', '').replace('.dump', '')
-                    from datetime import datetime
-                    file_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-                    if file_date < cutoff_date:
-                        os.remove(os.path.join(backup_dir, fname))
-                        removed_count += 1
-                except (ValueError, OSError):
-                    pass
-
-            size_mb = os.path.getsize(dated_filepath) / (1024 * 1024)
-
-            msg = f'✅ Backup saved: {dated_filename} ({size_mb:.2f} MB)'
-            if removed_count > 0:
-                msg += f' — cleaned up {removed_count} old backup(s)'
-
-            messages.success(request, msg)
+        success, message = run_database_backup()
+        if success:
+            messages.success(request, f'✅ {message}')
             return redirect('backup_list')
-
-        except subprocess.TimeoutExpired:
-            messages.error(request, 'Backup timed out after 2 minutes.')
-            return redirect('dashboard')
-        except Exception as e:
-            messages.error(request, f'Backup error: {str(e)}')
+        else:
+            messages.error(request, f'❌ {message}')
             return redirect('dashboard')
 
     return render(request, 'backup/confirm.html')
-
 
 @role_required('Manager')
 def backup_list(request):
@@ -126,6 +54,16 @@ def backup_list(request):
     total_size = sum(b['size_mb'] for b in backups)
     dated_count = sum(1 for b in backups if not b['is_master'])
 
+    system_settings = SystemSettings.load()
+    
+    return render(request, 'backup/list.html', {
+        'backups': backups,
+        'total_size': round(total_size, 2),
+        'count': len(backups),
+        'dated_count': dated_count,
+        'system_settings': system_settings, # Pass it to the UI
+    })
+
     return render(request, 'backup/list.html', {
         'backups': backups,
         'total_size': round(total_size, 2),
@@ -148,3 +86,14 @@ def backup_download(request, filename):
         as_attachment=True,
         filename=filename,
     )
+
+@role_required('Manager')
+def update_backup_time(request):
+    if request.method == 'POST':
+        new_time = request.POST.get('backup_time')
+        if new_time:
+            settings = SystemSettings.load()
+            settings.backup_time = new_time
+            settings.save()
+            messages.success(request, f'Automated backup time updated to {new_time}.')
+        return redirect('backup_list')

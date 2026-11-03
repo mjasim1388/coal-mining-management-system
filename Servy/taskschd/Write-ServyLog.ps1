@@ -1,0 +1,135 @@
+﻿#Requires -Version 5.1
+
+<#
+.SYNOPSIS
+    Safely writes log messages with UTF-8 encoding and performs size-based rotation.
+#>
+function Write-ServyLog {
+    param(
+        [Parameter(Mandatory=$true)][string]$FilePath,
+        [Parameter(Mandatory=$true)][string]$Message,
+        [int]$MaxSizeBytes   = 10485760, # 10 MB limit, matches AppConfig.DefaultRotationSizeMB
+        [int]$MaxBackupFiles = 10
+    )
+
+    try {
+        # Normalize the path for consistent Mutex hashing
+        $absPath = [System.IO.Path]::GetFullPath($FilePath)
+
+        # Create a deterministic, valid system Mutex name from the file path.
+        # We use a SHA256 hash to ensure the Mutex name is unique to the file but avoids Win32
+        # invalid Mutex characters (like backslashes) or path length limits.
+        $sha = [System.Security.Cryptography.SHA256]::Create()
+        try {
+            $hashBytes  = $sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($absPath.ToLowerInvariant()))
+            $hashString = [System.BitConverter]::ToString($hashBytes).Replace('-', '')
+        } finally {
+            $sha.Dispose()
+        }
+
+        try {
+            $mutex = New-Object System.Threading.Mutex($false, "Global\ServyLog_$hashString")
+        } catch [System.UnauthorizedAccessException] {
+            # Standard users lack SeCreateGlobalPrivilege; per-session coordination is enough here.
+            $mutex = New-Object System.Threading.Mutex($false, "Local\ServyLog_$hashString")
+        }
+        $hasLock = $false
+
+        try {
+            # Wait up to 10 seconds for the lock to clear high-contention traffic jams
+            try {
+                $hasLock = $mutex.WaitOne(10000)
+            }
+            catch [System.Threading.AbandonedMutexException] {
+                # Previous owner was killed mid-write; we now own the mutex. Proceed.
+                $hasLock = $true
+                Write-Warning "Servy Logging: recovered an abandoned log mutex for $absPath."
+            }
+            if (-not $hasLock) {
+                # Fail gracefully: log a warning to the console so the admin knows
+                # why the file was skipped, but allow the calling task to proceed.
+                Write-Warning "Servy Logging: Mutex timeout after 10s for $absPath. Log entry dropped to prevent service stall."
+                return
+            }
+
+            $logDir = Split-Path $absPath
+            if (-not [string]::IsNullOrEmpty($logDir) -and -not (Test-Path -LiteralPath $logDir)) {
+                New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+            }
+
+            $inv = [System.Globalization.CultureInfo]::InvariantCulture
+
+            # Handle log rotation if it exceeds max size (Now safely inside the Mutex)
+            if (Test-Path -LiteralPath $absPath) {
+                $fileInfo = Get-Item -LiteralPath $absPath
+                if ($fileInfo.Length -gt $MaxSizeBytes) {
+                    # Rotate using local time to maintain chronologic consistency
+                    # Format string matches RotatingStreamWriter.RotationTimestampFormat (yyyyMMdd_HHmmss)
+                    $localTime = (Get-Date).ToString('yyyyMMdd_HHmmss', $inv)
+                    $ext = [System.IO.Path]::GetExtension($absPath)
+                    $baseName = [System.IO.Path]::GetFileNameWithoutExtension($absPath)
+
+                    # Format: FileName_20260501_062849.log
+                    $rotatedFileName = "{0}_{1}{2}" -f $baseName, $localTime, $ext
+                    $target = Join-Path $logDir $rotatedFileName
+
+                    if ([System.IO.File]::Exists($target)) {
+                        $attempt = 0
+                        do {
+                            Start-Sleep -Milliseconds 100
+                            $localTime = (Get-Date).ToString('yyyyMMdd_HHmmss', $inv)
+                            $rotatedFileName = "{0}_{1}{2}" -f $baseName, $localTime, $ext
+                            $target = Join-Path $logDir $rotatedFileName
+                            $attempt++
+                        } while ([System.IO.File]::Exists($target) -and $attempt -lt 100)
+                    }
+
+                    # Use .NET IO for atomic renaming; Rename-Item can exhibit quirky behavior under load
+                    [System.IO.File]::Move($absPath, $target)
+
+                    if ($MaxBackupFiles -gt 0) {
+                        $rotatedPattern = "${baseName}_*${ext}"
+                        $stampRe = '^' + [regex]::Escape($baseName) + '_\d{8}_\d{6}' + [regex]::Escape($ext) + '$'
+                        Get-ChildItem -LiteralPath $logDir -Filter $rotatedPattern -ErrorAction SilentlyContinue |
+                            Where-Object { $_.Name -match $stampRe } |
+                            Sort-Object LastWriteTime -Descending |
+                            Select-Object -Skip $MaxBackupFiles |
+                            Remove-Item -Force -ErrorAction SilentlyContinue
+                    }
+                }
+            }
+
+            # Enforce consistent UTF-8 logging with no BOM/UTF-16LE mix-ups
+            $useLocal = $false   # mirrors AppConfig.DefaultUseLocalTimeForRotation
+            $now      = if ($useLocal) { Get-Date } else { (Get-Date).ToUniversalTime() }
+            $tz       = if ($useLocal) { $now.ToString('zzz', $inv) } else { 'Z' }
+            $timestampedMsg = "[$($now.ToString('yyyy-MM-dd HH:mm:ss.fff', $inv))$tz] $Message"
+
+            # Use FileStream with FileShare.None inside the Mutex lock.
+            # This completely eliminates interleaved lines or swallowed "file in use" exceptions.
+            $fs = New-Object System.IO.FileStream($absPath, [System.IO.FileMode]::Append, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+            try {
+                $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+                $sw = New-Object System.IO.StreamWriter($fs, $utf8NoBom)
+                try {
+                    $sw.WriteLine($timestampedMsg)
+                    $sw.Flush()
+                } finally {
+                    $sw.Dispose()
+                }
+            } finally {
+                $fs.Dispose()
+            }
+        }
+        finally {
+            if ($hasLock) {
+                $mutex.ReleaseMutex()
+            }
+            $mutex.Dispose()
+        }
+    }
+    catch {
+        # Silent fail-safe for the ultimate fallback layer to avoid crashing the caller
+        Write-Warning "Servy Critical Logging Failure: $_"
+    }
+}

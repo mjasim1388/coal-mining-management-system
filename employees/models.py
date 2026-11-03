@@ -1143,3 +1143,28 @@ class CoalStockpile(models.Model):
 
     def __str__(self):
         return f"{self.mine.name} - {self.coal_type}: {self.quantity_tons} tons"
+
+
+
+import datetime
+
+class SystemSettings(models.Model):
+    """Stores global settings like the automated backup time."""
+    backup_time = models.TimeField(default=datetime.time(23, 0), help_text="Daily automated backup time")
+    last_auto_backup = models.DateField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "System Setting"
+        verbose_name_plural = "System Settings"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1  # Force this to be a Singleton (only 1 row in the DB)
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        obj, created = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return "Global System Settings"

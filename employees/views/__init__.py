@@ -57,7 +57,7 @@ from .approvals import (  # noqa: F401
     approve_payroll, approve_payroll_paid,
 )
 from .backups import (  # noqa: F401
-    backup_now, backup_list, backup_download,
+    backup_now, backup_list, backup_download, update_backup_time,
 )
 from .reports import (  # noqa: F401
     reports_hub, report_sales, report_production, report_payroll,
