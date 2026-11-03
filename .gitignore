@@ -8,3 +8,4 @@ staticfiles/
 media/
 *.log
 backups/
+db_password.txt
